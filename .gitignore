@@ -1,0 +1,21 @@
+serviceAccount.json
+node_modules/
+.env.local
+.env*.local
+
+# exports/backups locais com dados financeiros reais — nunca versionar
+contas_pagar.json
+contas_receber.json
+configuracoes.json
+relatorio-projeto-controle-financeiro.xlsx
+
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# misc
+.DS_Store
+*.pem

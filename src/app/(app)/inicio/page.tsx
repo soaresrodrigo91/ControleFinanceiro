@@ -1,0 +1,405 @@
+"use client";
+
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMesAtual } from "@/contexts/MesAtualContext";
+import {
+  assinarParcelasDoMes,
+  marcarPago,
+  materializarPagamentoRecorrencia,
+  valorEfetivo,
+} from "@/lib/parcelas";
+import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
+import { alternarFiltroGrupo, assinarFiltrosDashboard } from "@/lib/perfil";
+import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
+import { assinarRecebimentosDoMes, sincronizarReembolsosRecorrentes } from "@/lib/recebimentos";
+import { formatarMoeda, mesAtualYM } from "@/lib/date";
+import VisaoGeral13Meses from "@/components/VisaoGeral13Meses";
+import DashboardFormaPagamento from "@/components/DashboardFormaPagamento";
+import { VERSAO_SISTEMA } from "@/lib/versao";
+import SeletorMesAno from "@/components/SeletorMesAno";
+import { IconOlho, IconOlhoFechado } from "@/components/action-icons";
+import type { ConfigListas, Parcela, Recebimento, Recorrencia, StatusGrupo } from "@/lib/types";
+
+function statusGrupo(parcelas: Parcela[]): StatusGrupo {
+  if (parcelas.every((p) => p.pago)) return "pago";
+  if (parcelas.every((p) => !p.pago)) return "pendente";
+  return "parcial";
+}
+
+function validarYM(valor: string | null): string | null {
+  return valor && /^\d{4}-\d{2}$/.test(valor) ? valor : null;
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardConteudo />
+    </Suspense>
+  );
+}
+
+function DashboardConteudo() {
+  const { usuario } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { ym: ymCompartilhado, definirYm } = useMesAtual();
+  const ymUrl = validarYM(searchParams.get("mes"));
+  const ym = ymUrl ?? ymCompartilhado;
+
+  useEffect(() => {
+    if (!ymUrl || ymUrl === ymCompartilhado) return;
+    queueMicrotask(() => definirYm(ymUrl));
+  }, [ymUrl, ymCompartilhado, definirYm]);
+
+  const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
+  const [filtros, setFiltros] = useState<Record<string, boolean>>({});
+  const [gruposRevelados, setGruposRevelados] = useState<Record<string, boolean>>({});
+  const [totaisVisiveis, setTotaisVisiveis] = useState(false);
+  const [mostrar12Meses, setMostrar12Meses] = useState(true);
+  const loginProcessadoRef = useRef<string | null>(null);
+  const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([]);
+  const [recebimentos, setRecebimentos] = useState<Recebimento[]>([]);
+  const [estadoMes, setEstadoMes] = useState<{ ym: string; parcelasReais: Parcela[] }>({
+    ym: "",
+    parcelasReais: [],
+  });
+
+  useEffect(() => {
+    if (!usuario) return;
+    queueMicrotask(() => {
+      const salvo = localStorage.getItem(`mostrar12Meses_${usuario.uid}`);
+      if (salvo !== null) setMostrar12Meses(salvo === "true");
+    });
+  }, [usuario]);
+
+  function handleToggle12Meses() {
+    setMostrar12Meses((v) => {
+      const novo = !v;
+      if (usuario) localStorage.setItem(`mostrar12Meses_${usuario.uid}`, String(novo));
+      return novo;
+    });
+  }
+
+  useEffect(() => {
+    if (!usuario) return;
+    if (loginProcessadoRef.current === usuario.uid) return;
+    loginProcessadoRef.current = usuario.uid;
+    queueMicrotask(() => {
+      const chaveNovoLogin = `authNovoLogin_${usuario.uid}`;
+      const chaveRevelados = `gruposRevelados_${usuario.uid}`;
+      const ehNovoLogin = sessionStorage.getItem(chaveNovoLogin) === "true";
+
+      if (ehNovoLogin) {
+        sessionStorage.removeItem(chaveNovoLogin);
+        sessionStorage.setItem(`totaisVisiveis_${usuario.uid}`, "false");
+        sessionStorage.setItem(chaveRevelados, "{}");
+        setTotaisVisiveis(false);
+        setGruposRevelados({});
+      } else {
+        setTotaisVisiveis(sessionStorage.getItem(`totaisVisiveis_${usuario.uid}`) === "true");
+        const salvos = sessionStorage.getItem(chaveRevelados);
+        setGruposRevelados(salvos ? JSON.parse(salvos) : {});
+      }
+    });
+  }, [usuario]);
+
+  useEffect(() => {
+    if (!usuario) return;
+    return assinarConfigListas(usuario.uid, setConfig);
+  }, [usuario]);
+
+  useEffect(() => {
+    if (!usuario) return;
+    return assinarFiltrosDashboard(usuario.uid, setFiltros);
+  }, [usuario]);
+
+  useEffect(() => {
+    if (!usuario) return;
+    return assinarRecorrencias(usuario.uid, "pagar", setRecorrencias);
+  }, [usuario]);
+
+  useEffect(() => {
+    if (!usuario || recorrencias.length === 0) return;
+    if (ym > mesAtualYM()) return;
+    sincronizarReembolsosRecorrentes(usuario.uid, recorrencias, ym);
+  }, [usuario, recorrencias, ym]);
+
+  useEffect(() => {
+    if (!usuario) return;
+    return assinarRecebimentosDoMes(usuario.uid, ym, setRecebimentos);
+  }, [usuario, ym]);
+
+  useEffect(() => {
+    if (!usuario) return;
+    return assinarParcelasDoMes(usuario.uid, ym, (dados) => {
+      setEstadoMes({ ym, parcelasReais: dados });
+    });
+  }, [usuario, ym]);
+
+  const carregando = estadoMes.ym !== ym;
+
+  const parcelas = useMemo(
+    () => (carregando ? [] : mesclarComRecorrencias(estadoMes.parcelasReais, recorrencias, ym)),
+    [carregando, estadoMes, recorrencias, ym]
+  );
+
+  const recorrenciaPorId = useMemo(
+    () => new Map(recorrencias.map((r) => [r.id, r])),
+    [recorrencias]
+  );
+
+  function handleTogglePago(p: Parcela, pago: boolean) {
+    if (!usuario) return;
+    if (p.virtual && p.recorrenciaId) {
+      if (pago) materializarPagamentoRecorrencia(usuario.uid, recorrenciaPorId.get(p.recorrenciaId)!, ym);
+      return;
+    }
+    marcarPago(usuario.uid, p, pago);
+  }
+
+  const filtrosEfetivos = useMemo(
+    () =>
+      Object.fromEntries(config.grupos.map((g) => [g, gruposRevelados[g] ? filtros[g] : false])),
+    [config.grupos, filtros, gruposRevelados]
+  );
+
+  const parcelasVisiveis = useMemo(
+    () => parcelas.filter((p) => filtrosEfetivos[p.grupo] !== false),
+    [parcelas, filtrosEfetivos]
+  );
+
+  function handleTogglePagoGrupo(itens: Parcela[], pago: boolean) {
+    itens.forEach((p) => {
+      if (p.pago !== pago) handleTogglePago(p, pago);
+    });
+  }
+
+  const porGrupo = useMemo(() => {
+    const mapa = new Map<string, Parcela[]>();
+    for (const p of parcelasVisiveis) {
+      const lista = mapa.get(p.grupo) ?? [];
+      lista.push(p);
+      mapa.set(p.grupo, lista);
+    }
+    const ordem = config.grupos;
+    return [...mapa.entries()].sort((a, b) => ordem.indexOf(a[0]) - ordem.indexOf(b[0]));
+  }, [parcelasVisiveis, config.grupos]);
+
+  const statusPorGrupo = useMemo(
+    () => Object.fromEntries(porGrupo.map(([grupo, itens]) => [grupo, statusGrupo(itens)])),
+    [porGrupo]
+  );
+
+  const porGrupoMap = useMemo(() => new Map(porGrupo), [porGrupo]);
+
+  function handleTogglePagoPorNomeGrupo(grupo: string, pago: boolean) {
+    handleTogglePagoGrupo(porGrupoMap.get(grupo) ?? [], pago);
+  }
+
+  const totais = useMemo(() => {
+    const base = config.modoTotalizador === "visiveis" ? parcelasVisiveis : parcelas;
+    let total = 0;
+    let pago = 0;
+    for (const p of base) {
+      const valor = valorEfetivo(p);
+      total += valor;
+      if (p.pago) pago += valor;
+    }
+    return { total, pago, pendente: total - pago };
+  }, [parcelas, parcelasVisiveis, config.modoTotalizador]);
+
+  const totalAReceber = useMemo(() => recebimentos.reduce((s, r) => s + r.valor, 0), [recebimentos]);
+
+  const totalRecebido = useMemo(
+    () => recebimentos.filter((r) => r.recebido).reduce((s, r) => s + r.valor, 0),
+    [recebimentos]
+  );
+
+  const faltaReceber = totalRecebido < totalAReceber;
+
+  const liquidoMensal = totalRecebido - totais.total;
+
+  function irParaMes(novoYm: string) {
+    definirYm(novoYm);
+    router.push(`/inicio?mes=${novoYm}`);
+  }
+
+  if (!usuario) return null;
+
+  return (
+    <div className="mx-auto flex h-full max-w-[1600px] flex-col px-4 py-4 md:px-8">
+      <div className="sticky top-0 z-20 bg-background pb-1 print:static">
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          <div className="grid flex-1 grid-cols-2 gap-2 text-center sm:grid-cols-5">
+            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Total de gastos no mês</p>
+              <p
+                className={`text-sm font-semibold ${
+                  totaisVisiveis ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-slate-100"
+                }`}
+              >
+                {totaisVisiveis ? formatarMoeda(totais.total) : "••••••"}
+              </p>
+            </div>
+            <Link
+              href={`/receber?aba=mes&mes=${ym}`}
+              className="rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-emerald-700 dark:hover:bg-emerald-950"
+            >
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Recebimentos do mês</p>
+              <p
+                className={`text-sm font-semibold ${
+                  totaisVisiveis
+                    ? faltaReceber
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                    : "text-slate-900 dark:text-slate-100"
+                }`}
+              >
+                {totaisVisiveis ? formatarMoeda(totalRecebido) : "••••••"}
+              </p>
+            </Link>
+            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Pago</p>
+              <p
+                className={`text-sm font-semibold ${
+                  totaisVisiveis ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-slate-100"
+                }`}
+              >
+                {totaisVisiveis ? formatarMoeda(totais.pago) : "••••••"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Pendente</p>
+              <p
+                className={`text-sm font-semibold ${
+                  totaisVisiveis ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-slate-100"
+                }`}
+              >
+                {totaisVisiveis ? formatarMoeda(totais.pendente) : "••••••"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Líquido mensal</p>
+              <p
+                className={`text-sm font-semibold ${
+                  totaisVisiveis
+                    ? liquidoMensal < 0
+                      ? "text-red-600 dark:text-red-400"
+                      : liquidoMensal === 0
+                        ? "text-slate-900 dark:text-slate-100"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    : "text-slate-900 dark:text-slate-100"
+                }`}
+              >
+                {totaisVisiveis ? formatarMoeda(liquidoMensal) : "••••••"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() =>
+              setTotaisVisiveis((v) => {
+                const novo = !v;
+                if (usuario) sessionStorage.setItem(`totaisVisiveis_${usuario.uid}`, String(novo));
+                return novo;
+              })
+            }
+            aria-label={totaisVisiveis ? "Ocultar totalizadores" : "Mostrar totalizadores"}
+            className="rounded-lg border border-slate-300 p-2 text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            {totaisVisiveis ? <IconOlhoFechado className="h-4 w-4" /> : <IconOlho className="h-4 w-4" />}
+          </button>
+
+          <SeletorMesAno ym={ym} onMudar={irParaMes} />
+        </div>
+
+        {config.grupos.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {config.grupos.map((grupo) => {
+              const visivel = filtrosEfetivos[grupo] !== false;
+              return (
+                <label
+                  key={grupo}
+                  className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${
+                    visivel
+                      ? "border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
+                      : "border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={visivel}
+                    onChange={(e) => {
+                      setGruposRevelados((prev) => {
+                        const novo = { ...prev, [grupo]: true };
+                        sessionStorage.setItem(`gruposRevelados_${usuario.uid}`, JSON.stringify(novo));
+                        return novo;
+                      });
+                      alternarFiltroGrupo(usuario.uid, grupo, e.target.checked);
+                    }}
+                    className="h-3.5 w-3.5 accent-indigo-600"
+                  />
+                  {grupo}
+                </label>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mb-2">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Janela de 10 meses</span>
+            <button
+              onClick={handleToggle12Meses}
+              aria-label={mostrar12Meses ? "Ocultar próximos 12 meses" : "Mostrar próximos 12 meses"}
+              className="rounded-lg border border-slate-300 p-1.5 text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              {mostrar12Meses ? <IconOlhoFechado className="h-3.5 w-3.5" /> : <IconOlho className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+
+          {mostrar12Meses && (
+            <div className="mt-1 hidden md:block">
+              <VisaoGeral13Meses
+                uid={usuario.uid}
+                ym={ym}
+                config={config}
+                filtros={filtrosEfetivos}
+                recorrencias={recorrencias}
+                onSelecionarMes={irParaMes}
+                statusPorGrupo={statusPorGrupo}
+                onTogglePago={handleTogglePagoPorNomeGrupo}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {carregando ? (
+          <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
+        ) : parcelas.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-600 dark:bg-slate-800">
+            <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">Nenhum lançamento neste mês ainda.</p>
+            <Link href="/lancar" className="text-sm font-medium text-indigo-600 underline dark:text-indigo-400">
+              Lançar a primeira conta
+            </Link>
+          </div>
+        ) : (
+          <DashboardFormaPagamento
+            parcelas={parcelasVisiveis}
+            gruposConfig={config.grupos}
+            aplicacoesConfig={config.aplicacoes}
+          />
+        )}
+      </div>
+
+      <footer className="mt-3 shrink-0 border-t border-slate-200 py-3 text-left text-xs text-slate-400 dark:border-slate-700 dark:text-slate-500">
+        Controle Financeiro · v{VERSAO_SISTEMA}
+      </footer>
+    </div>
+  );
+}
