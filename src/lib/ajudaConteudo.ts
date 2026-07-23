@@ -52,6 +52,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     regras: [
       "Nome e sobrenome informados aqui já preenchem automaticamente o seu perfil.",
       "Na primeira vez, o sistema cria automaticamente as listas padrão (formas de pagamento, aplicações) para a conta nova.",
+      "Logo no primeiro acesso, aparece uma mensagem de boas-vindas — some depois de fechada e não volta a aparecer nos próximos acessos.",
     ],
     validacoes: [
       "Todos os campos (nome, sobrenome, e-mail, senha) são obrigatórios.",

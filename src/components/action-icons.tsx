@@ -29,6 +29,16 @@ export function IconMenu(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconMais(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" {...props}>
+      <circle cx="5.5" cy="12" r="1.9" />
+      <circle cx="12" cy="12" r="1.9" />
+      <circle cx="18.5" cy="12" r="1.9" />
+    </svg>
+  );
+}
+
 export function IconBalao(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>

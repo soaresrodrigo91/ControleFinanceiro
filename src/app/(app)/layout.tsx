@@ -11,6 +11,8 @@ import TopNav from "@/components/TopNav";
 import MenuLateral from "@/components/MenuLateral";
 import PerfilMenu from "@/components/PerfilMenu";
 import BotaoSair from "@/components/BotaoSair";
+import NotificacoesSino from "@/components/NotificacoesSino";
+import BoasVindasModal from "@/components/BoasVindasModal";
 import type { ConfigListas } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -54,6 +56,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <header className="shrink-0 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:hidden print:hidden dark:border-slate-700 dark:bg-slate-900">
         <span className="font-semibold text-slate-900 dark:text-slate-100">Controle Financeiro</span>
         <div className="flex items-center gap-1">
+          <NotificacoesSino uid={usuario.uid} />
           <PerfilMenu uid={usuario.uid} />
           <BotaoSair className="text-sm text-slate-500 underline dark:text-slate-400" />
         </div>
@@ -61,6 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {config.layoutMenu === "vertical" ? <MenuLateral /> : <TopNav />}
       <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       <BottomNav />
+      <BoasVindasModal uid={usuario.uid} />
     </div>
   );
 }

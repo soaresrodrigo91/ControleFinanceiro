@@ -71,6 +71,7 @@ export async function garantirUsuarioSemeado(
     email,
     criadoEm: serverTimestamp(),
     filtrosDashboard: {},
+    boasVindasVistas: false,
   });
   batch.set(doc(db, "usuarios", uid, "config", "listas"), CONFIG_PADRAO);
   batch.set(doc(db, "indiceEmails", email.trim().toLowerCase()), { uid, nome, sobrenome });

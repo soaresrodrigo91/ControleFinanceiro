@@ -37,6 +37,16 @@ export async function atualizarPerfil(
   await updateDoc(doc(db, "usuarios", uid), { ...dados });
 }
 
+export function assinarBoasVindasVistas(uid: string, callback: (vistas: boolean) => void) {
+  return onSnapshot(doc(db, "usuarios", uid), (snap) => {
+    callback(snap.data()?.boasVindasVistas !== false);
+  });
+}
+
+export async function marcarBoasVindasVistas(uid: string) {
+  await updateDoc(doc(db, "usuarios", uid), { boasVindasVistas: true });
+}
+
 export async function uploadFotoPerfil(uid: string, arquivo: File): Promise<string> {
   const storageRef = ref(storage, `usuarios/${uid}/foto-perfil`);
   await uploadBytes(storageRef, arquivo);

@@ -56,13 +56,14 @@ export default function VisaoGeral13Meses({
 
   return (
     <div className="mb-3 rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      <table className="w-full table-fixed text-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full table-auto text-sm md:table-fixed">
         <thead>
           <tr className="border-b border-slate-200 dark:border-slate-700">
-            <th className="w-56 px-2 py-2 text-left font-medium text-slate-500" />
+            <th className="sticky left-0 z-10 w-40 shrink-0 bg-white px-2 py-2 text-left font-medium text-slate-500 md:static md:w-56 dark:bg-slate-800" />
 
             {meses.map((mes) => (
-              <th key={mes} className="px-1 py-2 text-center font-medium">
+              <th key={mes} className="min-w-[76px] px-1 py-2 text-center font-medium md:min-w-0">
                 <button
                   onClick={() => onSelecionarMes(mes)}
                   className={`w-full rounded-md px-1 py-1 text-[15px] transition-colors ${
@@ -83,7 +84,7 @@ export default function VisaoGeral13Meses({
             const status = statusPorGrupo?.[grupo];
             return (
               <tr key={grupo} className="border-b border-slate-100 last:border-0 dark:border-slate-700">
-                <td className="px-2 py-2">
+                <td className="sticky left-0 z-10 w-40 bg-white px-2 py-2 md:static md:w-auto dark:bg-slate-800">
                   <div className="flex min-w-0 items-center gap-1.5">
                     <Link
                       href={`/lancar?aba=buscar&grupo=${encodeURIComponent(grupo)}`}
@@ -114,7 +115,7 @@ export default function VisaoGeral13Meses({
                   return (
                     <td
                       key={mes}
-                      className={`px-1 py-2 text-center tabular-nums text-slate-600 dark:text-slate-400 ${
+                      className={`min-w-[76px] px-1 py-2 text-center tabular-nums text-slate-600 md:min-w-0 dark:text-slate-400 ${
                         mes === ym ? "bg-indigo-50/60 font-medium text-slate-900 dark:bg-indigo-950/40 dark:text-slate-100" : ""
                       }`}
                     >
@@ -126,7 +127,8 @@ export default function VisaoGeral13Meses({
             );
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }
