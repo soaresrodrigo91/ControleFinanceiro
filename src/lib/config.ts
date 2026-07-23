@@ -49,6 +49,7 @@ export const CONFIG_PADRAO: ConfigListas = {
   sugestaoCredor: true,
   itensPorPagina: 10,
   layoutMenu: "horizontal",
+  compartilharLancamentos: false,
 };
 
 export async function garantirUsuarioSemeado(
@@ -72,6 +73,7 @@ export async function garantirUsuarioSemeado(
     filtrosDashboard: {},
   });
   batch.set(doc(db, "usuarios", uid, "config", "listas"), CONFIG_PADRAO);
+  batch.set(doc(db, "indiceEmails", email.trim().toLowerCase()), { uid, nome, sobrenome });
   await batch.commit();
 }
 

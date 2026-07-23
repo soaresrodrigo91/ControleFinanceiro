@@ -26,6 +26,7 @@ export type ConfigListas = {
   itensPorPagina: number;
   observacoesListas?: { grupos?: Record<string, string>; aplicacoes?: Record<string, string> };
   layoutMenu?: LayoutMenu;
+  compartilharLancamentos: boolean;
 };
 
 export type Parcela = {
@@ -129,6 +130,52 @@ export type Perfil = {
   sobrenome: string;
   telefone: string;
   fotoUrl: string | null;
+};
+
+export type VinculoCompartilhamento = {
+  compNome: string;
+  emailVinculado: string;
+  uidVinculado: string;
+  nomeVinculado: string;
+  criadoEm: unknown;
+};
+
+export type TipoNotificacao = "recebido" | "convite" | "atualizacao";
+
+export type Notificacao = {
+  id: string;
+  deUid: string;
+  uidDestino: string;
+  tipo: TipoNotificacao;
+  mensagem: string;
+  deNome: string;
+  lida: boolean;
+  criadoEm: string;
+  ym?: string;
+};
+
+export type StatusCompartilhado = "pendente";
+
+export type LancamentoCompartilhado = {
+  id: string;
+  deUid: string;
+  deEmail: string;
+  deNome: string;
+  paraUid: string;
+  paraEmail: string;
+  lancamentoOrigemId: string;
+  recorrenciaOrigemId?: string | null;
+  grupoOrigemId: string;
+  parcela: string;
+  compNome: string;
+  credorSugerido: string;
+  observacao: string | null;
+  aplicacaoSugerida: string;
+  valor: number;
+  dataCompra: string | null;
+  vencimento: string;
+  status: StatusCompartilhado;
+  criadoEm: string;
 };
 
 export type TipoPlano = "free" | "premium";

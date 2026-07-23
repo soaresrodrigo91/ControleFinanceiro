@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
 import { mesclarComRecorrencias } from "@/lib/recorrencias";
-import { diferencaEmMeses, formatarMesAnoAbreviado, formatarMoeda, mesAtualYM, somarMesesYM } from "@/lib/date";
+import { formatarMesAnoAbreviado, formatarMoeda, mesAtualYM, somarMesesYM } from "@/lib/date";
 import type { ConfigListas, Parcela, Recorrencia, StatusGrupo } from "@/lib/types";
 
 const HORIZONTE = 10;
@@ -17,7 +17,6 @@ export default function VisaoGeral13Meses({
   recorrencias,
   onSelecionarMes,
   statusPorGrupo,
-  onTogglePago,
 }: {
   uid: string;
   ym: string;
@@ -26,14 +25,11 @@ export default function VisaoGeral13Meses({
   recorrencias: Recorrencia[];
   onSelecionarMes: (ym: string) => void;
   statusPorGrupo?: Record<string, StatusGrupo>;
-  onTogglePago?: (grupo: string, pago: boolean) => void;
 }) {
   const meses = useMemo(() => {
     const anchor = mesAtualYM();
-    const blocoIndice = Math.floor(diferencaEmMeses(anchor, ym) / HORIZONTE);
-    const inicioBloco = somarMesesYM(anchor, blocoIndice * HORIZONTE);
-    return Array.from({ length: HORIZONTE }, (_, i) => somarMesesYM(inicioBloco, i));
-  }, [ym]);
+    return Array.from({ length: HORIZONTE }, (_, i) => somarMesesYM(anchor, i));
+  }, []);
 
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
 
@@ -89,18 +85,6 @@ export default function VisaoGeral13Meses({
               <tr key={grupo} className="border-b border-slate-100 last:border-0 dark:border-slate-700">
                 <td className="px-2 py-2">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    {onTogglePago && (
-                      <input
-                        type="checkbox"
-                        checked={status === "pago"}
-                        ref={(el) => {
-                          if (el) el.indeterminate = status === "parcial";
-                        }}
-                        onChange={(e) => onTogglePago(grupo, e.target.checked)}
-                        className="h-4 w-4 shrink-0 accent-indigo-600"
-                        aria-label={`Marcar ${grupo} como pago`}
-                      />
-                    )}
                     <Link
                       href={`/lancar?aba=buscar&grupo=${encodeURIComponent(grupo)}`}
                       title={grupo}

@@ -8,6 +8,7 @@ import { usePlano } from "@/contexts/PlanoContext";
 import { NAV_ITEMS } from "./nav-items";
 import PerfilMenu from "@/components/PerfilMenu";
 import BotaoSair from "@/components/BotaoSair";
+import NotificacoesSino from "@/components/NotificacoesSino";
 import { IconMenu } from "@/components/action-icons";
 
 export default function MenuLateral() {
@@ -72,7 +73,12 @@ export default function MenuLateral() {
           })}
         </nav>
         <div className="flex shrink-0 flex-col items-start gap-0.5 p-2 pb-8">
-          {usuario && <PerfilMenu uid={usuario.uid} variante="barraLateral" />}
+          {usuario && (
+            <div className="flex items-center gap-1">
+              <NotificacoesSino uid={usuario.uid} />
+              <PerfilMenu uid={usuario.uid} variante="barraLateral" />
+            </div>
+          )}
           <BotaoSair className="rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950" />
         </div>
       </aside>

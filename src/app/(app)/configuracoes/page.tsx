@@ -21,6 +21,7 @@ import {
 } from "@/lib/config";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos";
 import { Tab, Tabs } from "@/components/Tabs";
+import CompartilharLancamentosCard from "@/components/config/CompartilharLancamentosCard";
 import { mensagemErroAuth } from "@/lib/authErrors";
 import { IconBalao, IconCadeado, IconOlho, IconOlhoFechado } from "@/components/action-icons";
 import Modal from "@/components/Modal";
@@ -39,7 +40,7 @@ const ROTULOS_MODO: Record<ModoComp, string> = {
   metade: "Recebo 50% do valor",
 };
 
-type Aba = "geral" | "seguranca";
+type Aba = "geral" | "geralII" | "seguranca";
 
 export default function ConfiguracoesPage() {
   const { usuario } = useAuth();
@@ -60,7 +61,10 @@ export default function ConfiguracoesPage() {
     <div className="mx-auto max-w-[1600px] px-4 py-4 md:px-8">
       <Tabs>
         <Tab ativo={aba === "geral"} onClick={() => setAba("geral")}>
-          Geral
+          Geral I
+        </Tab>
+        <Tab ativo={aba === "geralII"} onClick={() => setAba("geralII")}>
+          Geral II
         </Tab>
         <Tab
           ativo={aba === "seguranca"}
@@ -73,6 +77,11 @@ export default function ConfiguracoesPage() {
 
       {aba === "seguranca" ? (
         <SegurancaTab email={usuario.email ?? ""} />
+      ) : aba === "geralII" ? (
+        <div className="grid gap-6 md:grid-cols-2">
+          <ListaComp uid={usuario.uid} itens={config.comp} />
+          <CompartilharLancamentosCard uid={usuario.uid} config={config} />
+        </div>
       ) : (
         <>
           <div className="mb-6 grid gap-3 sm:grid-cols-2 md:grid-cols-5">
@@ -233,7 +242,7 @@ export default function ConfiguracoesPage() {
             </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2">
             {SECOES.map((secao) => (
               <ListaEditavel
                 key={secao.campo}
@@ -246,7 +255,6 @@ export default function ConfiguracoesPage() {
                 protegidos={[]}
               />
             ))}
-            <ListaComp uid={usuario.uid} itens={config.comp} />
           </div>
         </>
       )}
@@ -477,17 +485,17 @@ function ListaComp({ uid, itens }: { uid: string; itens: ConfigListas["comp"] })
 
       {erro && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{erro}</p>}
 
-      <form onSubmit={handleAdicionar} className="flex flex-col gap-2">
+      <form onSubmit={handleAdicionar} className="flex gap-2">
         <input
           type="text"
           value={novoItem}
           onChange={(e) => setNovoItem(e.target.value)}
           placeholder="Nome do reembolso"
-          className={`${CLASSE_INPUT} h-11`}
+          className={`${CLASSE_INPUT} h-10`}
         />
         <button
           type="submit"
-          className="h-11 shrink-0 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          className="h-10 shrink-0 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
         >
           Adicionar
         </button>
@@ -623,13 +631,21 @@ function ListaEditavel({
       {erro && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{erro}</p>}
 
       <form onSubmit={handleAdicionar} className="flex flex-col gap-2">
-        <input
-          type="text"
-          value={novoItem}
-          onChange={(e) => setNovoItem(e.target.value)}
-          placeholder="Novo item"
-          className={`${CLASSE_INPUT} h-11`}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={novoItem}
+            onChange={(e) => setNovoItem(e.target.value)}
+            placeholder="Novo item"
+            className={`${CLASSE_INPUT} h-10`}
+          />
+          <button
+            type="submit"
+            className="h-10 shrink-0 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          >
+            Adicionar
+          </button>
+        </div>
         <input
           type="text"
           value={novaObservacao}
@@ -637,12 +653,6 @@ function ListaEditavel({
           placeholder="Observação (opcional)"
           className={CLASSE_INPUT}
         />
-        <button
-          type="submit"
-          className="h-11 shrink-0 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-        >
-          Adicionar
-        </button>
       </form>
 
       <Modal

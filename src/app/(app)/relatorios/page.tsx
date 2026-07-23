@@ -5,8 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Tab, Tabs } from "@/components/Tabs";
 import RelatorioModeloI from "@/components/RelatorioModeloI";
 import RelatorioModeloII from "@/components/RelatorioModeloII";
+import RelatorioModeloIII from "@/components/RelatorioModeloIII";
 
-type Aba = "modeloI" | "modeloII";
+type Aba = "modeloI" | "modeloII" | "modeloIII";
 
 export default function RelatoriosPage() {
   const { usuario } = useAuth();
@@ -23,9 +24,14 @@ export default function RelatoriosPage() {
         <Tab ativo={aba === "modeloII"} onClick={() => setAba("modeloII")}>
           Modelo II
         </Tab>
+        <Tab ativo={aba === "modeloIII"} onClick={() => setAba("modeloIII")}>
+          Modelo III
+        </Tab>
       </Tabs>
 
-      {aba === "modeloI" ? <RelatorioModeloI uid={usuario.uid} /> : <RelatorioModeloII uid={usuario.uid} />}
+      {aba === "modeloI" && <RelatorioModeloI uid={usuario.uid} />}
+      {aba === "modeloII" && <RelatorioModeloII uid={usuario.uid} />}
+      {aba === "modeloIII" && <RelatorioModeloIII uid={usuario.uid} />}
     </div>
   );
 }

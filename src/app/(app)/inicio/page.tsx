@@ -5,12 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMesAtual } from "@/contexts/MesAtualContext";
-import {
-  assinarParcelasDoMes,
-  marcarPago,
-  materializarPagamentoRecorrencia,
-  valorEfetivo,
-} from "@/lib/parcelas";
+import { assinarParcelasDoMes, valorEfetivo } from "@/lib/parcelas";
 import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
 import { alternarFiltroGrupo, assinarFiltrosDashboard } from "@/lib/perfil";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
@@ -146,36 +141,32 @@ function DashboardConteudo() {
     [carregando, estadoMes, recorrencias, ym]
   );
 
-  const recorrenciaPorId = useMemo(
-    () => new Map(recorrencias.map((r) => [r.id, r])),
-    [recorrencias]
-  );
-
-  function handleTogglePago(p: Parcela, pago: boolean) {
-    if (!usuario) return;
-    if (p.virtual && p.recorrenciaId) {
-      if (pago) materializarPagamentoRecorrencia(usuario.uid, recorrenciaPorId.get(p.recorrenciaId)!, ym);
-      return;
-    }
-    marcarPago(usuario.uid, p, pago);
-  }
-
   const filtrosEfetivos = useMemo(
     () =>
       Object.fromEntries(config.grupos.map((g) => [g, gruposRevelados[g] ? filtros[g] : false])),
     [config.grupos, filtros, gruposRevelados]
   );
 
+  const todosGruposMarcados =
+    config.grupos.length > 0 && config.grupos.every((g) => filtrosEfetivos[g] !== false);
+
+  function handleAlternarTodosGrupos(marcar: boolean) {
+    if (!usuario) return;
+    setGruposRevelados((prev) => {
+      const novo = { ...prev };
+      config.grupos.forEach((g) => {
+        novo[g] = true;
+      });
+      sessionStorage.setItem(`gruposRevelados_${usuario.uid}`, JSON.stringify(novo));
+      return novo;
+    });
+    config.grupos.forEach((g) => alternarFiltroGrupo(usuario.uid, g, marcar));
+  }
+
   const parcelasVisiveis = useMemo(
     () => parcelas.filter((p) => filtrosEfetivos[p.grupo] !== false),
     [parcelas, filtrosEfetivos]
   );
-
-  function handleTogglePagoGrupo(itens: Parcela[], pago: boolean) {
-    itens.forEach((p) => {
-      if (p.pago !== pago) handleTogglePago(p, pago);
-    });
-  }
 
   const porGrupo = useMemo(() => {
     const mapa = new Map<string, Parcela[]>();
@@ -192,12 +183,6 @@ function DashboardConteudo() {
     () => Object.fromEntries(porGrupo.map(([grupo, itens]) => [grupo, statusGrupo(itens)])),
     [porGrupo]
   );
-
-  const porGrupoMap = useMemo(() => new Map(porGrupo), [porGrupo]);
-
-  function handleTogglePagoPorNomeGrupo(grupo: string, pago: boolean) {
-    handleTogglePagoGrupo(porGrupoMap.get(grupo) ?? [], pago);
-  }
 
   const totais = useMemo(() => {
     const base = config.modoTotalizador === "visiveis" ? parcelasVisiveis : parcelas;
@@ -317,7 +302,14 @@ function DashboardConteudo() {
         </div>
 
         {config.grupos.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-2">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleAlternarTodosGrupos(!todosGruposMarcados)}
+              className="rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              {todosGruposMarcados ? "Desmarcar todos" : "Marcar todos"}
+            </button>
             {config.grupos.map((grupo) => {
               const visivel = filtrosEfetivos[grupo] !== false;
               return (
@@ -371,7 +363,6 @@ function DashboardConteudo() {
                 recorrencias={recorrencias}
                 onSelecionarMes={irParaMes}
                 statusPorGrupo={statusPorGrupo}
-                onTogglePago={handleTogglePagoPorNomeGrupo}
               />
             </div>
           )}

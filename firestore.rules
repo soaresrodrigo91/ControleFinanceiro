@@ -7,5 +7,48 @@ service cloud.firestore {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
+
+    match /indiceEmails/{emailNormalizado} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == request.resource.data.uid
+        && emailNormalizado == request.auth.token.email.lower();
+    }
+
+    match /lancamentosCompartilhados/{id} {
+      allow read: if request.auth != null
+        && (resource.data.paraUid == request.auth.uid || resource.data.deUid == request.auth.uid);
+
+      allow create: if request.auth != null
+        && request.resource.data.deUid == request.auth.uid
+        && request.resource.data.deEmail == request.auth.token.email.lower()
+        && request.resource.data.status == "pendente"
+        && get(/databases/$(database)/documents/indiceEmails/$(request.resource.data.paraEmail)).data.uid
+             == request.resource.data.paraUid
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)/emailsVinculados/$(request.resource.data.paraEmail))
+        && exists(/databases/$(database)/documents/usuarios/$(request.resource.data.paraUid)/emailsVinculados/$(request.auth.token.email.lower()))
+        && get(/databases/$(database)/documents/usuarios/$(request.resource.data.paraUid)/config/listas).data.compartilharLancamentos == true;
+
+      allow update: if request.auth != null
+        && resource.data.deUid == request.auth.uid
+        && resource.data.status == "pendente"
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["valor"]);
+
+      allow delete: if request.auth != null
+        && resource.data.status == "pendente"
+        && (resource.data.paraUid == request.auth.uid || resource.data.deUid == request.auth.uid);
+    }
+
+    match /notificacoes/{id} {
+      allow read: if request.auth != null && resource.data.uidDestino == request.auth.uid;
+
+      allow update: if request.auth != null
+        && resource.data.uidDestino == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["lida"]);
+
+      allow create: if request.auth != null
+        && request.resource.data.deUid == request.auth.uid
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)/emailsVinculados/$(request.resource.data.paraEmail));
+    }
   }
 }
