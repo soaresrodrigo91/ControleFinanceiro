@@ -239,8 +239,8 @@ export default function DashboardGeralPage() {
   const registrosFiltrados = tipoConta === "pagar" ? filtradas : recebimentosFiltrados;
 
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-6 md:px-8">
-      <div className="sticky top-0 z-20 bg-background pb-1 print:static">
+    <div className="mx-auto flex h-full max-w-[1600px] flex-col px-4 py-6 md:px-8">
+      <div className="sticky top-0 z-30 bg-background pb-1 print:static">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {tipoConta === "pagar" ? (
@@ -333,6 +333,7 @@ export default function DashboardGeralPage() {
         )}
       </div>
 
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       {carregando ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
       ) : (
@@ -341,7 +342,7 @@ export default function DashboardGeralPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum lançamento encontrado para esse filtro.</p>
           ) : (
             <>
-              <div className="mb-3 flex items-center justify-end gap-1">
+              <div className="mb-3 flex shrink-0 items-center justify-end gap-1">
                 <button
                   onClick={() => setTipoGrafico("pizza")}
                   className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
@@ -364,7 +365,7 @@ export default function DashboardGeralPage() {
                 </button>
               </div>
 
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
               <GraficoItem
                 titulo={tituloGraficoPrimario}
                 itens={graficoPrimario}
@@ -405,6 +406,7 @@ export default function DashboardGeralPage() {
           )}
         </>
       )}
+      </div>
     </div>
   );
 }

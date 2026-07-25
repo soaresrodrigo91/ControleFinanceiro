@@ -34,7 +34,7 @@ function LancarConteudo() {
     abaUrl === "buscar" ? "buscar" : abaUrl === "compartilhados" ? "compartilhados" : "novo"
   );
   const grupoInicial = searchParams.get("grupo") ?? undefined;
-  const modoCompartilhadosInicial = searchParams.get("modo") === "recebidos" ? "recebidos" : "enviados";
+  const modoCompartilhadosInicial = searchParams.get("modo") === "enviados" ? "enviados" : "recebidos";
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
   const [parcelasExistentes, setParcelasExistentes] = useState<Parcela[]>([]);
 
@@ -95,7 +95,9 @@ function LancarConteudo() {
       </div>
 
       {aba === "buscar" ? (
-        usuario && <BuscaParcelas uid={usuario.uid} stickyTop={tabsAltura} grupoInicial={grupoInicial} />
+        usuario && (
+          <BuscaParcelas uid={usuario.uid} stickyTop={tabsAltura} grupoInicial={grupoInicial} />
+        )
       ) : aba === "compartilhados" && config.compartilharLancamentos ? (
         usuario && (
           <LancamentosCompartilhados

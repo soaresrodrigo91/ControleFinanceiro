@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useRouter } from "next/navigation";
-import { assinarNotificacoes, marcarComoLida } from "@/lib/notificacoes";
+import { assinarNotificacoes, excluirNotificacao, limparNotificacoes, marcarComoLida } from "@/lib/notificacoes";
 import { useMesAtual } from "@/contexts/MesAtualContext";
-import { IconSino } from "@/components/action-icons";
+import { IconExcluir, IconSino } from "@/components/action-icons";
+import Modal from "@/components/Modal";
 import type { Notificacao } from "@/lib/types";
 
 function formatarQuando(iso: string): string {
@@ -24,6 +25,7 @@ export default function NotificacoesSino({ uid }: { uid: string }) {
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
   const [aberto, setAberto] = useState(false);
   const [mensagemAberta, setMensagemAberta] = useState<Notificacao | null>(null);
+  const [confirmandoLimparTudo, setConfirmandoLimparTudo] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +56,16 @@ export default function NotificacoesSino({ uid }: { uid: string }) {
     }
   }
 
+  async function handleExcluirNotificacao(e: ReactMouseEvent, id: string) {
+    e.stopPropagation();
+    await excluirNotificacao(id);
+  }
+
+  async function handleLimparTudo() {
+    await limparNotificacoes(notificacoes.map((n) => n.id));
+    setConfirmandoLimparTudo(false);
+  }
+
   return (
     <div className="relative" ref={containerRef}>
       <button
@@ -70,27 +82,71 @@ export default function NotificacoesSino({ uid }: { uid: string }) {
       </button>
 
       {aberto && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+        <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800">
           {notificacoes.length === 0 ? (
             <p className="p-3 text-sm text-slate-400 dark:text-slate-500">Nenhuma notificação.</p>
           ) : (
-            <div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
-              {notificacoes.map((n) => (
+            <>
+              <div className="flex items-center justify-between px-1 pb-1">
+                <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                  {notificacoes.length} notificaç{notificacoes.length === 1 ? "ão" : "ões"}
+                </span>
                 <button
-                  key={n.id}
-                  onClick={() => handleClicarNotificacao(n)}
-                  className={`flex flex-col items-start rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-700 ${
-                    n.lida ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-200"
-                  }`}
+                  onClick={() => setConfirmandoLimparTudo(true)}
+                  className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
                 >
-                  <span>{n.mensagem}</span>
-                  <span className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{formatarQuando(n.criadoEm)}</span>
+                  Limpar tudo
                 </button>
-              ))}
-            </div>
+              </div>
+              <div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
+                {notificacoes.map((n) => (
+                  <div
+                    key={n.id}
+                    className={`group flex items-start gap-1 rounded-lg pr-1 hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                      n.lida ? "text-slate-400 dark:text-slate-500" : "text-slate-700 dark:text-slate-200"
+                    }`}
+                  >
+                    <button
+                      onClick={() => handleClicarNotificacao(n)}
+                      className="flex flex-1 flex-col items-start px-3 py-2 text-left text-sm"
+                    >
+                      <span>{n.mensagem}</span>
+                      <span className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{formatarQuando(n.criadoEm)}</span>
+                    </button>
+                    <button
+                      onClick={(e) => handleExcluirNotificacao(e, n.id)}
+                      aria-label="Excluir notificação"
+                      className="mt-2 rounded-full p-1 text-slate-400 opacity-0 hover:bg-slate-200 hover:text-red-600 group-hover:opacity-100 dark:hover:bg-slate-600"
+                    >
+                      <IconExcluir className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       )}
+
+      <Modal aberto={confirmandoLimparTudo} onFechar={() => setConfirmandoLimparTudo(false)} titulo="Limpar notificações">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Tem certeza que deseja excluir todas as {notificacoes.length} notificações? Essa ação não pode ser desfeita.
+        </p>
+        <div className="mt-4 flex flex-col gap-2">
+          <button
+            onClick={handleLimparTudo}
+            className="w-full rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            Sim, limpar tudo
+          </button>
+          <button
+            onClick={() => setConfirmandoLimparTudo(false)}
+            className="w-full rounded-lg bg-slate-100 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+          >
+            Cancelar
+          </button>
+        </div>
+      </Modal>
 
       {mensagemAberta && (
         <div

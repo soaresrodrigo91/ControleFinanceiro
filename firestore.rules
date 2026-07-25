@@ -30,13 +30,21 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/usuarios/$(request.resource.data.paraUid)/config/listas).data.compartilharLancamentos == true;
 
       allow update: if request.auth != null
-        && resource.data.deUid == request.auth.uid
         && resource.data.status == "pendente"
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["valor"]);
+        && (
+          (resource.data.deUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["valor"]))
+          ||
+          (resource.data.paraUid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])
+            && request.resource.data.status in ["lancado", "excluido"])
+        );
 
       allow delete: if request.auth != null
-        && resource.data.status == "pendente"
-        && (resource.data.paraUid == request.auth.uid || resource.data.deUid == request.auth.uid);
+        && (
+          resource.data.deUid == request.auth.uid
+          || (resource.data.paraUid == request.auth.uid && resource.data.status == "pendente")
+        );
     }
 
     match /notificacoes/{id} {
@@ -49,6 +57,8 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.deUid == request.auth.uid
         && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)/emailsVinculados/$(request.resource.data.paraEmail));
+
+      allow delete: if request.auth != null && resource.data.uidDestino == request.auth.uid;
     }
   }
 }

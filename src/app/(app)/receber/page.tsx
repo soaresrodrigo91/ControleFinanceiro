@@ -18,6 +18,7 @@ import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos"
 import { EditarRecebimentoModal, ExcluirRecebimentoModal } from "@/components/modals/RecebimentoModals";
 import { IconBuscar, IconEditar, IconExcluir } from "@/components/action-icons";
 import FiltroMultiSelect from "@/components/FiltroMultiSelect";
+import SeletorMarcarTodos from "@/components/SeletorMarcarTodos";
 import SeletorMesAno from "@/components/SeletorMesAno";
 import CampoValorMonetario, { paraNumero } from "@/components/CampoValorMonetario";
 import Modal from "@/components/Modal";
@@ -423,7 +424,7 @@ function ReceberConteudo() {
       {aba === "mes" && (
         <div>
           <div
-            className="sticky z-10 mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
+            className="sticky z-30 mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
             style={{ top: tabsAltura }}
           >
             <div className="min-w-[160px] rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -513,35 +514,17 @@ function ReceberConteudo() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    <th className="w-24 py-2 pl-4">
-                      <div className="flex items-center gap-2.5 divide-x divide-slate-200 dark:divide-slate-600">
-                        <label
-                          className="flex flex-col items-center gap-1"
-                          title="Marcar todos como recebido (nesta página)"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={todosMarcados}
-                            onChange={(e) => handleToggleTodos(e.target.checked)}
-                            className="h-5 w-5 shrink-0 accent-indigo-600"
-                            aria-label="Marcar todos como recebidos nesta página"
-                          />
-                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Pág.</span>
-                        </label>
-                        <label
-                          className="flex flex-col items-center gap-1 pl-2.5"
-                          title="Marcar todos como recebido (todas as páginas)"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={todosMarcadosTodasAsPaginas}
-                            onChange={(e) => setConfirmacaoTodasAsPaginas(e.target.checked)}
-                            className="h-5 w-5 shrink-0 accent-indigo-600"
-                            aria-label="Marcar todos como recebidos em todas as páginas"
-                          />
-                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Todas</span>
-                        </label>
-                      </div>
+                    <th className="w-14 py-2 pl-4">
+                      <SeletorMarcarTodos
+                        marcadoPagina={todosMarcados}
+                        onAlterarPagina={(marcado) => handleToggleTodos(marcado)}
+                        marcadoTodas={todosMarcadosTodasAsPaginas}
+                        onAlterarTodas={(marcado) => setConfirmacaoTodasAsPaginas(marcado)}
+                        ariaLabelPagina="Marcar todos como recebidos nesta página"
+                        ariaLabelTodas="Marcar todos como recebidos em todas as páginas"
+                        rotuloPagina="Marcar todos da página"
+                        rotuloTodas="Marcar todas as páginas"
+                      />
                     </th>
                     <ColunaOrdenavel campo="origem" ordenacao={ordenacao} onClicar={handleClicarColuna}>
                       Origem

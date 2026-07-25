@@ -4,13 +4,22 @@ import { useEffect, useMemo, useState } from "react";
 import { assinarParcelasDoMes, marcarPago, materializarPagamentoRecorrencia } from "@/lib/parcelas";
 import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
+import {
+  assinarEnviados,
+  assinarEnviosExcluidos,
+  assinarVinculos,
+  chaveOrigemParcela,
+  restaurarPendenciaDeEnvio,
+  vinculoPorCompNome,
+  type EscopoEnvio,
+} from "@/lib/compartilhamento";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { formatarDataBR, formatarMoeda } from "@/lib/date";
 import { EditarParcelaModal, ExcluirParcelaModal } from "@/components/modals/ParcelaModals";
-import { IconEditar, IconExcluir } from "@/components/action-icons";
+import { IconEditar, IconEnviar, IconExcluir } from "@/components/action-icons";
 import FiltroMultiSelect from "@/components/FiltroMultiSelect";
+import SeletorMarcarTodos from "@/components/SeletorMarcarTodos";
 import SeletorMesAno from "@/components/SeletorMesAno";
-import CampoCredor from "@/components/CampoCredor";
 import CampoValorMonetario, { paraNumero } from "@/components/CampoValorMonetario";
 import Paginacao from "@/components/Paginacao";
 import ColunaOrdenavel from "@/components/ColunaOrdenavel";
@@ -18,7 +27,7 @@ import Modal from "@/components/Modal";
 import { CLASSE_BOTAO_PRIMARIO } from "@/lib/estilos";
 import { paginar, totalDePaginas } from "@/lib/paginacao";
 import { ordenarParcelas, proximaOrdenacao, type OrdenacaoParcelas } from "@/lib/ordenacaoParcelas";
-import type { ConfigListas, Parcela, Recorrencia } from "@/lib/types";
+import type { ConfigListas, LancamentoCompartilhado, Parcela, Recorrencia, VinculoCompartilhamento } from "@/lib/types";
 
 const SEM_COMP = "(sem reembolso)";
 
@@ -38,6 +47,12 @@ export default function BuscaParcelas({
   grupoInicial?: string;
 }) {
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
+  const [vinculos, setVinculos] = useState<VinculoCompartilhamento[]>([]);
+  const [enviados, setEnviados] = useState<LancamentoCompartilhado[]>([]);
+  const [enviosExcluidos, setEnviosExcluidos] = useState<Set<string>>(new Set());
+  const [reenviando, setReenviando] = useState<Parcela | null>(null);
+  const [reenviandoOcorrencia, setReenviandoOcorrencia] = useState(false);
+  const [erroReenvio, setErroReenvio] = useState("");
   const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([]);
   const { ym, definirYm: setYm } = useMesAtual();
   const [estadoMes, setEstadoMes] = useState<{ ym: string; parcelasReais: Parcela[] }>({
@@ -45,7 +60,6 @@ export default function BuscaParcelas({
     parcelasReais: [],
   });
 
-  const [texto, setTexto] = useState("");
   const [filtroGrupos, setFiltroGrupos] = useState<Record<string, boolean>>(() =>
     grupoInicial ? { [grupoInicial]: true } : {}
   );
@@ -73,6 +87,67 @@ export default function BuscaParcelas({
     });
   }, [uid, ym]);
 
+  useEffect(() => {
+    return assinarVinculos(uid, setVinculos);
+  }, [uid]);
+
+  useEffect(() => {
+    return assinarEnviados(uid, setEnviados);
+  }, [uid]);
+
+  useEffect(() => {
+    return assinarEnviosExcluidos(uid, setEnviosExcluidos);
+  }, [uid]);
+
+  const vinculoPorComp = useMemo(() => vinculoPorCompNome(vinculos), [vinculos]);
+  const chavesEnviadas = useMemo(() => new Set(enviados.map((e) => e.lancamentoOrigemId)), [enviados]);
+
+  function podeReenviar(p: Parcela): boolean {
+    if (!p.comp || !vinculoPorComp.has(p.comp)) return false;
+    const chave = chaveOrigemParcela(p);
+    return !chavesEnviadas.has(chave) && enviosExcluidos.has(chave);
+  }
+
+  function tituloReenviar(p: Parcela): string {
+    if (!p.comp) return "";
+    if (!vinculoPorComp.has(p.comp)) {
+      return `O reembolso "${p.comp}" não tem e-mail configurado em Configurações → Compartilhar Lançamentos.`;
+    }
+    const chave = chaveOrigemParcela(p);
+    if (chavesEnviadas.has(chave)) return "Este lançamento já foi enviado.";
+    if (!enviosExcluidos.has(chave)) return "Já existe uma pendência de envio para este lançamento em Lançamentos Compartilhados.";
+    return "Restaurar a pendência de envio deste lançamento em Lançamentos Compartilhados";
+  }
+
+  function handleAbrirReenviar(p: Parcela) {
+    setErroReenvio(
+      p.comp && !vinculoPorComp.has(p.comp)
+        ? `O reembolso "${p.comp}" não tem e-mail configurado em Configurações → Compartilhar Lançamentos.`
+        : ""
+    );
+    setReenviando(p);
+  }
+
+  async function handleReenviarComEscopo(escopo: EscopoEnvio) {
+    if (!reenviando) return;
+    if (reenviando.comp && !vinculoPorComp.has(reenviando.comp)) {
+      setErroReenvio(
+        `O reembolso "${reenviando.comp}" não tem e-mail configurado em Configurações → Compartilhar Lançamentos.`
+      );
+      return;
+    }
+    setErroReenvio("");
+    setReenviandoOcorrencia(true);
+    try {
+      await restaurarPendenciaDeEnvio(uid, reenviando, recorrencias, enviados, escopo);
+      setReenviando(null);
+    } catch {
+      setErroReenvio("Não foi possível restaurar a pendência. Tente novamente.");
+    } finally {
+      setReenviandoOcorrencia(false);
+    }
+  }
+
   const carregando = estadoMes.ym !== ym;
 
   const todasParcelas = useMemo(
@@ -85,11 +160,6 @@ export default function BuscaParcelas({
     [recorrencias]
   );
 
-  const credoresDoMes = useMemo(
-    () => [...new Set(todasParcelas.map((p) => p.credor))].sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [todasParcelas]
-  );
-
   function handleTogglePago(p: Parcela, pago: boolean) {
     if (p.virtual && p.recorrenciaId) {
       if (pago) materializarPagamentoRecorrencia(uid, recorrenciaPorId.get(p.recorrenciaId)!, ym);
@@ -98,9 +168,13 @@ export default function BuscaParcelas({
     marcarPago(uid, p, pago);
   }
 
-  const textoNormalizado = texto.trim().toLowerCase();
-
   const algumFormaMarcada = Object.values(filtroGrupos).some(Boolean);
+
+  const [formaMarcadaAnterior, setFormaMarcadaAnterior] = useState(algumFormaMarcada);
+  if (algumFormaMarcada !== formaMarcadaAnterior) {
+    setFormaMarcadaAnterior(algumFormaMarcada);
+    if (!algumFormaMarcada && filtroProvisao) setFiltroProvisao(false);
+  }
 
   const valorFiltroNum = filtroValor ? paraNumero(filtroValor) : null;
   const valorFiltroAtivo = valorFiltroNum !== null && !Number.isNaN(valorFiltroNum);
@@ -109,7 +183,6 @@ export default function BuscaParcelas({
     if (filtroProvisao) {
       return todasParcelas.filter((p) => {
         if (!p.provisao) return false;
-        if (textoNormalizado && !p.credor.toLowerCase().includes(textoNormalizado)) return false;
         if (!passaFiltroInclusivo(filtroGrupos, p.grupo)) return false;
         if (valorFiltroAtivo && Math.abs(p.valorParcela - (valorFiltroNum as number)) >= 0.005) return false;
         return true;
@@ -117,7 +190,6 @@ export default function BuscaParcelas({
     }
     if (!algumFormaMarcada) return [];
     return todasParcelas.filter((p) => {
-      if (textoNormalizado && !p.credor.toLowerCase().includes(textoNormalizado)) return false;
       if (!passaFiltroInclusivo(filtroGrupos, p.grupo)) return false;
       if (!passaFiltroInclusivo(filtroAplicacoes, p.aplicacao)) return false;
       if (!passaFiltroInclusivo(filtroComp, p.comp ?? SEM_COMP)) return false;
@@ -126,7 +198,6 @@ export default function BuscaParcelas({
     });
   }, [
     todasParcelas,
-    textoNormalizado,
     filtroGrupos,
     filtroAplicacoes,
     filtroComp,
@@ -148,7 +219,7 @@ export default function BuscaParcelas({
   }
 
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const chavePaginacao = `${ym}|${textoNormalizado}|${JSON.stringify(filtroGrupos)}|${JSON.stringify(filtroAplicacoes)}|${JSON.stringify(filtroComp)}|${filtroProvisao}|${filtroValor}`;
+  const chavePaginacao = `${ym}|${JSON.stringify(filtroGrupos)}|${JSON.stringify(filtroAplicacoes)}|${JSON.stringify(filtroComp)}|${filtroProvisao}|${filtroValor}`;
   const [chavePaginacaoAnterior, setChavePaginacaoAnterior] = useState(chavePaginacao);
   if (chavePaginacao !== chavePaginacaoAnterior) {
     setChavePaginacaoAnterior(chavePaginacao);
@@ -185,22 +256,11 @@ export default function BuscaParcelas({
   return (
     <div>
       <div
-        className="sticky z-10 mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
+        className="sticky z-30 mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
         style={{ top: stickyTop }}
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[200px] flex-1">
-              <CampoCredor
-                label="Credor"
-                value={texto}
-                onChange={setTexto}
-                opcoes={credoresDoMes}
-                ativo={config.sugestaoCredor}
-                placeholder="Buscar por nome..."
-              />
-            </div>
-
             {config.grupos.length > 0 && (
               <FiltroMultiSelect
                 rotulo="Forma de pagamento"
@@ -210,41 +270,49 @@ export default function BuscaParcelas({
                 modoInclusao
               />
             )}
-            {algumFormaMarcada && !filtroProvisao && (
-              <>
-                {config.aplicacoes.length > 0 && (
-                  <FiltroMultiSelect
-                    rotulo="Aplicação"
-                    opcoes={config.aplicacoes}
-                    filtro={filtroAplicacoes}
-                    onAlternar={(item, visivel) => setFiltroAplicacoes((atual) => ({ ...atual, [item]: visivel }))}
-                    modoInclusao
-                  />
-                )}
-                <FiltroMultiSelect
-                  rotulo="Reembolso"
-                  opcoes={[...config.comp.map((c) => c.nome), SEM_COMP]}
-                  filtro={filtroComp}
-                  onAlternar={(item, visivel) => setFiltroComp((atual) => ({ ...atual, [item]: visivel }))}
-                  modoInclusao
-                />
-              </>
+            {config.aplicacoes.length > 0 && (
+              <FiltroMultiSelect
+                rotulo="Aplicação"
+                opcoes={config.aplicacoes}
+                filtro={filtroAplicacoes}
+                onAlternar={(item, visivel) => setFiltroAplicacoes((atual) => ({ ...atual, [item]: visivel }))}
+                modoInclusao
+                desativado={!algumFormaMarcada || filtroProvisao}
+              />
             )}
-            <label className="flex h-[42px] cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600">
+            <FiltroMultiSelect
+              rotulo="Reembolso"
+              opcoes={[...config.comp.map((c) => c.nome), SEM_COMP]}
+              filtro={filtroComp}
+              onAlternar={(item, visivel) => setFiltroComp((atual) => ({ ...atual, [item]: visivel }))}
+              modoInclusao
+              desativado={!algumFormaMarcada || filtroProvisao}
+            />
+            <label
+              className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600 ${
+                algumFormaMarcada ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={filtroProvisao}
                 onChange={(e) => setFiltroProvisao(e.target.checked)}
-                className="h-4 w-4 accent-amber-500"
+                disabled={!algumFormaMarcada}
+                className="h-4 w-4 accent-amber-500 disabled:cursor-not-allowed"
               />
               Provisão
             </label>
-            <div className="flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600">
+            <div
+              className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600 ${
+                algumFormaMarcada ? "" : "opacity-50"
+              }`}
+            >
               <span className="text-slate-500 dark:text-slate-400">Valor</span>
               <CampoValorMonetario
                 value={filtroValor}
                 onChange={setFiltroValor}
-                className="w-20 border-none bg-transparent p-0 text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                disabled={!algumFormaMarcada}
+                className="w-20 border-none bg-transparent p-0 text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
           </div>
@@ -272,40 +340,23 @@ export default function BuscaParcelas({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                    <th className="w-24 py-2 pl-4">
-                      <div className="flex items-center gap-2.5 divide-x divide-slate-200 dark:divide-slate-600">
-                        <label
-                          className="flex flex-col items-center gap-1"
-                          title="Marcar todos como pago (nesta página)"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={todosPagos}
-                            onChange={(e) => handleTogglePagoTodos(e.target.checked)}
-                            className="h-5 w-5 shrink-0 accent-indigo-600"
-                            aria-label="Marcar todos como pago nesta página"
-                          />
-                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Pág.</span>
-                        </label>
-                        <label
-                          className="flex flex-col items-center gap-1 pl-2.5"
-                          title="Marcar todos como pago (todas as páginas)"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={todosPagosTodasAsPaginas}
-                            onChange={(e) => setConfirmacaoTodasAsPaginas(e.target.checked)}
-                            className="h-5 w-5 shrink-0 accent-indigo-600"
-                            aria-label="Marcar todos como pago em todas as páginas"
-                          />
-                          <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400">Todas</span>
-                        </label>
-                      </div>
+                    <th className="w-14 py-2 pl-4">
+                      <SeletorMarcarTodos
+                        marcadoPagina={todosPagos}
+                        onAlterarPagina={(marcado) => handleTogglePagoTodos(marcado)}
+                        marcadoTodas={todosPagosTodasAsPaginas}
+                        onAlterarTodas={(marcado) => setConfirmacaoTodasAsPaginas(marcado)}
+                        ariaLabelPagina="Marcar todos como pago nesta página"
+                        ariaLabelTodas="Marcar todos como pago em todas as páginas"
+                        rotuloPagina="Marcar todos da página"
+                        rotuloTodas="Marcar todas as páginas"
+                      />
                     </th>
                     <ColunaOrdenavel campo="credor" ordenacao={ordenacao} onClicar={handleClicarColuna}>
                       Credor
                     </ColunaOrdenavel>
                     <th className="py-2 pr-2">Observação</th>
+                    <th className="py-2 pr-2">Aplicação</th>
                     <th className="py-2 pr-2">Parcela</th>
                     <ColunaOrdenavel campo="dataCompra" ordenacao={ordenacao} onClicar={handleClicarColuna}>
                       Data
@@ -361,6 +412,7 @@ export default function BuscaParcelas({
                         </p>
                       </td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.observacao || "—"}</td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.aplicacao}</td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
                         {p.recorrenciaId ? "Fixa" : p.parcelaTotal > 1 ? `${p.parcelaNum}/${p.parcelaTotal}` : "—"}
                       </td>
@@ -376,6 +428,7 @@ export default function BuscaParcelas({
                           <button
                             onClick={() => setParcelaEditando(p)}
                             aria-label={`Editar ${p.credor}`}
+                            title="Editar lançamento"
                             className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-slate-700 dark:hover:text-indigo-400"
                           >
                             <IconEditar className="h-4 w-4" />
@@ -383,10 +436,22 @@ export default function BuscaParcelas({
                           <button
                             onClick={() => setParcelaExcluindo(p)}
                             aria-label={`Excluir ${p.credor}`}
+                            title="Excluir lançamento"
                             className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-700 dark:hover:text-red-400"
                           >
                             <IconExcluir className="h-4 w-4" />
                           </button>
+                          {config.compartilharLancamentos && p.comp && (
+                            <button
+                              onClick={() => handleAbrirReenviar(p)}
+                              disabled={!podeReenviar(p)}
+                              aria-label={`Reenviar ${p.credor}`}
+                              title={tituloReenviar(p)}
+                              className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-indigo-400"
+                            >
+                              <IconEnviar className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -443,6 +508,50 @@ export default function BuscaParcelas({
             className="text-center text-sm text-slate-500 dark:text-slate-400"
           >
             Cancelar
+          </button>
+        </div>
+      </Modal>
+
+      <Modal aberto={!!reenviando} onFechar={() => setReenviando(null)} titulo="Restaurar pendência de envio">
+        <div className="flex flex-col gap-2">
+          {reenviando?.comp && !vinculoPorComp.has(reenviando.comp) ? (
+            <p className="text-sm text-red-600 dark:text-red-400">{erroReenvio}</p>
+          ) : (
+            <>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                &quot;{reenviando?.credor}&quot; — isso apenas restaura a pendência de envio na tela de Lançamentos
+                Compartilhados (não envia nada diretamente). Qual alcance?
+              </p>
+              {erroReenvio && <p className="text-sm text-red-600 dark:text-red-400">{erroReenvio}</p>}
+              <button
+                onClick={() => handleReenviarComEscopo("mes")}
+                disabled={reenviandoOcorrencia}
+                className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Apenas este mês
+              </button>
+              <button
+                onClick={() => handleReenviarComEscopo("futuros")}
+                disabled={reenviandoOcorrencia}
+                className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Este mês e os futuros
+              </button>
+              <button
+                onClick={() => handleReenviarComEscopo("tudo")}
+                disabled={reenviandoOcorrencia}
+                className={CLASSE_BOTAO_PRIMARIO}
+              >
+                {reenviandoOcorrencia ? "Restaurando..." : "Todos (desde o início)"}
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setReenviando(null)}
+            disabled={reenviandoOcorrencia}
+            className="text-center text-sm text-slate-500 dark:text-slate-400"
+          >
+            {reenviando?.comp && !vinculoPorComp.has(reenviando.comp) ? "Fechar" : "Cancelar"}
           </button>
         </div>
       </Modal>

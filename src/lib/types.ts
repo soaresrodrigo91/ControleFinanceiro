@@ -154,7 +154,10 @@ export type Notificacao = {
   ym?: string;
 };
 
-export type StatusCompartilhado = "pendente";
+// "pendente": ainda não processado por quem recebeu. "lancado": quem recebeu já lançou na
+// própria conta. "excluido": quem recebeu descartou sem lançar. Nos dois últimos casos o
+// documento é mantido (nunca apagado) para que quem enviou não volte a ver isso como pendência.
+export type StatusCompartilhado = "pendente" | "lancado" | "excluido";
 
 export type LancamentoCompartilhado = {
   id: string;

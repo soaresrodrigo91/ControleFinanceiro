@@ -19,7 +19,7 @@ import {
   excluirRecorrenciaDesteMesEmDiante,
 } from "@/lib/recorrencias";
 import { sincronizarValorReembolso, sincronizarValorReembolsoRecorrencia } from "@/lib/recebimentos";
-import { notificarAtualizacaoRecorrencia } from "@/lib/compartilhamento";
+import { notificarAtualizacaoRecorrencia, sincronizarValorCompartilhadoRecorrenciaMes } from "@/lib/compartilhamento";
 import { formatarNumeroRenegociacao } from "@/lib/renegociacao";
 import { GRUPO_FIXAS } from "@/lib/config";
 import { formatarMesAno } from "@/lib/date";
@@ -120,6 +120,14 @@ function FormularioEdicaoParcela({
             parcela.comp,
             dados.valorParcela,
             { observacao: dados.observacao, grupoOrigem: dados.grupo, provisao: parcela.provisao }
+          );
+          await sincronizarValorCompartilhadoRecorrenciaMes(
+            uid,
+            parcela.recorrenciaId!,
+            parcela.comp,
+            dados.valorParcela,
+            parcela.vencimento,
+            config
           );
         } else if (escopo === "futuros") {
           await sincronizarValorReembolsoRecorrencia(

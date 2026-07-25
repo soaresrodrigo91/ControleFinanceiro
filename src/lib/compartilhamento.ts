@@ -15,7 +15,6 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { criarLancamento } from "./parcelas";
-import { adicionarItemLista } from "./config";
 import { criarNotificacao } from "./notificacoes";
 import { somarMesesYM } from "./date";
 import { ativaNoMes, criarRecorrencia, valorNoMes, vencimentoNoMes } from "./recorrencias";
@@ -28,6 +27,11 @@ import type {
 } from "./types";
 
 const JANELA_MESES_RECORRENCIA = 10;
+
+// Escopo do envio individual (botão "Reenviar" na tela de Lançamentos). Quando omitido
+// (chamada em massa a partir da tela de Enviados), o comportamento é o original: janela de
+// 10 meses à frente para conta fixa, todas as parcelas ainda não compartilhadas para avulso.
+export type EscopoEnvio = "mes" | "futuros" | "tudo";
 
 type ItemParaCompartilhar = {
   chave: string;
@@ -45,18 +49,19 @@ async function itensParaCompartilharDeParcela(
   uid: string,
   p: Parcela,
   recorrencias: Recorrencia[],
-  jaCompartilhados: Set<string>
+  jaCompartilhados: Set<string>,
+  escopo?: EscopoEnvio
 ): Promise<ItemParaCompartilhar[]> {
   if (p.recorrenciaId) {
     const rec = recorrencias.find((r) => r.id === p.recorrenciaId);
     if (!rec) return [];
-    const ymInicio = p.vencimento.slice(0, 7);
+    const ymAtual = p.vencimento.slice(0, 7);
     const resultado: ItemParaCompartilhar[] = [];
-    for (let i = 0; i < JANELA_MESES_RECORRENCIA; i++) {
-      const ym = somarMesesYM(ymInicio, i);
-      if (!ativaNoMes(rec, ym)) continue;
+
+    const processarMes = (ym: string) => {
+      if (!ativaNoMes(rec, ym)) return;
       const chave = `${rec.id}_${ym}`;
-      if (jaCompartilhados.has(chave)) continue;
+      if (jaCompartilhados.has(chave)) return;
       resultado.push({
         chave,
         grupoOrigemId: rec.id,
@@ -68,6 +73,21 @@ async function itensParaCompartilharDeParcela(
         dataCompra: null,
         recorrenciaOrigemId: rec.id,
       });
+    };
+
+    if (escopo === "mes") {
+      processarMes(ymAtual);
+      return resultado;
+    }
+
+    if (escopo === "tudo") {
+      for (let ym = rec.inicio.slice(0, 7); ym < ymAtual; ym = somarMesesYM(ym, 1)) {
+        processarMes(ym);
+      }
+    }
+
+    for (let i = 0; i < JANELA_MESES_RECORRENCIA; i++) {
+      processarMes(somarMesesYM(ymAtual, i));
     }
     return resultado;
   }
@@ -75,20 +95,23 @@ async function itensParaCompartilharDeParcela(
   const snap = await getDocs(
     query(collection(db, "usuarios", uid, "parcelas"), where("lancamentoId", "==", p.lancamentoId))
   );
-  return snap.docs
+  let candidatas = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }) as Parcela)
-    .filter((parc) => !jaCompartilhados.has(parc.id))
-    .map((parc) => ({
-      chave: parc.id,
-      grupoOrigemId: parc.lancamentoId,
-      parcela: parc.parcelaTotal > 1 ? `${parc.parcelaNum}/${parc.parcelaTotal}` : "—",
-      vencimento: parc.vencimento,
-      valorParcela: parc.valorParcela,
-      observacao: parc.observacao,
-      aplicacao: parc.aplicacao,
-      dataCompra: parc.dataCompra,
-      recorrenciaOrigemId: null,
-    }));
+    .filter((parc) => !jaCompartilhados.has(parc.id));
+  if (escopo === "mes") candidatas = candidatas.filter((parc) => parc.id === p.id);
+  else if (escopo === "futuros") candidatas = candidatas.filter((parc) => parc.vencimento >= p.vencimento);
+
+  return candidatas.map((parc) => ({
+    chave: parc.id,
+    grupoOrigemId: parc.lancamentoId,
+    parcela: parc.parcelaTotal > 1 ? `${parc.parcelaNum}/${parc.parcelaTotal}` : "—",
+    vencimento: parc.vencimento,
+    valorParcela: parc.valorParcela,
+    observacao: parc.observacao,
+    aplicacao: parc.aplicacao,
+    dataCompra: parc.dataCompra,
+    recorrenciaOrigemId: null,
+  }));
 }
 
 export function normalizarEmail(email: string): string {
@@ -194,6 +217,39 @@ export function candidatosParaCompartilhar(
   return parcelas.filter((p) => p.comp && compsVinculados.has(p.comp));
 }
 
+// Mesma chave usada em itensParaCompartilharDeParcela para contas fixas: identifica a
+// ocorrência de uma recorrência num mês específico. A parcela "virtual" exibida na tela tem
+// id no formato "virtual:<recId>:<ym>", diferente do lancamentoOrigemId gravado ao
+// compartilhar ("<recId>_<ym>") — por isso não dá pra comparar p.id direto.
+export function chaveOrigemParcela(p: Parcela): string {
+  return p.recorrenciaId ? `${p.recorrenciaId}_${p.vencimento.slice(0, 7)}` : p.id;
+}
+
+export function calcularValorReembolso(
+  valorBase: number,
+  compNome: string | null,
+  config: ConfigListas
+): number {
+  if (!compNome) return valorBase;
+  const itemComp = config.comp.find((c) => c.nome === compNome);
+  if (!itemComp || itemComp.modo === "nenhum") return valorBase;
+  return itemComp.modo === "metade" ? valorBase / 2 : valorBase;
+}
+
+// Inverso de calcularValorReembolso: a partir do valor já com o percentual aplicado (o que
+// fica salvo em LancamentoCompartilhado.valor), recupera o valor cheio do lançamento
+// original — usado só para exibição, já que o documento não guarda o valor bruto.
+export function valorOrigemDoReembolso(
+  valorReembolso: number,
+  compNome: string | null,
+  config: ConfigListas
+): number {
+  if (!compNome) return valorReembolso;
+  const itemComp = config.comp.find((c) => c.nome === compNome);
+  if (!itemComp || itemComp.modo === "nenhum") return valorReembolso;
+  return itemComp.modo === "metade" ? valorReembolso * 2 : valorReembolso;
+}
+
 export function assinarEnviados(uid: string, callback: (itens: LancamentoCompartilhado[]) => void) {
   const q = query(collection(db, "lancamentosCompartilhados"), where("deUid", "==", uid));
   return onSnapshot(q, (snap) => {
@@ -214,6 +270,49 @@ export function assinarRecebidos(uid: string, callback: (itens: LancamentoCompar
   });
 }
 
+// Chaves (mesmo formato de chaveOrigemParcela) de pendências de envio que o usuário
+// removeu manualmente da lista de Enviados. Guardado por usuário, sem depender de vínculo
+// com ninguém — diferente de excluir um já enviado, aqui nunca existiu um envio de verdade.
+export function assinarEnviosExcluidos(uid: string, callback: (chaves: Set<string>) => void) {
+  return onSnapshot(collection(db, "usuarios", uid, "enviosExcluidos"), (snap) => {
+    callback(new Set(snap.docs.map((d) => d.id)));
+  });
+}
+
+// Remove uma pendência (ou várias, conforme o alcance) da lista de Enviados sem alterar o
+// lançamento original: só marca a(s) chave(s) como "não mostrar mais aqui", em vez de apagar
+// o reembolso configurado na parcela/recorrência.
+export async function excluirPendenciaDeEnvio(
+  uid: string,
+  p: Parcela,
+  recorrencias: Recorrencia[],
+  enviados: LancamentoCompartilhado[],
+  escopo: EscopoEnvio
+) {
+  const jaCompartilhados = new Set(enviados.map((e) => e.lancamentoOrigemId));
+  const itens = await itensParaCompartilharDeParcela(uid, p, recorrencias, jaCompartilhados, escopo);
+  await Promise.all(
+    itens.map((item) =>
+      setDoc(doc(db, "usuarios", uid, "enviosExcluidos", item.chave), { criadoEm: serverTimestamp() })
+    )
+  );
+}
+
+// Inverso de excluirPendenciaDeEnvio: remove o(s) tombstone(s) do alcance escolhido, fazendo
+// o lançamento voltar a aparecer como pendência "Não enviado" em Lançamentos Enviados — não
+// envia nada de verdade, é só o botão "Reenviar" desfazendo uma exclusão anterior.
+export async function restaurarPendenciaDeEnvio(
+  uid: string,
+  p: Parcela,
+  recorrencias: Recorrencia[],
+  enviados: LancamentoCompartilhado[],
+  escopo: EscopoEnvio
+) {
+  const jaCompartilhados = new Set(enviados.map((e) => e.lancamentoOrigemId));
+  const itens = await itensParaCompartilharDeParcela(uid, p, recorrencias, jaCompartilhados, escopo);
+  await Promise.all(itens.map((item) => deleteDoc(doc(db, "usuarios", uid, "enviosExcluidos", item.chave))));
+}
+
 export async function compartilharSelecionados(
   uid: string,
   nomeRemetente: string,
@@ -222,7 +321,8 @@ export async function compartilharSelecionados(
   config: ConfigListas,
   vinculos: VinculoCompartilhamento[],
   recorrencias: Recorrencia[],
-  enviados: LancamentoCompartilhado[]
+  enviados: LancamentoCompartilhado[],
+  escopo?: EscopoEnvio
 ) {
   const porComp = vinculoPorCompNome(vinculos);
   const emailNormalizadoRemetente = normalizarEmail(emailRemetente);
@@ -246,7 +346,7 @@ export async function compartilharSelecionados(
     const itemComp = config.comp.find((c) => c.nome === p.comp);
     if (!itemComp || itemComp.modo === "nenhum") continue;
 
-    const expandidos = await itensParaCompartilharDeParcela(uid, p, recorrencias, jaCompartilhados);
+    const expandidos = await itensParaCompartilharDeParcela(uid, p, recorrencias, jaCompartilhados, escopo);
     if (expandidos.length === 0) continue;
 
     let destino = porDestinatario.get(vinculo.uidVinculado);
@@ -263,7 +363,7 @@ export async function compartilharSelecionados(
 
     for (const item of expandidos) {
       if (jaCompartilhados.has(item.chave)) continue;
-      const valor = itemComp.modo === "metade" ? item.valorParcela / 2 : item.valorParcela;
+      const valor = calcularValorReembolso(item.valorParcela, p.comp, config);
       try {
         await addDoc(collection(db, "lancamentosCompartilhados"), {
           deUid: uid,
@@ -329,82 +429,6 @@ export async function compartilharSelecionados(
   }
 }
 
-export async function reenviarSelecionados(uid: string, nomeRemetente: string, itens: LancamentoCompartilhado[]) {
-  const porDestinatario = new Map<
-    string,
-    { email: string; algumCriado: boolean; algumFalhou: boolean; primeiroVencimento: string | null }
-  >();
-
-  for (const item of itens) {
-    let destino = porDestinatario.get(item.paraUid);
-    if (!destino) {
-      destino = { email: item.paraEmail, algumCriado: false, algumFalhou: false, primeiroVencimento: null };
-      porDestinatario.set(item.paraUid, destino);
-    }
-
-    try {
-      await addDoc(collection(db, "lancamentosCompartilhados"), {
-        deUid: uid,
-        deEmail: item.deEmail,
-        deNome: nomeRemetente,
-        paraUid: item.paraUid,
-        paraEmail: item.paraEmail,
-        lancamentoOrigemId: item.lancamentoOrigemId,
-        recorrenciaOrigemId: item.recorrenciaOrigemId ?? null,
-        grupoOrigemId: item.grupoOrigemId,
-        parcela: item.parcela,
-        compNome: item.compNome,
-        credorSugerido: item.credorSugerido,
-        observacao: item.observacao,
-        aplicacaoSugerida: item.aplicacaoSugerida,
-        valor: item.valor,
-        dataCompra: item.dataCompra,
-        vencimento: item.vencimento,
-        status: "pendente",
-        criadoEm: new Date().toISOString(),
-      });
-      await deleteDoc(doc(db, "lancamentosCompartilhados", item.id));
-      destino.algumCriado = true;
-      if (!destino.primeiroVencimento || item.vencimento < destino.primeiroVencimento) {
-        destino.primeiroVencimento = item.vencimento;
-      }
-    } catch {
-      destino.algumFalhou = true;
-    }
-  }
-
-  for (const [uidDestino, destino] of porDestinatario) {
-    if (destino.algumCriado) {
-      await criarNotificacao({
-        deUid: uid,
-        uidDestino,
-        paraEmail: destino.email,
-        tipo: "recebido",
-        mensagem: `${nomeRemetente} reenviou um lançamento compartilhado com você.`,
-        deNome: nomeRemetente,
-        ym: destino.primeiroVencimento?.slice(0, 7),
-      });
-    } else if (destino.algumFalhou) {
-      await criarNotificacao({
-        deUid: uid,
-        uidDestino,
-        paraEmail: destino.email,
-        tipo: "convite",
-        mensagem: `${nomeRemetente} quer compartilhar lançamentos com você. Ative "Compartilhar Lançamentos" nas Configurações para receber.`,
-        deNome: nomeRemetente,
-      });
-      await criarNotificacao({
-        deUid: uid,
-        uidDestino: uid,
-        paraEmail: destino.email,
-        tipo: "convite",
-        mensagem: `Aguardando ${destino.email} ativar/configurar o recebimento de Lançamentos Compartilhados. Os itens continuam em Enviados como "Não enviado".`,
-        deNome: nomeRemetente,
-      });
-    }
-  }
-}
-
 export async function notificarAtualizacaoRecorrencia(
   uid: string,
   recorrenciaId: string,
@@ -426,7 +450,7 @@ export async function notificarAtualizacaoRecorrencia(
   );
   if (snap.empty) return;
 
-  const novoValorReembolso = itemComp.modo === "metade" ? novoValorParcela / 2 : novoValorParcela;
+  const novoValorReembolso = calcularValorReembolso(novoValorParcela, compNome, config);
   const usuarioSnap = await getDoc(doc(db, "usuarios", uid));
   const dadosUsuario = usuarioSnap.data();
   const nomeRemetente = `${dadosUsuario?.nome ?? ""} ${dadosUsuario?.sobrenome ?? ""}`.trim();
@@ -455,22 +479,48 @@ export async function notificarAtualizacaoRecorrencia(
   }
 }
 
+// Complementa notificarAtualizacaoRecorrencia para o escopo "apenas este mês": aquela função
+// só é chamada nos escopos "futuros"/"tudo" (ver ParcelaModals.tsx); sem isso, editar o valor
+// de só um mês de uma conta fixa com reembolso não atualizava o item já compartilhado.
+export async function sincronizarValorCompartilhadoRecorrenciaMes(
+  uid: string,
+  recorrenciaId: string,
+  compNome: string,
+  novoValorParcela: number,
+  vencimento: string,
+  config: ConfigListas
+) {
+  const itemComp = config.comp.find((c) => c.nome === compNome);
+  if (!itemComp || itemComp.modo === "nenhum") return;
+  const novoValorReembolso = calcularValorReembolso(novoValorParcela, compNome, config);
+
+  const snap = await getDocs(
+    query(
+      collection(db, "lancamentosCompartilhados"),
+      where("deUid", "==", uid),
+      where("recorrenciaOrigemId", "==", recorrenciaId),
+      where("vencimento", "==", vencimento),
+      where("status", "==", "pendente")
+    )
+  );
+  await Promise.all(snap.docs.map((d) => updateDoc(d.ref, { valor: novoValorReembolso })));
+}
+
 export type EscopoExclusaoRecebido = "mes" | "futuros" | "tudo";
 
-async function excluirCompartilhadoComEscopo(
-  campo: "paraUid" | "deUid",
-  item: LancamentoCompartilhado,
-  escopo: EscopoExclusaoRecebido
-) {
+// Marca como "excluido" em vez de apagar: se apagássemos o documento, quem enviou (deUid)
+// deixaria de ter qualquer registro do envio e o item voltaria a aparecer como pendência de
+// envio para ela — mesmo já tendo sido genuinamente enviado.
+export async function excluirRecebidoComEscopo(item: LancamentoCompartilhado, escopo: EscopoExclusaoRecebido) {
   if (escopo === "mes") {
-    await deleteDoc(doc(db, "lancamentosCompartilhados", item.id));
+    await updateDoc(doc(db, "lancamentosCompartilhados", item.id), { status: "excluido" });
     return;
   }
 
   const snap = await getDocs(
     query(
       collection(db, "lancamentosCompartilhados"),
-      where(campo, "==", item[campo]),
+      where("paraUid", "==", item.paraUid),
       where("grupoOrigemId", "==", item.grupoOrigemId),
       where("status", "==", "pendente")
     )
@@ -480,15 +530,55 @@ async function excluirCompartilhadoComEscopo(
     const dados = d.data() as LancamentoCompartilhado;
     return dados.vencimento >= item.vencimento;
   });
-  await Promise.all(alvos.map((d) => deleteDoc(d.ref)));
+  await Promise.all(alvos.map((d) => updateDoc(d.ref, { status: "excluido" })));
 }
 
-export async function excluirRecebidoComEscopo(item: LancamentoCompartilhado, escopo: EscopoExclusaoRecebido) {
-  return excluirCompartilhadoComEscopo("paraUid", item, escopo);
-}
+// Além de apagar o(s) documento(s) já enviados, marca a(s) chave(s) como excluída em
+// enviosExcluidos — sem isso, ao sumir o documento a ocorrência voltaria a aparecer sozinha
+// como pendência de envio (já que nada mais registraria que ela foi enviada). Marca TODAS as
+// chaves do alcance escolhido, não só as que já tinham sido enviadas — senão, ao excluir
+// "este mês e os futuros"/"todos" de uma conta fixa, os meses futuros que nunca chegaram a
+// ser enviados continuariam aparecendo como pendência isoladamente. Quem quiser voltar a
+// enviar usa o botão "Reenviar" na tela de Lançamentos, que desfaz essa marcação.
+export async function excluirEnviadoComEscopo(
+  item: LancamentoCompartilhado,
+  escopo: EscopoExclusaoRecebido,
+  recorrencias: Recorrencia[]
+) {
+  const parcelaOrigem = {
+    id: item.lancamentoOrigemId,
+    lancamentoId: item.grupoOrigemId,
+    recorrenciaId: item.recorrenciaOrigemId ?? null,
+    vencimento: item.vencimento,
+  } as Parcela;
 
-export async function excluirEnviadoComEscopo(item: LancamentoCompartilhado, escopo: EscopoExclusaoRecebido) {
-  return excluirCompartilhadoComEscopo("deUid", item, escopo);
+  const itens = await itensParaCompartilharDeParcela(item.deUid, parcelaOrigem, recorrencias, new Set(), escopo);
+  const chaves = new Set(itens.map((i) => i.chave));
+  // Garante a própria chave mesmo que a busca acima não encontre nada — acontece quando o
+  // lançamento/recorrência de origem já não existe mais em Contas a Pagar (foi excluído à
+  // parte); sem isso, este item específico nunca seria removido.
+  chaves.add(item.lancamentoOrigemId);
+
+  // Sem filtro de status aqui: um item "Enviado" nesta tela pode já estar "lancado" ou
+  // "excluido" do lado de quem recebeu (ver excluirRecebidoComEscopo/lancarSelecionados) —
+  // continua sendo um envio seu que pode ser excluído, então não dá pra exigir "pendente".
+  const snap = await getDocs(
+    query(
+      collection(db, "lancamentosCompartilhados"),
+      where("deUid", "==", item.deUid),
+      where("grupoOrigemId", "==", item.grupoOrigemId)
+    )
+  );
+  const alvosParaApagar = snap.docs.filter((d) =>
+    chaves.has((d.data() as LancamentoCompartilhado).lancamentoOrigemId)
+  );
+
+  await Promise.all([
+    ...alvosParaApagar.map((d) => deleteDoc(d.ref)),
+    ...[...chaves].map((chave) =>
+      setDoc(doc(db, "usuarios", item.deUid, "enviosExcluidos", chave), { criadoEm: serverTimestamp() })
+    ),
+  ]);
 }
 
 export function truncarNome(nome: string): string {
@@ -499,7 +589,13 @@ export function truncarNome(nome: string): string {
   return `${partes[0]} ${partes[partes.length - 1][0]}.`;
 }
 
-export async function lancarSelecionados(uid: string, itens: LancamentoCompartilhado[], grupoEscolhido: string) {
+export async function lancarSelecionados(
+  uid: string,
+  itens: LancamentoCompartilhado[],
+  grupoEscolhido: string,
+  aplicacoesDisponiveis: string[],
+  aplicacaoEscolhida: string
+) {
   const gruposProcessados = new Set<string>();
 
   for (const item of itens) {
@@ -519,7 +615,11 @@ export async function lancarSelecionados(uid: string, itens: LancamentoCompartil
       .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
     if (pendentesDoGrupo.length === 0) continue;
 
-    await adicionarItemLista(uid, "aplicacoes", item.aplicacaoSugerida);
+    // Usa a aplicação de quem enviou quando ela já existe na sua lista; senão, usa a
+    // aplicação escolhida manualmente em vez de criar uma nova automaticamente.
+    const aplicacao = aplicacoesDisponiveis.includes(item.aplicacaoSugerida)
+      ? item.aplicacaoSugerida
+      : aplicacaoEscolhida;
     const primeiro = pendentesDoGrupo[0];
 
     if (item.recorrenciaOrigemId) {
@@ -530,7 +630,7 @@ export async function lancarSelecionados(uid: string, itens: LancamentoCompartil
         valor: primeiro.valor,
         comp: "",
         grupo: grupoEscolhido,
-        aplicacao: item.aplicacaoSugerida,
+        aplicacao,
         inicio: primeiro.vencimento,
       });
     } else if (pendentesDoGrupo.length > 1) {
@@ -544,7 +644,7 @@ export async function lancarSelecionados(uid: string, itens: LancamentoCompartil
         parcelaTotal: pendentesDoGrupo.length,
         comp: "",
         grupo: grupoEscolhido,
-        aplicacao: item.aplicacaoSugerida,
+        aplicacao,
       });
     } else {
       await criarLancamento(uid, {
@@ -556,10 +656,14 @@ export async function lancarSelecionados(uid: string, itens: LancamentoCompartil
         parcelaTotal: 1,
         comp: "",
         grupo: grupoEscolhido,
-        aplicacao: item.aplicacaoSugerida,
+        aplicacao,
       });
     }
 
-    await Promise.all(pendentesDoGrupo.map((p) => deleteDoc(doc(db, "lancamentosCompartilhados", p.id))));
+    // Marca como "lancado" em vez de apagar, pelo mesmo motivo de excluirRecebidoComEscopo:
+    // apagar faria o item voltar a aparecer como pendência de envio para quem enviou.
+    await Promise.all(
+      pendentesDoGrupo.map((p) => updateDoc(doc(db, "lancamentosCompartilhados", p.id), { status: "lancado" }))
+    );
   }
 }

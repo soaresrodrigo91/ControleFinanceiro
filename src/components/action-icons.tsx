@@ -85,6 +85,14 @@ export function IconExcluir(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconEnviar(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+      <path d="M21 3 3 10.5l7.5 3M21 3l-7.5 18-3-7.5M21 3l-10.5 10.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconOlho(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>

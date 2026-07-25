@@ -48,7 +48,7 @@ export function GraficoPizza({
   const ALTURA = 170;
 
   return (
-    <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-3 sm:flex-row sm:items-stretch">
       <div className="shrink-0 sm:w-[45%]">
         <ResponsiveContainer width="100%" height={ALTURA}>
           <PieChart>
@@ -71,8 +71,8 @@ export function GraficoPizza({
       </div>
 
       <ul
-        className="flex min-w-0 flex-1 flex-col gap-1.5 overflow-y-auto sm:w-[55%]"
-        style={{ maxHeight: ALTURA }}
+        className="scroll-sem-barra flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-y-auto sm:w-[55%]"
+        style={{ minHeight: ALTURA }}
       >
         {itens.map((item) => (
           <li key={item.nome} className="flex items-center gap-2 text-sm">
@@ -110,14 +110,14 @@ export function GraficoItem({
   const alturaConteudoBarra = Math.max(itens.length * 32 + 20, ALTURA_CARTAO);
 
   return (
-    <div className={`${CLASSE_CARD} flex h-full flex-col`}>
+    <div className={`${CLASSE_CARD} flex h-full min-h-0 flex-col`}>
       <p className="mb-2 shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100">{titulo}</p>
       {itens.length === 0 ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados para o mês.</p>
       ) : (
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex min-h-0 flex-1 justify-center">
           {tipoGrafico === "barra" ? (
-            <div className="w-full overflow-y-auto" style={{ maxHeight: ALTURA_CARTAO }}>
+            <div className="scroll-sem-barra w-full min-h-0 overflow-y-auto" style={{ minHeight: ALTURA_CARTAO }}>
               <ResponsiveContainer width="100%" height={alturaConteudoBarra}>
                 <BarChart data={itens} layout="vertical" margin={{ left: 8, right: 24 }}>
                   <CartesianGrid horizontal={false} stroke={corGrid} />

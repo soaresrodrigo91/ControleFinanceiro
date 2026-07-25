@@ -40,12 +40,12 @@ export default function SeletorMesAno({ ym, onMudar }: { ym: string; onMudar: (n
             setAnoVisivel(Number(ym.slice(0, 4)));
             setAberto((a) => !a);
           }}
-          className="rounded-lg px-2 py-1.5 text-lg font-semibold whitespace-nowrap text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
+          className="w-36 rounded-lg px-2 py-1.5 text-center text-lg font-semibold whitespace-nowrap text-slate-900 hover:bg-slate-100 dark:text-slate-100 dark:hover:bg-slate-800"
         >
           {formatarMesAno(ym)}
         </button>
         {aberto && (
-          <div className="absolute top-full left-1/2 z-20 mt-1 w-56 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          <div className="absolute top-full left-1/2 z-30 mt-1 w-56 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-lg dark:border-slate-700 dark:bg-slate-800">
             <div className="mb-2 flex items-center justify-between">
               <button
                 type="button"

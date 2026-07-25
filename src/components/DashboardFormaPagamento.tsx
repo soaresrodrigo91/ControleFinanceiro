@@ -96,7 +96,7 @@ export default function DashboardFormaPagamento({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
           Dashboard das formas de pagamento marcadas
@@ -133,7 +133,7 @@ export default function DashboardFormaPagamento({
       </div>
 
       {mostrarDashboard && (
-        <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
           <GraficoItem
             titulo="Valor por forma de pagamento"
             itens={valorPorGrupo}

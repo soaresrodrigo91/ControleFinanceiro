@@ -56,7 +56,7 @@ export default function PerfilMenu({
 
       {aberto && (
         <div
-          className={`absolute z-30 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800 ${
+          className={`absolute z-40 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800 ${
             variante === "barraLateral" ? "bottom-full left-0 mb-2" : "top-full right-0 mt-2"
           }`}
         >

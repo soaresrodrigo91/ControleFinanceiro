@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, query, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Notificacao, TipoNotificacao } from "./types";
 
@@ -14,6 +14,16 @@ export function assinarNotificacoes(uid: string, callback: (notificacoes: Notifi
 
 export async function marcarComoLida(id: string) {
   await updateDoc(doc(db, "notificacoes", id), { lida: true });
+}
+
+export async function excluirNotificacao(id: string) {
+  await deleteDoc(doc(db, "notificacoes", id));
+}
+
+export async function limparNotificacoes(ids: string[]) {
+  const batch = writeBatch(db);
+  ids.forEach((id) => batch.delete(doc(db, "notificacoes", id)));
+  await batch.commit();
 }
 
 export async function criarNotificacao(dados: {

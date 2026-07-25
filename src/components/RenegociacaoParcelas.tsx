@@ -181,7 +181,7 @@ export default function RenegociacaoParcelas({
   return (
     <div>
       <div
-        className="sticky z-10 mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
+        className="sticky z-30 mb-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
         style={{ top: stickyTop }}
       >
         <div className="flex flex-wrap items-end justify-between gap-3">

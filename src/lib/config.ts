@@ -1,11 +1,13 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
   limit,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -190,12 +192,58 @@ export async function removerComp(uid: string, nome: string) {
   await updateDoc(ref, { comp: atual.filter((c) => c.nome !== nome) });
 }
 
+// Remove um sufixo "NN%" já existente para obter o nome-base digitado pelo usuário.
+function baseNomeComp(nome: string): string {
+  return nome.replace(/\s+\d+%$/, "").trim();
+}
+
+function nomeComPercentual(nomeAtual: string, modo: ModoComp): string {
+  const base = baseNomeComp(nomeAtual);
+  if (modo === "total") return `${base} 100%`;
+  if (modo === "metade") return `${base} 50%`;
+  return base;
+}
+
+// O nome do reembolso funciona como chave em várias coleções (vínculo de e-mail, comp
+// das parcelas/recorrências). Ao renomear, propaga para todo lugar que referencia o nome
+// antigo, senão essas ligações silenciosamente param de bater.
+async function renomearComp(uid: string, nomeAntigo: string, nomeNovo: string) {
+  const [parcelasSnap, recorrenciasSnap] = await Promise.all([
+    getDocs(query(collection(db, "usuarios", uid, "parcelas"), where("comp", "==", nomeAntigo))),
+    getDocs(query(collection(db, "usuarios", uid, "recorrencias"), where("comp", "==", nomeAntigo))),
+  ]);
+  const alvos = [...parcelasSnap.docs, ...recorrenciasSnap.docs];
+  for (let i = 0; i < alvos.length; i += 450) {
+    const batch = writeBatch(db);
+    alvos.slice(i, i + 450).forEach((d) => batch.update(d.ref, { comp: nomeNovo }));
+    await batch.commit();
+  }
+
+  const vinculoRef = doc(db, "usuarios", uid, "vinculosCompartilhamento", nomeAntigo);
+  const vinculoSnap = await getDoc(vinculoRef);
+  if (vinculoSnap.exists()) {
+    await setDoc(doc(db, "usuarios", uid, "vinculosCompartilhamento", nomeNovo), {
+      ...vinculoSnap.data(),
+      compNome: nomeNovo,
+    });
+    await deleteDoc(vinculoRef);
+  }
+}
+
 export async function atualizarModoComp(uid: string, nome: string, modo: ModoComp) {
   const ref = doc(db, "usuarios", uid, "config", "listas");
   const snap = await getDoc(ref);
   const atual = (snap.data() as ConfigListas | undefined)?.comp ?? [];
+
+  const nomeSugerido = nomeComPercentual(nome, modo);
+  const colide = nomeSugerido !== nome && atual.some((c) => c.nome === nomeSugerido);
+  const nomeFinal = colide ? nome : nomeSugerido;
+
+  if (nomeFinal !== nome) {
+    await renomearComp(uid, nome, nomeFinal);
+  }
   await updateDoc(ref, {
-    comp: atual.map((c) => (c.nome === nome ? { ...c, modo } : c)),
+    comp: atual.map((c) => (c.nome === nome ? { ...c, nome: nomeFinal, modo } : c)),
   });
 }
 

@@ -1,16 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   assinarEnviados,
+  assinarEnviosExcluidos,
   assinarRecebidos,
   assinarVinculos,
+  calcularValorReembolso,
   candidatosParaCompartilhar,
+  chaveOrigemParcela,
   compartilharSelecionados,
   excluirEnviadoComEscopo,
+  excluirPendenciaDeEnvio,
   excluirRecebidoComEscopo,
   lancarSelecionados,
-  reenviarSelecionados,
+  valorOrigemDoReembolso,
   vinculoPorCompNome,
   type EscopoExclusaoRecebido,
 } from "@/lib/compartilhamento";
@@ -21,6 +25,7 @@ import { assinarPerfil } from "@/lib/perfil";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { formatarDataBR, formatarMoeda } from "@/lib/date";
 import SeletorMesAno from "@/components/SeletorMesAno";
+import SeletorMarcarTodos from "@/components/SeletorMarcarTodos";
 import Modal from "@/components/Modal";
 import Paginacao from "@/components/Paginacao";
 import { IconExcluir } from "@/components/action-icons";
@@ -40,12 +45,120 @@ function parcelaDaParcela(p: Parcela): string {
   return "—";
 }
 
+// Para conta fixa não existe "data da compra" — o dado relevante é o vencimento daquela
+// ocorrência do mês.
+function dataExibicaoParcela(p: Parcela): string | null {
+  return p.recorrenciaId ? p.vencimento : p.dataCompra;
+}
+
+function dataExibicaoEnviado(e: LancamentoCompartilhado): string | null {
+  return e.recorrenciaOrigemId ? e.vencimento : e.dataCompra;
+}
+
+// Chave de dois botões (mesmo padrão visual usado no gráfico Pizza/Barras) que alterna
+// entre os lançamentos recebidos e os enviados — não muda nenhuma regra, só a forma de
+// exibir a alternância.
+function ChaveModoEnviadosRecebidos({
+  modo,
+  onAlterar,
+}: {
+  modo: "enviados" | "recebidos";
+  onAlterar: (modo: "enviados" | "recebidos") => void;
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <button
+        type="button"
+        onClick={() => onAlterar("recebidos")}
+        className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-medium ${
+          modo === "recebidos"
+            ? "border-indigo-600 bg-indigo-600 text-white"
+            : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+        }`}
+      >
+        Lançamentos Recebidos
+      </button>
+      <button
+        type="button"
+        onClick={() => onAlterar("enviados")}
+        className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-medium ${
+          modo === "enviados"
+            ? "border-indigo-600 bg-indigo-600 text-white"
+            : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+        }`}
+      >
+        Lançamentos Enviados
+      </button>
+    </div>
+  );
+}
+
+// Mesmo padrão visual do filtro acima, mas para alternar a visualização entre os itens
+// ainda pendentes de envio e os já enviados dentro da aba Lançamentos Enviados — não afeta
+// nenhuma regra de negócio, só o que fica visível na tabela. Os rótulos ("Pendentes"/"Já
+// Enviados") propositalmente evitam repetir a palavra "Enviados" sozinha, para não parecer
+// contraditório ao lado do botão "Lançamentos Enviados" já selecionado.
+function FiltroStatusEnvio({
+  status,
+  onAlterar,
+}: {
+  status: "nao_enviados" | "enviados";
+  onAlterar: (status: "nao_enviados" | "enviados") => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function aoClicarFora(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    }
+    document.addEventListener("mousedown", aoClicarFora);
+    return () => document.removeEventListener("mousedown", aoClicarFora);
+  }, []);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="flex h-[42px] shrink-0 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:hover:bg-slate-700"
+      >
+        <span className="text-slate-500 dark:text-slate-400">Status:</span>
+        <span className="font-medium text-slate-900 dark:text-slate-100">
+          {status === "nao_enviados" ? "Pendentes" : "Já Enviados"}
+        </span>
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {aberto && (
+        <div className="absolute z-30 mt-1 w-44 rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          {(["nao_enviados", "enviados"] as const).map((opcao) => (
+            <label
+              key={opcao}
+              className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              <input
+                type="checkbox"
+                checked={status === opcao}
+                onChange={() => onAlterar(opcao)}
+                className="h-3.5 w-3.5 accent-indigo-600"
+              />
+              {opcao === "nao_enviados" ? "Pendentes" : "Já Enviados"}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LancamentosCompartilhados({
   uid,
   email,
   config,
   stickyTop = 0,
-  modoInicial = "enviados",
+  modoInicial = "recebidos",
 }: {
   uid: string;
   email: string;
@@ -65,42 +178,25 @@ export default function LancamentosCompartilhados({
     return assinarPerfil(uid, (p) => setNome(`${p.nome} ${p.sobrenome}`.trim()));
   }, [uid]);
 
-  return (
-    <div>
-      <div
-        className="sticky z-10 mb-4 flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
-        style={{ top: stickyTop }}
-      >
-        <button
-          onClick={() => setModo("enviados")}
-          className={`rounded-lg px-4 py-1.5 text-sm font-medium ${
-            modo === "enviados"
-              ? "bg-indigo-600 text-white"
-              : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
-          }`}
-        >
-          Enviados
-        </button>
-        <button
-          onClick={() => setModo("recebidos")}
-          className={`rounded-lg px-4 py-1.5 text-sm font-medium ${
-            modo === "recebidos"
-              ? "bg-indigo-600 text-white"
-              : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
-          }`}
-        >
-          Recebidos
-        </button>
-      </div>
-
-      {modo === "enviados" ? (
-        <AbaEnviados uid={uid} email={email} nome={nome} config={config} vinculos={vinculos} />
-      ) : (
-        <AbaRecebidos uid={uid} config={config} />
-      )}
-    </div>
+  return modo === "enviados" ? (
+    <AbaEnviados
+      uid={uid}
+      email={email}
+      nome={nome}
+      config={config}
+      vinculos={vinculos}
+      stickyTop={stickyTop}
+      modo={modo}
+      onAlterarModo={setModo}
+    />
+  ) : (
+    <AbaRecebidos uid={uid} config={config} stickyTop={stickyTop} modo={modo} onAlterarModo={setModo} />
   );
 }
+
+type LinhaEnvio =
+  | { status: "enviado"; item: LancamentoCompartilhado }
+  | { status: "nao_enviado"; parcela: Parcela };
 
 function AbaEnviados({
   uid,
@@ -108,24 +204,49 @@ function AbaEnviados({
   nome,
   config,
   vinculos,
+  stickyTop,
+  modo,
+  onAlterarModo,
 }: {
   uid: string;
   email: string;
   nome: string;
   config: ConfigListas;
   vinculos: VinculoCompartilhamento[];
+  stickyTop: number;
+  modo: "enviados" | "recebidos";
+  onAlterarModo: (modo: "enviados" | "recebidos") => void;
 }) {
   const { ym, definirYm: setYm } = useMesAtual();
   const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([]);
   const [estadoMes, setEstadoMes] = useState<{ ym: string; parcelasReais: Parcela[] }>({ ym: "", parcelasReais: [] });
   const [enviados, setEnviados] = useState<LancamentoCompartilhado[]>([]);
-  const [mostrarEnviados, setMostrarEnviados] = useState(false);
+  const [enviosExcluidos, setEnviosExcluidos] = useState<Set<string>>(new Set());
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [confirmando, setConfirmando] = useState(false);
-  const [confirmandoReenvio, setConfirmandoReenvio] = useState(false);
+  const [statusFiltro, setStatusFiltro] = useState<"nao_enviados" | "enviados">("nao_enviados");
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [excluindo, setExcluindo] = useState<LancamentoCompartilhado | null>(null);
   const [excluindoOcorrencia, setExcluindoOcorrencia] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState("");
+  const [removendo, setRemovendo] = useState<Parcela | null>(null);
+  const [removendoOcorrencia, setRemovendoOcorrencia] = useState(false);
+  const [erroRemocao, setErroRemocao] = useState("");
+  const [excluindoSelecionados, setExcluindoSelecionados] = useState(false);
+  const [excluindoSelecionadosOcorrencia, setExcluindoSelecionadosOcorrencia] = useState(false);
+  const [erroExclusaoSelecionados, setErroExclusaoSelecionados] = useState("");
+
+  const [ymAnterior, setYmAnterior] = useState(ym);
+  if (ym !== ymAnterior) {
+    setYmAnterior(ym);
+    setPaginaAtual(1);
+  }
+
+  const [statusFiltroAnterior, setStatusFiltroAnterior] = useState(statusFiltro);
+  if (statusFiltro !== statusFiltroAnterior) {
+    setStatusFiltroAnterior(statusFiltro);
+    setPaginaAtual(1);
+  }
 
   useEffect(() => {
     return assinarRecorrencias(uid, "pagar", setRecorrencias);
@@ -139,11 +260,9 @@ function AbaEnviados({
     return assinarEnviados(uid, setEnviados);
   }, [uid]);
 
-  function handleAlternarMostrarEnviados(marcado: boolean) {
-    setMostrarEnviados(marcado);
-    setSelecionados(new Set());
-    setPaginaAtual(1);
-  }
+  useEffect(() => {
+    return assinarEnviosExcluidos(uid, setEnviosExcluidos);
+  }, [uid]);
 
   const carregando = estadoMes.ym !== ym;
 
@@ -157,25 +276,38 @@ function AbaEnviados({
   const origensCompartilhadas = useMemo(() => new Set(enviados.map((e) => e.lancamentoOrigemId)), [enviados]);
 
   const naoEnviados = useMemo(
-    () => candidatos.filter((p) => !origensCompartilhadas.has(p.id)),
-    [candidatos, origensCompartilhadas]
+    () =>
+      candidatos.filter((p) => {
+        const chave = chaveOrigemParcela(p);
+        return !origensCompartilhadas.has(chave) && !enviosExcluidos.has(chave);
+      }),
+    [candidatos, origensCompartilhadas, enviosExcluidos]
   );
 
   const enviadosDoMes = useMemo(() => enviados.filter((e) => e.vencimento.slice(0, 7) === ym), [enviados, ym]);
 
-  const totalItens = mostrarEnviados ? enviadosDoMes.length : naoEnviados.length;
-  const totalPaginas = totalDePaginas(totalItens, config.itensPorPagina);
-  const paginadosParcelas = useMemo(
-    () => paginar(naoEnviados, config.itensPorPagina, paginaAtual),
-    [naoEnviados, config.itensPorPagina, paginaAtual]
-  );
-  const paginadosEnviados = useMemo(
-    () => paginar(enviadosDoMes, config.itensPorPagina, paginaAtual),
-    [enviadosDoMes, config.itensPorPagina, paginaAtual]
+  const linhas = useMemo<LinhaEnvio[]>(
+    () =>
+      statusFiltro === "nao_enviados"
+        ? naoEnviados.map((parcela) => ({ status: "nao_enviado" as const, parcela }))
+        : enviadosDoMes.map((item) => ({ status: "enviado" as const, item })),
+    [statusFiltro, naoEnviados, enviadosDoMes]
   );
 
-  const idsVisiveis = mostrarEnviados ? paginadosEnviados.map((e) => e.id) : paginadosParcelas.map((p) => p.id);
+  const totalItens = linhas.length;
+  const totalPaginas = totalDePaginas(totalItens, config.itensPorPagina);
+  const paginadas = useMemo(
+    () => paginar(linhas, config.itensPorPagina, paginaAtual),
+    [linhas, config.itensPorPagina, paginaAtual]
+  );
+
+  const idDaLinha = useCallback((l: LinhaEnvio) => (l.status === "enviado" ? l.item.id : l.parcela.id), []);
+
+  const idsVisiveis = useMemo(() => paginadas.map(idDaLinha), [paginadas, idDaLinha]);
+  const idsTodasAsLinhas = useMemo(() => linhas.map(idDaLinha), [linhas, idDaLinha]);
   const todosSelecionadosNaPagina = idsVisiveis.length > 0 && idsVisiveis.every((id) => selecionados.has(id));
+  const todosSelecionadosTodasAsPaginas =
+    idsTodasAsLinhas.length > 0 && idsTodasAsLinhas.every((id) => selecionados.has(id));
 
   function alternarSelecao(id: string, marcado: boolean) {
     setSelecionados((atual) => {
@@ -194,8 +326,16 @@ function AbaEnviados({
     });
   }
 
+  function alternarTodosTodasAsPaginas(marcado: boolean) {
+    setSelecionados(marcado ? new Set(idsTodasAsLinhas) : new Set());
+  }
+
   const itensSelecionados = naoEnviados.filter((p) => selecionados.has(p.id));
-  const enviadosSelecionados = enviadosDoMes.filter((e) => selecionados.has(e.id));
+  const itensSelecionadosEnviados = useMemo(
+    () => enviadosDoMes.filter((e) => selecionados.has(e.id)),
+    [enviadosDoMes, selecionados]
+  );
+  const totalSelecionadosParaExcluir = itensSelecionados.length + itensSelecionadosEnviados.length;
 
   const nomesDestinatariosDe = useCallback(
     (comps: (string | null)[]): string[] => {
@@ -212,10 +352,6 @@ function AbaEnviados({
     () => nomesDestinatariosDe(itensSelecionados.map((p) => p.comp)),
     [itensSelecionados, nomesDestinatariosDe]
   );
-  const nomesDestinatariosReenvio = useMemo(
-    () => nomesDestinatariosDe(enviadosSelecionados.map((e) => e.compNome)),
-    [enviadosSelecionados, nomesDestinatariosDe]
-  );
 
   async function handleConfirmarCompartilhar() {
     await compartilharSelecionados(uid, nome, email, itensSelecionados, config, vinculos, recorrencias, enviados);
@@ -223,64 +359,91 @@ function AbaEnviados({
     setConfirmando(false);
   }
 
-  async function handleConfirmarReenvio() {
-    await reenviarSelecionados(uid, nome, enviadosSelecionados);
-    setSelecionados(new Set());
-    setConfirmandoReenvio(false);
-  }
-
   async function handleExcluirComEscopo(escopo: EscopoExclusaoRecebido) {
     if (!excluindo) return;
+    setErroExclusao("");
     setExcluindoOcorrencia(true);
     try {
-      await excluirEnviadoComEscopo(excluindo, escopo);
+      await excluirEnviadoComEscopo(excluindo, escopo, recorrencias);
       setExcluindo(null);
+    } catch {
+      setErroExclusao("Não foi possível excluir. Tente novamente.");
     } finally {
       setExcluindoOcorrencia(false);
     }
   }
 
+  async function handleRemoverComEscopo(escopo: EscopoExclusaoRecebido) {
+    if (!removendo) return;
+    setErroRemocao("");
+    setRemovendoOcorrencia(true);
+    try {
+      await excluirPendenciaDeEnvio(uid, removendo, recorrencias, enviados, escopo);
+      setRemovendo(null);
+    } catch {
+      setErroRemocao("Não foi possível remover. Tente novamente.");
+    } finally {
+      setRemovendoOcorrencia(false);
+    }
+  }
+
+  async function handleExcluirSelecionadosComEscopo(escopo: EscopoExclusaoRecebido) {
+    setErroExclusaoSelecionados("");
+    setExcluindoSelecionadosOcorrencia(true);
+    try {
+      for (const item of itensSelecionadosEnviados) {
+        await excluirEnviadoComEscopo(item, escopo, recorrencias);
+      }
+      for (const p of itensSelecionados) {
+        await excluirPendenciaDeEnvio(uid, p, recorrencias, enviados, escopo);
+      }
+      setSelecionados(new Set());
+      setExcluindoSelecionados(false);
+    } catch {
+      setErroExclusaoSelecionados("Não foi possível excluir alguns itens. Tente novamente.");
+    } finally {
+      setExcluindoSelecionadosOcorrencia(false);
+    }
+  }
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {mostrarEnviados ? (
+      <div
+        className="sticky z-30 mb-6 rounded-xl border border-slate-200 bg-white shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
+        style={{ top: stickyTop }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <ChaveModoEnviadosRecebidos modo={modo} onAlterar={onAlterarModo} />
+          <SeletorMesAno ym={ym} onMudar={setYm} />
+        </div>
+        <div className="flex items-center justify-between gap-3 rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/40">
+          <FiltroStatusEnvio status={statusFiltro} onAlterar={setStatusFiltro} />
+          <div className="flex h-[42px] shrink-0 items-center gap-2">
             <button
-              onClick={() => setConfirmandoReenvio(true)}
-              disabled={enviadosSelecionados.length === 0}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              onClick={() => setExcluindoSelecionados(true)}
+              disabled={totalSelecionadosParaExcluir === 0}
+              className="inline-flex h-[42px] min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-300 px-4 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
             >
-              Reenviar Lançamento {enviadosSelecionados.length > 0 ? `(${enviadosSelecionados.length})` : ""}
+              Excluir {totalSelecionadosParaExcluir > 0 ? `(${totalSelecionadosParaExcluir})` : ""}
             </button>
-          ) : (
             <button
               onClick={() => setConfirmando(true)}
               disabled={itensSelecionados.length === 0}
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="inline-flex h-[42px] min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Compartilhar {itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}
+              Enviar {itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}
             </button>
-          )}
-          <label className="flex h-[42px] cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600">
-            <input
-              type="checkbox"
-              checked={mostrarEnviados}
-              onChange={(e) => handleAlternarMostrarEnviados(e.target.checked)}
-              className="h-4 w-4 accent-indigo-600"
-            />
-            Enviados
-          </label>
+          </div>
         </div>
-        <SeletorMesAno ym={ym} onMudar={setYm} />
       </div>
 
       {carregando ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
       ) : totalItens === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {mostrarEnviados
-            ? "Nenhum lançamento enviado neste mês."
-            : "Nenhum lançamento pendente de envio neste mês."}
+          {statusFiltro === "nao_enviados"
+            ? "Nenhum lançamento pendente de envio neste mês."
+            : "Nenhum lançamento já enviado neste mês."}
         </p>
       ) : (
         <>
@@ -288,95 +451,132 @@ function AbaEnviados({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                  <th className="w-10 py-2 pl-4">
-                    <input
-                      type="checkbox"
-                      checked={todosSelecionadosNaPagina}
-                      onChange={(e) => alternarTodosNaPagina(e.target.checked)}
-                      className="h-5 w-5 accent-indigo-600"
-                      aria-label="Selecionar todos nesta página"
+                  <th className="w-14 py-2 pl-4">
+                    <SeletorMarcarTodos
+                      marcadoPagina={todosSelecionadosNaPagina}
+                      onAlterarPagina={(marcado) => alternarTodosNaPagina(marcado)}
+                      marcadoTodas={todosSelecionadosTodasAsPaginas}
+                      onAlterarTodas={(marcado) => alternarTodosTodasAsPaginas(marcado)}
+                      ariaLabelPagina="Selecionar todos nesta página"
+                      ariaLabelTodas="Selecionar todos em todas as páginas"
                     />
                   </th>
                   <th className="py-2 pr-2">Credor</th>
                   <th className="py-2 pr-2">Observação</th>
+                  <th className="py-2 pr-2">Aplicação</th>
                   <th className="py-2 pr-2">Parcela</th>
                   <th className="py-2 pr-2">Reembolso</th>
                   <th className="py-2 pr-2">Data</th>
-                  <th className="py-2 pr-2 text-right">Valor</th>
+                  <th className="py-2 pr-2 text-right">Valor do lançamento</th>
+                  <th className="py-2 pr-2 text-right">Valor do Reembolso</th>
                   <th className="py-2 pr-2">Status</th>
                   <th className="w-12 py-2 pr-4"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {mostrarEnviados
-                  ? paginadosEnviados.map((e) => (
-                      <tr key={e.id}>
-                        <td className="py-2.5 pl-4">
-                          <input
-                            type="checkbox"
-                            checked={selecionados.has(e.id)}
-                            onChange={(ev) => alternarSelecao(e.id, ev.target.checked)}
-                            className="h-5 w-5 accent-indigo-600"
-                            aria-label={`Selecionar ${e.credorSugerido}`}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-2 font-medium text-slate-900 dark:text-slate-100">
-                          {e.credorSugerido}
-                        </td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{e.observacao || "—"}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{e.parcela}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{e.compNome}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
-                          {e.dataCompra ? formatarDataBR(e.dataCompra) : "—"}
-                        </td>
-                        <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
-                          {formatarMoeda(e.valor)}
-                        </td>
-                        <td className="py-2.5 pr-2">
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                            Enviado
-                          </span>
-                        </td>
-                        <td className="py-2.5 pr-4">
-                          <button
-                            onClick={() => setExcluindo(e)}
-                            aria-label={`Excluir compartilhamento de ${e.credorSugerido}`}
-                            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-700 dark:hover:text-red-400"
-                          >
-                            <IconExcluir className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  : paginadosParcelas.map((p) => (
-                      <tr key={p.id}>
-                        <td className="py-2.5 pl-4">
-                          <input
-                            type="checkbox"
-                            checked={selecionados.has(p.id)}
-                            onChange={(ev) => alternarSelecao(p.id, ev.target.checked)}
-                            className="h-5 w-5 accent-indigo-600"
-                            aria-label={`Selecionar ${p.credor}`}
-                          />
-                        </td>
-                        <td className="py-2.5 pr-2 font-medium text-slate-900 dark:text-slate-100">{p.credor}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.observacao || "—"}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{parcelaDaParcela(p)}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.comp ?? "—"}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
-                          {p.dataCompra ? formatarDataBR(p.dataCompra) : "—"}
-                        </td>
-                        <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
-                          {formatarMoeda(p.valorParcela)}
-                        </td>
-                        <td className="py-2.5 pr-2">
-                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-950 dark:text-red-400">
-                            Não enviado
-                          </span>
-                        </td>
-                        <td className="py-2.5 pr-4"></td>
-                      </tr>
-                    ))}
+                {paginadas.map((linha) =>
+                  linha.status === "enviado" ? (
+                    <tr key={`e-${linha.item.id}`}>
+                      <td className="py-2.5 pl-4">
+                        <input
+                          type="checkbox"
+                          checked={selecionados.has(linha.item.id)}
+                          onChange={(ev) => alternarSelecao(linha.item.id, ev.target.checked)}
+                          className="h-5 w-5 accent-indigo-600"
+                          aria-label={`Selecionar ${linha.item.credorSugerido}`}
+                        />
+                      </td>
+                      <td className="py-2.5 pr-2 font-medium text-slate-900 dark:text-slate-100">
+                        {linha.item.credorSugerido}
+                      </td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {linha.item.observacao || "—"}
+                      </td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {linha.item.aplicacaoSugerida}
+                      </td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{linha.item.parcela}</td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{linha.item.compNome}</td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {dataExibicaoEnviado(linha.item) ? formatarDataBR(dataExibicaoEnviado(linha.item)!) : "—"}
+                      </td>
+                      <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
+                        {formatarMoeda(valorOrigemDoReembolso(linha.item.valor, linha.item.compNome, config))}
+                      </td>
+                      <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
+                        {formatarMoeda(linha.item.valor)}
+                      </td>
+                      <td className="py-2.5 pr-2">
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                          Enviado
+                        </span>
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <button
+                          onClick={() => {
+                            setErroExclusao("");
+                            setExcluindo(linha.item);
+                          }}
+                          aria-label={`Excluir compartilhamento de ${linha.item.credorSugerido}`}
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-700 dark:hover:text-red-400"
+                        >
+                          <IconExcluir className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={`p-${linha.parcela.id}`}>
+                      <td className="py-2.5 pl-4">
+                        <input
+                          type="checkbox"
+                          checked={selecionados.has(linha.parcela.id)}
+                          onChange={(ev) => alternarSelecao(linha.parcela.id, ev.target.checked)}
+                          className="h-5 w-5 accent-indigo-600"
+                          aria-label={`Selecionar ${linha.parcela.credor}`}
+                        />
+                      </td>
+                      <td className="py-2.5 pr-2 font-medium text-slate-900 dark:text-slate-100">
+                        {linha.parcela.credor}
+                      </td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {linha.parcela.observacao || "—"}
+                      </td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{linha.parcela.aplicacao}</td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {parcelaDaParcela(linha.parcela)}
+                      </td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{linha.parcela.comp ?? "—"}</td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {dataExibicaoParcela(linha.parcela)
+                          ? formatarDataBR(dataExibicaoParcela(linha.parcela)!)
+                          : "—"}
+                      </td>
+                      <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
+                        {formatarMoeda(linha.parcela.valorParcela)}
+                      </td>
+                      <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
+                        {formatarMoeda(calcularValorReembolso(linha.parcela.valorParcela, linha.parcela.comp, config))}
+                      </td>
+                      <td className="py-2.5 pr-2">
+                        <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-950 dark:text-red-400">
+                          Não enviado
+                        </span>
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <button
+                          onClick={() => {
+                            setErroRemocao("");
+                            setRemovendo(linha.parcela);
+                          }}
+                          aria-label={`Remover ${linha.parcela.credor} da lista de envio`}
+                          className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-700 dark:hover:text-red-400"
+                        >
+                          <IconExcluir className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>
@@ -409,31 +609,14 @@ function AbaEnviados({
         </div>
       </Modal>
 
-      <Modal aberto={confirmandoReenvio} onFechar={() => setConfirmandoReenvio(false)} titulo="Confirmar reenvio">
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-slate-600 dark:text-slate-300">
-            {nomesDestinatariosReenvio.length > 0
-              ? `Estes lançamentos serão reenviados para ${nomesDestinatariosReenvio.join(", ")}.`
-              : "Estes lançamentos serão reenviados."}
-          </p>
-          <button onClick={handleConfirmarReenvio} className={CLASSE_BOTAO_PRIMARIO}>
-            Confirmar
-          </button>
-          <button
-            onClick={() => setConfirmandoReenvio(false)}
-            className="text-center text-sm text-slate-500 dark:text-slate-400"
-          >
-            Cancelar
-          </button>
-        </div>
-      </Modal>
-
       <Modal aberto={!!excluindo} onFechar={() => setExcluindo(null)} titulo="Excluir compartilhamento">
         <div className="flex flex-col gap-2">
           <p className="text-sm text-slate-600 dark:text-slate-300">
             &quot;{excluindo?.credorSugerido}&quot; — o que deseja excluir do compartilhamento? A despesa continua
-            na sua Contas a Pagar; só o envio para {excluindo?.compNome} é desfeito.
+            na sua Contas a Pagar; só o envio para {excluindo?.compNome} é desfeito, e não volta a aparecer
+            sozinho como pendência de envio (use &quot;Reenviar&quot; em Lançamentos se quiser enviar de novo).
           </p>
+          {erroExclusao && <p className="text-sm text-red-600 dark:text-red-400">{erroExclusao}</p>}
           <button
             onClick={() => handleExcluirComEscopo("mes")}
             disabled={excluindoOcorrencia}
@@ -464,6 +647,103 @@ function AbaEnviados({
           </button>
         </div>
       </Modal>
+
+      <Modal aberto={!!removendo} onFechar={() => setRemovendo(null)} titulo="Remover da lista de envio">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            &quot;{removendo?.credor}&quot; — isso remove apenas a pendência de envio da lista; o lançamento
+            continua intacto na sua Contas a Pagar, com o reembolso configurado normalmente.
+          </p>
+          {erroRemocao && <p className="text-sm text-red-600 dark:text-red-400">{erroRemocao}</p>}
+          {removendo?.recorrenciaId || (removendo && removendo.parcelaTotal > 1) ? (
+            <>
+              <button
+                onClick={() => handleRemoverComEscopo("mes")}
+                disabled={removendoOcorrencia}
+                className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Apenas este mês
+              </button>
+              <button
+                onClick={() => handleRemoverComEscopo("futuros")}
+                disabled={removendoOcorrencia}
+                className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Este mês e os futuros
+              </button>
+              <button
+                onClick={() => handleRemoverComEscopo("tudo")}
+                disabled={removendoOcorrencia}
+                className="w-full rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {removendoOcorrencia ? "Removendo..." : "Todos (desde o início)"}
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => handleRemoverComEscopo("mes")}
+              disabled={removendoOcorrencia}
+              className="w-full rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {removendoOcorrencia ? "Removendo..." : "Remover"}
+            </button>
+          )}
+          <button
+            onClick={() => setRemovendo(null)}
+            disabled={removendoOcorrencia}
+            className="text-center text-sm text-slate-500 dark:text-slate-400"
+          >
+            Cancelar
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        aberto={excluindoSelecionados}
+        onFechar={() => setExcluindoSelecionados(false)}
+        titulo="Excluir selecionados"
+      >
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {totalSelecionadosParaExcluir} lançamento{totalSelecionadosParaExcluir !== 1 && "s"} selecionado
+            {totalSelecionadosParaExcluir !== 1 && "s"} — o que deseja excluir? Em ambos os casos (já enviados ou
+            pendentes) sai da lista de envio e não volta a aparecer sozinho como pendência (use &quot;Reenviar&quot;
+            em Lançamentos se quiser enviar de novo); o lançamento continua intacto na sua Contas a Pagar, com o
+            reembolso configurado normalmente.
+          </p>
+          {erroExclusaoSelecionados && (
+            <p className="text-sm text-red-600 dark:text-red-400">{erroExclusaoSelecionados}</p>
+          )}
+          <button
+            onClick={() => handleExcluirSelecionadosComEscopo("mes")}
+            disabled={excluindoSelecionadosOcorrencia}
+            className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            Apenas este mês
+          </button>
+          <button
+            onClick={() => handleExcluirSelecionadosComEscopo("futuros")}
+            disabled={excluindoSelecionadosOcorrencia}
+            className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            Este mês e os futuros
+          </button>
+          <button
+            onClick={() => handleExcluirSelecionadosComEscopo("tudo")}
+            disabled={excluindoSelecionadosOcorrencia}
+            className="w-full rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {excluindoSelecionadosOcorrencia ? "Excluindo..." : "Todos (desde o início)"}
+          </button>
+          <button
+            onClick={() => setExcluindoSelecionados(false)}
+            disabled={excluindoSelecionadosOcorrencia}
+            className="text-center text-sm text-slate-500 dark:text-slate-400"
+          >
+            Cancelar
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -471,9 +751,15 @@ function AbaEnviados({
 function AbaRecebidos({
   uid,
   config,
+  stickyTop,
+  modo,
+  onAlterarModo,
 }: {
   uid: string;
   config: ConfigListas;
+  stickyTop: number;
+  modo: "enviados" | "recebidos";
+  onAlterarModo: (modo: "enviados" | "recebidos") => void;
 }) {
   const { ym, definirYm: setYm } = useMesAtual();
   const [recebidos, setRecebidos] = useState<LancamentoCompartilhado[]>([]);
@@ -481,8 +767,13 @@ function AbaRecebidos({
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [confirmandoLancar, setConfirmandoLancar] = useState(false);
   const [grupoEscolhidoManual, setGrupoEscolhidoManual] = useState<string | null>(null);
+  const [aplicacaoEscolhidaManual, setAplicacaoEscolhidaManual] = useState<string | null>(null);
   const [excluindo, setExcluindo] = useState<LancamentoCompartilhado | null>(null);
   const [excluindoOcorrencia, setExcluindoOcorrencia] = useState(false);
+  const [erroExclusao, setErroExclusao] = useState("");
+  const [excluindoSelecionados, setExcluindoSelecionados] = useState(false);
+  const [excluindoSelecionadosOcorrencia, setExcluindoSelecionadosOcorrencia] = useState(false);
+  const [erroExclusaoSelecionados, setErroExclusaoSelecionados] = useState("");
 
   const gruposDisponiveis = useMemo(() => config.grupos.filter((g) => g !== GRUPO_PROVISAO), [config.grupos]);
   const grupoEscolhido = grupoEscolhidoManual ?? gruposDisponiveis[0] ?? "";
@@ -514,6 +805,8 @@ function AbaRecebidos({
   );
 
   const todosSelecionadosNaPagina = paginados.length > 0 && paginados.every((r) => selecionados.has(r.id));
+  const todosSelecionadosTodasAsPaginas =
+    recebidosVisiveis.length > 0 && recebidosVisiveis.every((r) => selecionados.has(r.id));
 
   function alternarSelecao(id: string, marcado: boolean) {
     setSelecionados((atual) => {
@@ -532,37 +825,82 @@ function AbaRecebidos({
     });
   }
 
+  function alternarTodosTodasAsPaginas(marcado: boolean) {
+    setSelecionados(marcado ? new Set(recebidosVisiveis.map((r) => r.id)) : new Set());
+  }
+
   const itensSelecionados = recebidosVisiveis.filter((r) => selecionados.has(r.id));
+
+  const aplicacoesFaltantes = useMemo(
+    () => [...new Set(itensSelecionados.map((r) => r.aplicacaoSugerida).filter((a) => !config.aplicacoes.includes(a)))],
+    [itensSelecionados, config.aplicacoes]
+  );
+  const aplicacaoEscolhida = aplicacaoEscolhidaManual ?? config.aplicacoes[0] ?? "";
 
   async function handleConfirmarLancar() {
     if (!grupoEscolhido) return;
-    await lancarSelecionados(uid, itensSelecionados, grupoEscolhido);
+    if (aplicacoesFaltantes.length > 0 && !aplicacaoEscolhida) return;
+    await lancarSelecionados(uid, itensSelecionados, grupoEscolhido, config.aplicacoes, aplicacaoEscolhida);
     setSelecionados(new Set());
     setConfirmandoLancar(false);
   }
 
   async function handleExcluirComEscopo(escopo: EscopoExclusaoRecebido) {
     if (!excluindo) return;
+    setErroExclusao("");
     setExcluindoOcorrencia(true);
     try {
       await excluirRecebidoComEscopo(excluindo, escopo);
       setExcluindo(null);
+    } catch {
+      setErroExclusao("Não foi possível excluir. Tente novamente.");
     } finally {
       setExcluindoOcorrencia(false);
     }
   }
 
+  async function handleExcluirSelecionadosComEscopo(escopo: EscopoExclusaoRecebido) {
+    setErroExclusaoSelecionados("");
+    setExcluindoSelecionadosOcorrencia(true);
+    try {
+      for (const item of itensSelecionados) {
+        await excluirRecebidoComEscopo(item, escopo);
+      }
+      setSelecionados(new Set());
+      setExcluindoSelecionados(false);
+    } catch {
+      setErroExclusaoSelecionados("Não foi possível excluir alguns itens. Tente novamente.");
+    } finally {
+      setExcluindoSelecionadosOcorrencia(false);
+    }
+  }
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <button
-          onClick={() => setConfirmandoLancar(true)}
-          disabled={itensSelecionados.length === 0}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          Lançar {itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}
-        </button>
-        <SeletorMesAno ym={ym} onMudar={setYm} />
+      <div
+        className="sticky z-30 mb-6 rounded-xl border border-slate-200 bg-white shadow-sm print:static dark:border-slate-700 dark:bg-slate-800"
+        style={{ top: stickyTop }}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <ChaveModoEnviadosRecebidos modo={modo} onAlterar={onAlterarModo} />
+          <SeletorMesAno ym={ym} onMudar={setYm} />
+        </div>
+        <div className="flex items-center justify-end gap-2 rounded-b-xl border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/40">
+          <button
+            onClick={() => setExcluindoSelecionados(true)}
+            disabled={itensSelecionados.length === 0}
+            className="inline-flex h-[42px] min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-300 px-4 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+          >
+            Excluir {itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}
+          </button>
+          <button
+            onClick={() => setConfirmandoLancar(true)}
+            disabled={itensSelecionados.length === 0}
+            className="inline-flex h-[42px] min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Lançar {itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}
+          </button>
+        </div>
       </div>
 
       {recebidosVisiveis.length === 0 ? (
@@ -573,17 +911,19 @@ function AbaRecebidos({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-                  <th className="w-10 py-2 pl-4">
-                    <input
-                      type="checkbox"
-                      checked={todosSelecionadosNaPagina}
-                      onChange={(e) => alternarTodosNaPagina(e.target.checked)}
-                      className="h-5 w-5 accent-indigo-600"
-                      aria-label="Selecionar todos nesta página"
+                  <th className="w-14 py-2 pl-4">
+                    <SeletorMarcarTodos
+                      marcadoPagina={todosSelecionadosNaPagina}
+                      onAlterarPagina={(marcado) => alternarTodosNaPagina(marcado)}
+                      marcadoTodas={todosSelecionadosTodasAsPaginas}
+                      onAlterarTodas={(marcado) => alternarTodosTodasAsPaginas(marcado)}
+                      ariaLabelPagina="Selecionar todos nesta página"
+                      ariaLabelTodas="Selecionar todos em todas as páginas"
                     />
                   </th>
                   <th className="py-2 pr-2">Credor</th>
                   <th className="py-2 pr-2">Observação</th>
+                  <th className="py-2 pr-2">Aplicação</th>
                   <th className="py-2 pr-2">Parcela</th>
                   <th className="py-2 pr-2">Reembolso</th>
                   <th className="py-2 pr-2">Data</th>
@@ -606,10 +946,11 @@ function AbaRecebidos({
                     </td>
                     <td className="py-2.5 pr-2 font-medium text-slate-900 dark:text-slate-100">{r.deNome}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.observacao || "—"}</td>
+                    <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.aplicacaoSugerida}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.parcela ?? "—"}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.compNome ?? "—"}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
-                      {r.dataCompra ? formatarDataBR(r.dataCompra) : "—"}
+                      {dataExibicaoEnviado(r) ? formatarDataBR(dataExibicaoEnviado(r)!) : "—"}
                     </td>
                     <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
                       {formatarMoeda(r.valor)}
@@ -621,7 +962,10 @@ function AbaRecebidos({
                     </td>
                     <td className="py-2.5 pr-4">
                       <button
-                        onClick={() => setExcluindo(r)}
+                        onClick={() => {
+                          setErroExclusao("");
+                          setExcluindo(r);
+                        }}
                         aria-label={`Excluir recebido de ${r.deNome}`}
                         className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-red-600 dark:hover:bg-slate-700 dark:hover:text-red-400"
                       >
@@ -660,7 +1004,30 @@ function AbaRecebidos({
               </option>
             ))}
           </select>
-          <button onClick={handleConfirmarLancar} disabled={!grupoEscolhido} className={CLASSE_BOTAO_PRIMARIO}>
+          {aplicacoesFaltantes.length > 0 && (
+            <>
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Você ainda não tem a aplicação {aplicacoesFaltantes.map((a) => `"${a}"`).join(", ")} usada por quem
+                enviou. Escolha qual das suas aplicações usar nesse caso:
+              </p>
+              <select
+                value={aplicacaoEscolhida}
+                onChange={(e) => setAplicacaoEscolhidaManual(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              >
+                {config.aplicacoes.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+          <button
+            onClick={handleConfirmarLancar}
+            disabled={!grupoEscolhido || (aplicacoesFaltantes.length > 0 && !aplicacaoEscolhida)}
+            className={CLASSE_BOTAO_PRIMARIO}
+          >
             Confirmar lançamento
           </button>
           <button
@@ -677,6 +1044,7 @@ function AbaRecebidos({
           <p className="text-sm text-slate-600 dark:text-slate-300">
             &quot;{excluindo?.deNome}&quot; — o que deseja excluir?
           </p>
+          {erroExclusao && <p className="text-sm text-red-600 dark:text-red-400">{erroExclusao}</p>}
           <button
             onClick={() => handleExcluirComEscopo("mes")}
             disabled={excluindoOcorrencia}
@@ -701,6 +1069,50 @@ function AbaRecebidos({
           <button
             onClick={() => setExcluindo(null)}
             disabled={excluindoOcorrencia}
+            className="text-center text-sm text-slate-500 dark:text-slate-400"
+          >
+            Cancelar
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        aberto={excluindoSelecionados}
+        onFechar={() => setExcluindoSelecionados(false)}
+        titulo="Excluir selecionados"
+      >
+        <div className="flex flex-col gap-2">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {itensSelecionados.length} lançamento{itensSelecionados.length !== 1 && "s"} selecionado
+            {itensSelecionados.length !== 1 && "s"} — o que deseja excluir?
+          </p>
+          {erroExclusaoSelecionados && (
+            <p className="text-sm text-red-600 dark:text-red-400">{erroExclusaoSelecionados}</p>
+          )}
+          <button
+            onClick={() => handleExcluirSelecionadosComEscopo("mes")}
+            disabled={excluindoSelecionadosOcorrencia}
+            className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            Apenas este mês
+          </button>
+          <button
+            onClick={() => handleExcluirSelecionadosComEscopo("futuros")}
+            disabled={excluindoSelecionadosOcorrencia}
+            className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            Este mês e os futuros
+          </button>
+          <button
+            onClick={() => handleExcluirSelecionadosComEscopo("tudo")}
+            disabled={excluindoSelecionadosOcorrencia}
+            className="w-full rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {excluindoSelecionadosOcorrencia ? "Excluindo..." : "Todos (desde o início)"}
+          </button>
+          <button
+            onClick={() => setExcluindoSelecionados(false)}
+            disabled={excluindoSelecionadosOcorrencia}
             className="text-center text-sm text-slate-500 dark:text-slate-400"
           >
             Cancelar
