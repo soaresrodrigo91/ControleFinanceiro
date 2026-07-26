@@ -593,8 +593,7 @@ export async function lancarSelecionados(
   uid: string,
   itens: LancamentoCompartilhado[],
   grupoEscolhido: string,
-  aplicacoesDisponiveis: string[],
-  aplicacaoEscolhida: string
+  aplicacaoPorGrupo: Map<string, string>
 ) {
   const gruposProcessados = new Set<string>();
 
@@ -615,11 +614,10 @@ export async function lancarSelecionados(
       .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
     if (pendentesDoGrupo.length === 0) continue;
 
-    // Usa a aplicação de quem enviou quando ela já existe na sua lista; senão, usa a
-    // aplicação escolhida manualmente em vez de criar uma nova automaticamente.
-    const aplicacao = aplicacoesDisponiveis.includes(item.aplicacaoSugerida)
-      ? item.aplicacaoSugerida
-      : aplicacaoEscolhida;
+    // A aplicação é escolhida pelo usuário por grupo (tela de confirmação), não mais
+    // decidida automaticamente aqui — permite usar a sugestão de quem enviou, uma aplicação
+    // já existente diferente, ou uma recém-criada a partir da sugestão.
+    const aplicacao = aplicacaoPorGrupo.get(item.grupoOrigemId) ?? item.aplicacaoSugerida;
     const primeiro = pendentesDoGrupo[0];
 
     if (item.recorrenciaOrigemId) {
