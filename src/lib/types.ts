@@ -109,6 +109,7 @@ export type NovoRecebimento = {
   recebimento: string;
   parcelaTotal: number;
   observacao: string;
+  valorPorParcela?: boolean;
 };
 
 export type EscopoRenegociacao = "mes" | "futuros";

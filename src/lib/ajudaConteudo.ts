@@ -126,11 +126,12 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     regras: [
       "Marcar \"Conta fixa (recorrente)\" transforma o lançamento em uma recorrência mensal (sem número de parcelas), que se repete todo mês a partir da data de início até ser encerrada.",
       "Se não for fixa, o valor total é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira parcela.",
-      "O campo Valor total tem máscara de R$: os dígitos digitados formam a parte inteira (ex.: 1, 10, 100... vira 1.000,00), e a vírgula abre a edição dos centavos.",
+      "Uma chave discreta ao lado do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\": com a chave desligada (padrão), o valor digitado é o total e o sistema divide pelas parcelas; com a chave ligada, o valor digitado é o de cada parcela e o sistema multiplica pelo número de parcelas para obter o total. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
+      "O campo de valor tem máscara de R$: os dígitos digitados formam a parte inteira (ex.: 1, 10, 100... vira 1.000,00), e a vírgula abre a edição dos centavos.",
       "Se um reembolso (pessoa) for selecionado e ela tiver um modo configurado (100% ou 50%), o sistema já cria automaticamente o(s) recebimento(s) correspondente(s) em Contas a Receber.",
     ],
     validacoes: [
-      "Credor, data da compra, início da cobrança, valor total, parcelas, forma de pagamento e aplicação são obrigatórios — mensagem: \"Preencha todos os campos obrigatórios.\"",
+      "Credor, data da compra, início da cobrança, valor total (ou valor da parcela, conforme a chave), parcelas, forma de pagamento e aplicação são obrigatórios — mensagem: \"Preencha todos os campos obrigatórios.\"",
       "O valor total precisa ser um número válido maior que zero — mensagem: \"Informe um valor total válido.\"",
       "O número de parcelas precisa ser no mínimo 1 — mensagem: \"O número de parcelas deve ser pelo menos 1.\"",
       "Erro de gravação (rede, permissão etc.): \"Não foi possível salvar o lançamento. Tente novamente.\"",
@@ -141,7 +142,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       { numero: 1, xPct: 50, yPct: 27, texto: "Nome do credor — sugere nomes já usados antes." },
       { numero: 2, xPct: 50, yPct: 37.3, texto: "Data da compra e início da cobrança (1ª parcela)." },
       { numero: 3, xPct: 34, yPct: 43, texto: "Vira uma recorrência mensal em vez de um lançamento único." },
-      { numero: 4, xPct: 50, yPct: 62.3, texto: "Valor total e número de parcelas — a divisão é automática." },
+      { numero: 4, xPct: 50, yPct: 62.3, texto: "Valor (total ou por parcela, conforme a chave) e número de parcelas — a divisão é automática." },
       { numero: 5, xPct: 50, yPct: 72.4, texto: "Forma de pagamento e aplicação — usadas nos filtros e relatórios." },
       { numero: 6, xPct: 50, yPct: 92.6, texto: "Se preenchido, gera um recebimento automático para quem divide a conta." },
     ],
@@ -273,8 +274,8 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: "Formulário para lançar uma entrada manual — salário, venda, reembolso avulso, etc.",
     regras: [
       "Assim como em Contas a Pagar, marcar \"Conta fixa (recorrente)\" transforma o lançamento em uma recorrência mensal.",
-      "Se não for fixo, o valor é dividido igualmente entre as parcelas informadas.",
-      "O campo Valor também tem máscara de R$, igual ao de Contas a Pagar.",
+      "Uma chave discreta ao lado do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\": com a chave desligada (padrão), o valor digitado é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira; com a chave ligada, o valor digitado é lançado integralmente em cada parcela/mês. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
+      "O campo de valor também tem máscara de R$, igual ao de Contas a Pagar.",
     ],
     validacoes: [
       "Origem, valor, data e parcelas são obrigatórios.",
@@ -296,6 +297,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Lista os recebimentos do mês — manuais, fixos e gerados automaticamente por reembolso — com os totais \"Total a receber no mês\" e \"Recebido\".",
     regras: [
       "Recebimentos originados de um reembolso de Contas a Pagar não podem ser editados ou excluídos diretamente aqui — é preciso alterar o lançamento original em Contas a Pagar.",
+      "Qualquer outro recebimento lançado por você (avulso, parcelado ou fixo) pode ter o valor editado por aqui, inclusive individualmente por parcela/mês — a única exceção é o recebimento vindo de reembolso, que continua bloqueado.",
       "Contas fixas de recebimento (ex.: salário) seguem a mesma lógica de recorrência do Contas a Pagar: aparecem todo mês automaticamente.",
       "O total \"Recebido\" só soma os itens marcados com o checkbox — o quadradinho \"Recebimentos do mês\" da tela Início usa esse mesmo critério.",
       "O filtro Valor aceita o valor exato do recebimento, já com máscara de R$.",

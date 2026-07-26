@@ -35,6 +35,7 @@ export default function FormularioLancamento({
   const [inicioEditadoManualmente, setInicioEditadoManualmente] = useState(false);
   const [observacao, setObservacao] = useState("");
   const [valorTotal, setValorTotal] = useState("");
+  const [valorPorParcela, setValorPorParcela] = useState(false);
   const [parcelaTotal, setParcelaTotal] = useState("1");
   const [comp, setComp] = useState("");
   const [grupo, setGrupo] = useState(grupoFixo ?? "");
@@ -65,6 +66,13 @@ export default function FormularioLancamento({
   const compDisponiveis = config.comp.filter((c) => c.ativo !== false);
   const dataCompraEfetiva = ocultarDataCompra ? inicioCobranca : dataCompra;
 
+  function calcularValorTotal(): number {
+    const digitado = paraNumero(valorTotal);
+    if (!valorPorParcela) return digitado;
+    const parcelas = contaFixa ? 1 : Number(parcelaTotal) || 1;
+    return digitado * parcelas;
+  }
+
   function encontrarDuplicata(valor: number): boolean {
     const credorNormalizado = credor.trim().toLowerCase();
     return parcelasExistentes.some(
@@ -80,7 +88,7 @@ export default function FormularioLancamento({
     setErro("");
     setSucesso(false);
 
-    const valor = paraNumero(valorTotal);
+    const valor = calcularValorTotal();
     const parcelas = Number(parcelaTotal);
 
     if (!credor || !dataCompraEfetiva || !inicioCobranca || !grupo || !aplicacao) {
@@ -105,7 +113,7 @@ export default function FormularioLancamento({
   }
 
   async function salvarLancamento() {
-    const valor = paraNumero(valorTotal);
+    const valor = calcularValorTotal();
     const parcelas = Number(parcelaTotal);
 
     setDuplicataDetectada(false);
@@ -131,6 +139,7 @@ export default function FormularioLancamento({
       setCredor("");
       setObservacao("");
       setValorTotal("");
+      setValorPorParcela(false);
       setParcelaTotal("1");
       setComp("");
       if (!grupoFixo) setGrupo("");
@@ -266,7 +275,26 @@ export default function FormularioLancamento({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium mb-1">Valor total (R$) *</label>
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="block text-sm font-medium">
+                {valorPorParcela ? "Valor da parcela (R$) *" : "Valor total (R$) *"}
+              </label>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={valorPorParcela}
+                title="Alternar entre valor total e valor da parcela"
+                onClick={() => setValorPorParcela((v) => !v)}
+                className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
+                  valorPorParcela ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform"
+                  style={{ transform: valorPorParcela ? "translateX(12px)" : "translateX(0)" }}
+                />
+              </button>
+            </div>
             <CampoValorMonetario
               required
               value={valorTotal}

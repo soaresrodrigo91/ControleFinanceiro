@@ -173,7 +173,19 @@ function FormularioEdicaoRecebimento({
           className={CLASSE_INPUT}
         />
       </div>
-      {!camposLimitados && (
+      {camposLimitados ? (
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Valor (R$)</label>
+          <input
+            type="text"
+            inputMode="decimal"
+            placeholder="0,00"
+            value={valorTexto}
+            onChange={(e) => setValorTexto(e.target.value)}
+            className={CLASSE_INPUT}
+          />
+        </div>
+      ) : (
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Valor (R$)</label>

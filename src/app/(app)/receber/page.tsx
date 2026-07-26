@@ -91,6 +91,7 @@ function ReceberConteudo() {
 
   const [origem, setOrigem] = useState("");
   const [valor, setValor] = useState("");
+  const [valorPorParcela, setValorPorParcela] = useState(false);
   const [dataRecebimento, setDataRecebimento] = useState(hojeISO());
   const [parcelaTotal, setParcelaTotal] = useState("1");
   const [observacao, setObservacao] = useState("");
@@ -309,10 +310,12 @@ function ReceberConteudo() {
           recebimento: dataRecebimento,
           parcelaTotal: parcelas,
           observacao,
+          valorPorParcela,
         });
       }
       setOrigem("");
       setValor("");
+      setValorPorParcela(false);
       setParcelaTotal("1");
       setObservacao("");
       setContaFixa(false);
@@ -355,7 +358,26 @@ function ReceberConteudo() {
 
             <div className="grid grid-cols-[0.9fr_1.3fr_0.7fr] gap-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Valor (R$) *</label>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label className="block text-sm font-medium">
+                    {valorPorParcela ? "Valor da parcela (R$) *" : "Valor total (R$) *"}
+                  </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={valorPorParcela}
+                    title="Alternar entre valor total e valor da parcela"
+                    onClick={() => setValorPorParcela((v) => !v)}
+                    className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
+                      valorPorParcela ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+                    }`}
+                  >
+                    <span
+                      className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform"
+                      style={{ transform: valorPorParcela ? "translateX(12px)" : "translateX(0)" }}
+                    />
+                  </button>
+                </div>
                 <CampoValorMonetario
                   required
                   value={valor}

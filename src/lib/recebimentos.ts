@@ -52,7 +52,9 @@ export function assinarTodosRecebimentos(
 
 export async function criarRecebimento(uid: string, dados: NovoRecebimento) {
   const lancamentoId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-  const valores = dividirValor(dados.valor, dados.parcelaTotal);
+  const valores = dados.valorPorParcela
+    ? Array(dados.parcelaTotal).fill(dados.valor)
+    : dividirValor(dados.valor, dados.parcelaTotal);
 
   const batch = writeBatch(db);
   const recebimentosRef = collection(db, "usuarios", uid, "recebimentos");
