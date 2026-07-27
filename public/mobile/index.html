@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Controle Financeiro</title>
+
+<link rel="manifest" href="/mobile/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Controle Financeiro">
+<link rel="apple-touch-icon" href="/mobile/icons/icon-180.png">
+<link rel="icon" href="/mobile/icons/icon-192.png">
+<meta name="theme-color" content="#0E1220">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/mobile/style.css">
+</head>
+<body>
+
+<div id="carregando" class="carregando-tela">Carregando...</div>
+
+<div id="tela-login" class="screen hidden">
+  <div class="logo">
+    <div class="logo-mark">CF</div>
+    <div>
+      <h1>Controle Financeiro</h1>
+      <span>Contas a pagar e a receber, no bolso.</span>
+    </div>
+  </div>
+  <div class="field">
+    <label>E-mail</label>
+    <input id="login-email" type="email" autocomplete="username" placeholder="voce@exemplo.com">
+  </div>
+  <div class="field">
+    <label>Senha</label>
+    <input id="login-senha" type="password" autocomplete="current-password" placeholder="••••••••">
+  </div>
+  <button class="btn" id="btn-entrar">Entrar</button>
+  <button class="btn-ghost" id="btn-esqueci">Esqueci minha senha</button>
+  <p class="aviso">Use a mesma conta do site. Ainda não tem conta? Crie pelo computador primeiro.</p>
+  <div id="msg-login"></div>
+</div>
+
+<div id="app" class="hidden">
+  <div id="tela-inicio" class="screen">
+    <header class="topo">
+      <h2>Início</h2>
+      <button id="btn-sair-inicio">Sair</button>
+    </header>
+    <div class="seletor-mes">
+      <button id="mes-anterior-inicio">◀</button>
+      <span class="mes-atual" id="mes-atual-inicio">—</span>
+      <button id="mes-proximo-inicio">▶</button>
+    </div>
+    <main>
+      <div class="grade-resumo">
+        <div class="card-resumo"><span class="rotulo">Total de gastos</span><span class="valor" id="r-total">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo">Recebimentos</span><span class="valor" id="r-recebido">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo">Pago</span><span class="valor" id="r-pago">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo">Pendente</span><span class="valor" id="r-pendente">R$ 0,00</span></div>
+        <div class="card-resumo full"><span class="rotulo">Líquido mensal</span><span class="valor" id="r-liquido">R$ 0,00</span></div>
+      </div>
+      <p class="legenda">Não inclui contas fixas/recorrentes — para vê-las, abra pelo computador.</p>
+    </main>
+  </div>
+
+  <div id="tela-pagar" class="screen hidden">
+    <header class="topo">
+      <h2>Contas a pagar</h2>
+      <button id="btn-sair-pagar">Sair</button>
+    </header>
+    <div class="seletor-mes">
+      <button id="mes-anterior-pagar">◀</button>
+      <span class="mes-atual" id="mes-atual-pagar">—</span>
+      <button id="mes-proximo-pagar">▶</button>
+    </div>
+    <main>
+      <div class="lista" id="lista-pagar"></div>
+    </main>
+    <button class="fab" id="fab-pagar">+</button>
+  </div>
+
+  <div id="tela-receber" class="screen hidden">
+    <header class="topo">
+      <h2>Contas a receber</h2>
+      <button id="btn-sair-receber">Sair</button>
+    </header>
+    <div class="seletor-mes">
+      <button id="mes-anterior-receber">◀</button>
+      <span class="mes-atual" id="mes-atual-receber">—</span>
+      <button id="mes-proximo-receber">▶</button>
+    </div>
+    <main>
+      <div class="lista" id="lista-receber"></div>
+    </main>
+    <button class="fab" id="fab-receber">+</button>
+  </div>
+
+  <nav class="rodape">
+    <button id="nav-inicio" class="ativa" data-tela="inicio"><span class="icone">🏠</span>Início</button>
+    <button id="nav-pagar" data-tela="pagar"><span class="icone">📤</span>Pagar</button>
+    <button id="nav-receber" data-tela="receber"><span class="icone">📥</span>Receber</button>
+  </nav>
+</div>
+
+<div id="painel" class="hidden">
+  <div class="folha">
+    <div id="folha-pagar" class="hidden">
+      <h3>Novo lançamento</h3>
+      <div class="field"><label>Credor</label><input id="fp-credor" type="text" placeholder="Ex: Supermercado"></div>
+      <div class="linha-dupla">
+        <div class="field"><label>Data da compra</label><input id="fp-data" type="date"></div>
+        <div class="field"><label>Início da cobrança</label><input id="fp-inicio" type="date"></div>
+      </div>
+      <div class="linha-dupla">
+        <div class="field"><label>Valor total</label><input id="fp-valor" type="number" inputmode="decimal" step="0.01" placeholder="0,00"></div>
+        <div class="field"><label>Parcelas</label><input id="fp-parcelas" type="number" min="1" value="1"></div>
+      </div>
+      <div class="linha-dupla">
+        <div class="field"><label>Forma de pagamento</label><select id="fp-grupo"></select></div>
+        <div class="field"><label>Categoria</label><select id="fp-aplicacao"></select></div>
+      </div>
+      <div class="field"><label>Observação</label><input id="fp-observacao" type="text" placeholder="Opcional"></div>
+      <div id="msg-pagar"></div>
+      <button class="btn" id="btn-salvar-pagar">Salvar</button>
+      <button class="btn-secundario" id="btn-cancelar-pagar">Cancelar</button>
+    </div>
+
+    <div id="folha-receber" class="hidden">
+      <h3>Novo recebimento</h3>
+      <div class="field"><label>Origem</label><input id="fr-origem" type="text" placeholder="Ex: Cliente, reembolso..."></div>
+      <div class="linha-dupla">
+        <div class="field"><label id="fr-valor-label">Valor total</label><input id="fr-valor" type="number" inputmode="decimal" step="0.01" placeholder="0,00"></div>
+        <div class="field"><label>Parcelas</label><input id="fr-parcelas" type="number" min="1" value="1"></div>
+      </div>
+      <label class="check-linha"><input type="checkbox" id="fr-valor-por-parcela"> O valor digitado é por parcela</label>
+      <div class="field"><label>Data do primeiro recebimento</label><input id="fr-data" type="date"></div>
+      <div class="field"><label>Observação</label><input id="fr-observacao" type="text" placeholder="Opcional"></div>
+      <div id="msg-receber"></div>
+      <button class="btn" id="btn-salvar-receber">Salvar</button>
+      <button class="btn-secundario" id="btn-cancelar-receber">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/mobile/app.js"></script>
+</body>
+</html>
