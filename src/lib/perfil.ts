@@ -1,7 +1,9 @@
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { db } from "./firebase";
 import type { Perfil } from "./types";
+
+const FOTO_PERFIL_TAMANHO_MAX = 256;
+const FOTO_PERFIL_QUALIDADE = 0.8;
 
 export function assinarFiltrosDashboard(
   uid: string,
@@ -47,10 +49,24 @@ export async function marcarBoasVindasVistas(uid: string) {
   await updateDoc(doc(db, "usuarios", uid), { boasVindasVistas: true });
 }
 
+async function redimensionarFoto(arquivo: File): Promise<string> {
+  const bitmap = await createImageBitmap(arquivo);
+  const escala = Math.min(1, FOTO_PERFIL_TAMANHO_MAX / Math.max(bitmap.width, bitmap.height));
+  const largura = Math.round(bitmap.width * escala);
+  const altura = Math.round(bitmap.height * escala);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = largura;
+  canvas.height = altura;
+  const contexto = canvas.getContext("2d");
+  if (!contexto) throw new Error("Não foi possível processar a imagem.");
+  contexto.drawImage(bitmap, 0, 0, largura, altura);
+
+  return canvas.toDataURL("image/jpeg", FOTO_PERFIL_QUALIDADE);
+}
+
 export async function uploadFotoPerfil(uid: string, arquivo: File): Promise<string> {
-  const storageRef = ref(storage, `usuarios/${uid}/foto-perfil`);
-  await uploadBytes(storageRef, arquivo);
-  const url = await getDownloadURL(storageRef);
-  await updateDoc(doc(db, "usuarios", uid), { fotoUrl: url });
-  return url;
+  const dataUrl = await redimensionarFoto(arquivo);
+  await updateDoc(doc(db, "usuarios", uid), { fotoUrl: dataUrl });
+  return dataUrl;
 }
