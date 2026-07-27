@@ -19,7 +19,13 @@ function formatarQuando(iso: string): string {
   return `há ${dias}d`;
 }
 
-export default function NotificacoesSino({ uid }: { uid: string }) {
+export default function NotificacoesSino({
+  uid,
+  variante = "topo",
+}: {
+  uid: string;
+  variante?: "topo" | "barraLateral";
+}) {
   const router = useRouter();
   const { definirYm } = useMesAtual();
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([]);
@@ -82,7 +88,11 @@ export default function NotificacoesSino({ uid }: { uid: string }) {
       </button>
 
       {aberto && (
-        <div className="absolute right-0 top-full z-40 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+        <div
+          className={`absolute z-40 w-80 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800 ${
+            variante === "barraLateral" ? "bottom-full left-0 mb-2" : "top-full right-0 mt-2"
+          }`}
+        >
           {notificacoes.length === 0 ? (
             <p className="p-3 text-sm text-slate-400 dark:text-slate-500">Nenhuma notificação.</p>
           ) : (

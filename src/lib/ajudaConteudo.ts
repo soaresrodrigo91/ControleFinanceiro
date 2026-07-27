@@ -217,7 +217,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Enquanto um recebido ainda não foi lançado, dá para excluí-lo (parcela única, fixo ou parcelado) — a exclusão pergunta o alcance: apenas este mês, este mês e os futuros, ou todos desde o início (mesma mensagem já usada para excluir contas fixas em Contas a Pagar). Tanto lançar quanto excluir um recebido são definitivos: quem enviou não volta a ver aquilo como pendência de envio depois.",
       "Se você editar o valor de uma conta fixa já compartilhada (\"deste mês em diante\" ou \"tudo\"), quem recebeu é avisado por notificação — os itens ainda \"Não Lançado\" já são atualizados com o novo valor; o que a pessoa já lançou não muda sozinho (já virou uma despesa independente na conta dela).",
       "Desativar \"Compartilhar Lançamentos\" em Configurações com itens enviados/recebidos existentes pede confirmação: a aba some do menu e novos lançamentos param de alimentar o fluxo, mas o que já existe continua acessível se você reativar depois.",
-      "O sino no canto superior direito avisa sobre lançamentos recebidos, convites e atualizações de valor: o número em vermelho é a quantidade de notificações ainda não vistas. Clicar numa notificação de lançamento recebido ou de atualização de valor leva direto para a aba Recebidos, já no mês da primeira parcela; clicar num convite só mostra a mensagem. Em todos os casos, a notificação some da lista depois de aberta uma vez.",
+      "O sino (no canto superior direito, ou no rodapé do menu lateral quando o menu está no modo Vertical) avisa sobre lançamentos recebidos, convites e atualizações de valor: o número em vermelho é a quantidade de notificações ainda não vistas. Clicar numa notificação de lançamento recebido ou de atualização de valor leva direto para a aba Recebidos, já no mês da primeira parcela; clicar num convite só mostra a mensagem. Em todos os casos, a notificação some da lista depois de aberta uma vez.",
       "As notificações também podem ser excluídas manualmente: passe o mouse sobre uma notificação no sino para ver o \"x\" de exclusão individual, ou use o link \"Limpar tudo\" no topo da lista para apagar todas de uma vez (pede confirmação antes de excluir).",
     ],
     validacoes: [],
@@ -435,7 +435,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Um item (forma de pagamento ou aplicação) que já está em uso em algum lançamento não pode ser removido — desative-o em vez de excluir, para preservar o histórico.",
       "Cada forma de pagamento e cada aplicação pode ter uma observação própria (ícone de balão) — só um lembrete visível ao editar o item, não aparece nos lançamentos.",
       "O tema escuro é exclusivo do plano Premium.",
-      "O menu do sistema pode ser Horizontal (padrão, barra no topo) ou Vertical (menu lateral recolhível, com Perfil e Sair no rodapé) — a mudança vale para todas as telas.",
+      "O menu do sistema pode ser Horizontal (padrão, barra no topo) ou Vertical (menu lateral recolhível, com Perfil e Sair no rodapé) — a mudança vale para todas as telas. No modo Vertical, o sino de notificações também fica no rodapé do menu lateral (em vez do canto superior direito) e abre para cima.",
     ],
     validacoes: [
       "Item duplicado ao adicionar: \"Este item já existe na lista.\"",

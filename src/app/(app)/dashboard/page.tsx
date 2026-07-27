@@ -239,7 +239,7 @@ export default function DashboardGeralPage() {
   const registrosFiltrados = tipoConta === "pagar" ? filtradas : recebimentosFiltrados;
 
   return (
-    <div className="mx-auto flex flex-col px-4 py-6 md:px-8 lg:h-full">
+    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-6 md:px-8 lg:h-full">
       <div className="sticky top-0 z-30 bg-background pb-1 print:static">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">

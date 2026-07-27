@@ -20,14 +20,16 @@ export default function MenuLateral() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setAberto(true)}
-        aria-label="Abrir menu"
-        className="fixed top-2 left-2 z-30 hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:block print:hidden dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        <IconMenu className="h-5 w-5" />
-      </button>
+      <div className="hidden shrink-0 border-b border-slate-200 bg-white px-2 py-1 md:block print:hidden dark:border-slate-700 dark:bg-slate-900">
+        <button
+          type="button"
+          onClick={() => setAberto(true)}
+          aria-label="Abrir menu"
+          className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+        >
+          <IconMenu className="h-5 w-5" />
+        </button>
+      </div>
 
       {aberto && (
         <div
@@ -75,7 +77,7 @@ export default function MenuLateral() {
         <div className="flex shrink-0 flex-col items-start gap-0.5 p-2 pb-8">
           {usuario && (
             <div className="flex items-center gap-1">
-              <NotificacoesSino uid={usuario.uid} />
+              <NotificacoesSino uid={usuario.uid} variante="barraLateral" />
               <PerfilMenu uid={usuario.uid} variante="barraLateral" />
             </div>
           )}

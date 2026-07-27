@@ -215,7 +215,7 @@ function DashboardConteudo() {
   if (!usuario) return null;
 
   return (
-    <div className="mx-auto flex flex-col px-4 py-4 md:px-8 lg:h-full">
+    <div className="mx-auto flex max-w-[1600px] flex-col px-4 py-4 md:px-8 lg:h-full">
       <div className="sticky top-0 z-20 bg-background pb-1 print:static">
         <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="grid grid-cols-2 gap-2 text-center sm:flex-1 sm:grid-cols-5">
