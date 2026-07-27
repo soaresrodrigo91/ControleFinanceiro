@@ -81,7 +81,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Quando a conta tem um reembolso configurado (uma pessoa que divide a despesa com você), o sistema calcula automaticamente quanto você recebe de volta e cria um recebimento correspondente em Contas a Receber.",
       "Marcar uma conta fixa de Provisões como paga remove automaticamente o reembolso pendente dela (o valor efetivo virou zero); desmarcar o pagamento recria esse reembolso.",
       "A Janela de 10 meses substitui a antiga lista de lançamentos individuais: cada linha é uma forma de pagamento, com um link direto para os lançamentos filtrados em Contas a Pagar e o selo Pago/Parcial/Pendente. A baixa em massa (marcar/desmarcar todos os lançamentos do grupo de uma vez) fica só na tela de Contas a Pagar.",
-      "A primeira coluna da Janela de 10 meses é sempre o mês vigente (o mês atual de verdade, não o mês selecionado na tela) — navegar para outro mês não desloca a janela, só destaca a coluna correspondente.",
+      "A primeira coluna da Janela de 10 meses é sempre o mês selecionado na tela (não necessariamente o mês atual de verdade) e as outras 9 colunas seguem em sequência a partir dele — mudar o mês selecionado desloca a janela inteira, sempre com o mês escolhido na primeira coluna.",
       "Abaixo da janela, um mini-dashboard mostra, só para as formas de pagamento marcadas nos filtros, o valor por forma de pagamento, a quantidade de lançamentos por forma de pagamento e a distribuição por aplicação no mês — em pizza ou em barras.",
       "As listas dentro de cada quadro do mini-dashboard (e também do Dashboard analítico) se ajustam ao espaço disponível na tela: quando cabe tudo, não aparece barra de rolagem; quando não cabe, só aquela lista fica rolável passando o scroll do mouse por cima dela, sem rolar a página inteira.",
       "O rodapé mostra a versão atual do sistema, que é atualizada a cada alteração ou correção feita.",
@@ -274,7 +274,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo: "Formulário para lançar uma entrada manual — salário, venda, reembolso avulso, etc.",
     regras: [
       "Assim como em Contas a Pagar, marcar \"Conta fixa (recorrente)\" transforma o lançamento em uma recorrência mensal.",
-      "Uma chave discreta ao lado do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\": com a chave desligada (padrão), o valor digitado é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira; com a chave ligada, o valor digitado é lançado integralmente em cada parcela/mês. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
+      "Uma chave discreta acima do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\" (o rótulo do campo muda junto): com a chave desligada (padrão), o valor digitado é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira; com a chave ligada, o valor digitado é lançado integralmente em cada parcela/mês. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
       "O campo de valor também tem máscara de R$, igual ao de Contas a Pagar.",
     ],
     validacoes: [

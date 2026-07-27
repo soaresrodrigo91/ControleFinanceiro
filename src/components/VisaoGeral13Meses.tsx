@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
 import { mesclarComRecorrencias } from "@/lib/recorrencias";
-import { formatarMesAnoAbreviado, formatarMoeda, mesAtualYM, somarMesesYM } from "@/lib/date";
+import { formatarMesAnoAbreviado, formatarMoeda, somarMesesYM } from "@/lib/date";
 import type { ConfigListas, Parcela, Recorrencia, StatusGrupo } from "@/lib/types";
 
 const HORIZONTE = 10;
@@ -27,9 +27,8 @@ export default function VisaoGeral13Meses({
   statusPorGrupo?: Record<string, StatusGrupo>;
 }) {
   const meses = useMemo(() => {
-    const anchor = mesAtualYM();
-    return Array.from({ length: HORIZONTE }, (_, i) => somarMesesYM(anchor, i));
-  }, []);
+    return Array.from({ length: HORIZONTE }, (_, i) => somarMesesYM(ym, i));
+  }, [ym]);
 
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
 

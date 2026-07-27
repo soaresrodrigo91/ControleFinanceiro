@@ -356,11 +356,11 @@ function ReceberConteudo() {
               />
             </div>
 
-            <div className="grid grid-cols-[0.9fr_1.3fr_0.7fr] gap-3">
+            <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[1.5fr_0.8fr_0.8fr]">
               <div>
-                <div className="mb-1 flex items-center justify-between gap-2">
+                <div className="mb-1 flex items-center justify-between gap-1.5">
                   <label className="block text-sm font-medium">
-                    {valorPorParcela ? "Valor da parcela (R$) *" : "Valor total (R$) *"}
+                    {valorPorParcela ? "Valor da parcela *" : "Valor total *"}
                   </label>
                   <button
                     type="button"
@@ -385,27 +385,29 @@ function ReceberConteudo() {
                   className={CLASSE_INPUT}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">1ª data *</label>
-                <input
-                  type="date"
-                  required
-                  value={dataRecebimento}
-                  onChange={(e) => setDataRecebimento(e.target.value)}
-                  className={CLASSE_INPUT}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Parcelas *</label>
-                <input
-                  type="number"
-                  min={1}
-                  required
-                  disabled={contaFixa}
-                  value={contaFixa ? 1 : parcelaTotal}
-                  onChange={(e) => setParcelaTotal(e.target.value)}
-                  className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
-                />
+              <div className="grid grid-cols-2 gap-3 sm:contents">
+                <div>
+                  <label className="block text-sm font-medium mb-1">1ª data *</label>
+                  <input
+                    type="date"
+                    required
+                    value={dataRecebimento}
+                    onChange={(e) => setDataRecebimento(e.target.value)}
+                    className={CLASSE_INPUT}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Parcelas *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    disabled={contaFixa}
+                    value={contaFixa ? 1 : parcelaTotal}
+                    onChange={(e) => setParcelaTotal(e.target.value)}
+                    className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
+                  />
+                </div>
               </div>
             </div>
 
