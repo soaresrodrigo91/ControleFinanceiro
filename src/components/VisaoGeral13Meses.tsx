@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
 import { mesclarComRecorrencias } from "@/lib/recorrencias";
@@ -53,16 +53,43 @@ export default function VisaoGeral13Meses({
     return mapa;
   }, [parcelas, recorrencias, meses]);
 
+  const toqueInicioX = useRef<number | null>(null);
+
+  function handleTouchStart(e: React.TouchEvent) {
+    toqueInicioX.current = e.touches[0].clientX;
+  }
+
+  function handleTouchEnd(e: React.TouchEvent) {
+    if (toqueInicioX.current === null) return;
+    if (window.innerWidth >= 768) {
+      toqueInicioX.current = null;
+      return;
+    }
+    const deltaX = e.changedTouches[0].clientX - toqueInicioX.current;
+    toqueInicioX.current = null;
+    const LIMIAR = 40;
+    if (deltaX <= -LIMIAR) {
+      onSelecionarMes(somarMesesYM(ym, 1));
+    } else if (deltaX >= LIMIAR) {
+      onSelecionarMes(somarMesesYM(ym, -1));
+    }
+  }
+
   return (
     <div className="mb-3 rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <table className="w-full table-auto text-sm md:table-fixed">
         <thead>
           <tr className="border-b border-slate-200 dark:border-slate-700">
             <th className="sticky left-0 z-10 w-40 shrink-0 bg-white px-2 py-2 text-left font-medium text-slate-500 md:static md:w-56 dark:bg-slate-800" />
 
-            {meses.map((mes) => (
-              <th key={mes} className="min-w-[76px] px-1 py-2 text-center font-medium md:min-w-0">
+            {meses.map((mes, indice) => (
+              <th
+                key={mes}
+                className={`min-w-[76px] px-1 py-2 text-center font-medium md:min-w-0 ${
+                  indice === 0 ? "" : "hidden md:table-cell"
+                }`}
+              >
                 <button
                   onClick={() => onSelecionarMes(mes)}
                   className={`w-full rounded-md px-1 py-1 text-[15px] transition-colors ${
@@ -109,12 +136,14 @@ export default function VisaoGeral13Meses({
                     )}
                   </div>
                 </td>
-                {meses.map((mes) => {
+                {meses.map((mes, indice) => {
                   const valor = porMes?.get(mes) ?? 0;
                   return (
                     <td
                       key={mes}
                       className={`min-w-[76px] px-1 py-2 text-center tabular-nums text-slate-600 md:min-w-0 dark:text-slate-400 ${
+                        indice === 0 ? "" : "hidden md:table-cell"
+                      } ${
                         mes === ym ? "bg-indigo-50/60 font-medium text-slate-900 dark:bg-indigo-950/40 dark:text-slate-100" : ""
                       }`}
                     >
@@ -128,6 +157,9 @@ export default function VisaoGeral13Meses({
         </tbody>
         </table>
       </div>
+      <p className="border-t border-slate-100 px-2 py-1.5 text-center text-[11px] text-slate-400 md:hidden dark:border-slate-700 dark:text-slate-500">
+        Arraste para o lado para ver o mês anterior/seguinte
+      </p>
     </div>
   );
 }

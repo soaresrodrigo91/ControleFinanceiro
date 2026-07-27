@@ -239,7 +239,7 @@ export default function DashboardGeralPage() {
   const registrosFiltrados = tipoConta === "pagar" ? filtradas : recebimentosFiltrados;
 
   return (
-    <div className="mx-auto flex h-full max-w-[1600px] flex-col px-4 py-6 md:px-8">
+    <div className="mx-auto flex flex-col px-4 py-6 md:px-8 lg:h-full">
       <div className="sticky top-0 z-30 bg-background pb-1 print:static">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -333,7 +333,7 @@ export default function DashboardGeralPage() {
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      <div className="scroll-sem-barra flex flex-col lg:min-h-[520px] lg:flex-1 lg:overflow-y-auto">
       {carregando ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
       ) : (
@@ -365,7 +365,7 @@ export default function DashboardGeralPage() {
                 </button>
               </div>
 
-            <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-2">
               <GraficoItem
                 titulo={tituloGraficoPrimario}
                 itens={graficoPrimario}

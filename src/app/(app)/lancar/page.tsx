@@ -121,6 +121,8 @@ function LancarConteudo() {
         <FormularioLancamento
           config={config}
           parcelasExistentes={parcelasExistentes}
+          observacaoObrigatoria
+          textoBotaoSalvar="Salvar"
           onSalvar={handleSalvarNovoLancamento}
         />
       )}

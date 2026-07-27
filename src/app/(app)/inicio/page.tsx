@@ -215,10 +215,10 @@ function DashboardConteudo() {
   if (!usuario) return null;
 
   return (
-    <div className="mx-auto flex h-full max-w-[1600px] flex-col px-4 py-4 md:px-8">
+    <div className="mx-auto flex flex-col px-4 py-4 md:px-8 lg:h-full">
       <div className="sticky top-0 z-20 bg-background pb-1 print:static">
-        <div className="mb-2 flex flex-wrap items-center gap-3">
-          <div className="grid flex-1 grid-cols-2 gap-2 text-center sm:grid-cols-5">
+        <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="grid grid-cols-2 gap-2 text-center sm:flex-1 sm:grid-cols-5">
             <div className="rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <p className="text-[11px] text-slate-500 dark:text-slate-400">Total de gastos no mês</p>
               <p
@@ -284,21 +284,23 @@ function DashboardConteudo() {
             </div>
           </div>
 
-          <button
-            onClick={() =>
-              setTotaisVisiveis((v) => {
-                const novo = !v;
-                if (usuario) sessionStorage.setItem(`totaisVisiveis_${usuario.uid}`, String(novo));
-                return novo;
-              })
-            }
-            aria-label={totaisVisiveis ? "Ocultar totalizadores" : "Mostrar totalizadores"}
-            className="rounded-lg border border-slate-300 p-2 text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
-          >
-            {totaisVisiveis ? <IconOlhoFechado className="h-4 w-4" /> : <IconOlho className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center justify-center gap-3 sm:contents">
+            <button
+              onClick={() =>
+                setTotaisVisiveis((v) => {
+                  const novo = !v;
+                  if (usuario) sessionStorage.setItem(`totaisVisiveis_${usuario.uid}`, String(novo));
+                  return novo;
+                })
+              }
+              aria-label={totaisVisiveis ? "Ocultar totalizadores" : "Mostrar totalizadores"}
+              className="rounded-lg border border-slate-300 p-2 text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              {totaisVisiveis ? <IconOlhoFechado className="h-4 w-4" /> : <IconOlho className="h-4 w-4" />}
+            </button>
 
-          <SeletorMesAno ym={ym} onMudar={irParaMes} />
+            <SeletorMesAno ym={ym} onMudar={irParaMes} />
+          </div>
         </div>
 
         {config.grupos.length > 0 && (
@@ -354,7 +356,7 @@ function DashboardConteudo() {
           </div>
 
           {mostrar12Meses && (
-            <div className="mt-1 hidden md:block">
+            <div className="mt-1">
               <VisaoGeral13Meses
                 uid={usuario.uid}
                 ym={ym}
@@ -369,7 +371,7 @@ function DashboardConteudo() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="scroll-sem-barra lg:min-h-[340px] lg:flex-1 lg:overflow-y-auto">
         {carregando ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
         ) : parcelas.length === 0 ? (

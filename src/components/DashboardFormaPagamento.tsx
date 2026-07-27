@@ -96,32 +96,36 @@ export default function DashboardFormaPagamento({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-col lg:h-full lg:min-h-0">
       <div className="mb-3 flex shrink-0 items-center justify-between gap-3">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
           Dashboard das formas de pagamento marcadas
         </span>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setTipoGrafico("pizza")}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-              tipoGrafico === "pizza"
-                ? "border-indigo-600 bg-indigo-600 text-white"
-                : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            }`}
-          >
-            Pizza
-          </button>
-          <button
-            onClick={() => setTipoGrafico("barra")}
-            className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
-              tipoGrafico === "barra"
-                ? "border-indigo-600 bg-indigo-600 text-white"
-                : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-            }`}
-          >
-            Barras
-          </button>
+          {mostrarDashboard && (
+            <>
+              <button
+                onClick={() => setTipoGrafico("pizza")}
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                  tipoGrafico === "pizza"
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                }`}
+              >
+                Pizza
+              </button>
+              <button
+                onClick={() => setTipoGrafico("barra")}
+                className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                  tipoGrafico === "barra"
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                }`}
+              >
+                Barras
+              </button>
+            </>
+          )}
           <button
             onClick={() => setMostrarDashboard((v) => !v)}
             aria-label={mostrarDashboard ? "Ocultar dashboard" : "Mostrar dashboard"}
@@ -133,7 +137,7 @@ export default function DashboardFormaPagamento({
       </div>
 
       {mostrarDashboard && (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-3">
           <GraficoItem
             titulo="Valor por forma de pagamento"
             itens={valorPorGrupo}

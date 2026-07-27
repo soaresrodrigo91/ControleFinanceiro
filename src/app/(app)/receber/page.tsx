@@ -327,6 +327,17 @@ function ReceberConteudo() {
     }
   }
 
+  function limparFormularioRecebimento() {
+    setOrigem("");
+    setValor("");
+    setValorPorParcela(false);
+    setDataRecebimento(hojeISO());
+    setParcelaTotal("1");
+    setObservacao("");
+    setContaFixa(false);
+    setErro("");
+  }
+
   if (!usuario) return null;
 
   return (
@@ -359,7 +370,10 @@ function ReceberConteudo() {
             <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[1.5fr_0.8fr_0.8fr]">
               <div>
                 <div className="mb-1 flex items-center justify-between gap-1.5">
-                  <label className="block text-sm font-medium">
+                  <label
+                    className="block min-w-0 truncate whitespace-nowrap text-sm font-medium"
+                    title={valorPorParcela ? "Valor da parcela" : "Valor total"}
+                  >
                     {valorPorParcela ? "Valor da parcela *" : "Valor total *"}
                   </label>
                   <button
@@ -387,17 +401,7 @@ function ReceberConteudo() {
               </div>
               <div className="grid grid-cols-2 gap-3 sm:contents">
                 <div>
-                  <label className="block text-sm font-medium mb-1">1ª data *</label>
-                  <input
-                    type="date"
-                    required
-                    value={dataRecebimento}
-                    onChange={(e) => setDataRecebimento(e.target.value)}
-                    className={CLASSE_INPUT}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Parcelas *</label>
+                  <label className="block truncate whitespace-nowrap text-sm font-medium mb-1">Parcelas *</label>
                   <input
                     type="number"
                     min={1}
@@ -406,6 +410,16 @@ function ReceberConteudo() {
                     value={contaFixa ? 1 : parcelaTotal}
                     onChange={(e) => setParcelaTotal(e.target.value)}
                     className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
+                  />
+                </div>
+                <div>
+                  <label className="block truncate whitespace-nowrap text-sm font-medium mb-1">1ª data *</label>
+                  <input
+                    type="date"
+                    required
+                    value={dataRecebimento}
+                    onChange={(e) => setDataRecebimento(e.target.value)}
+                    className={CLASSE_INPUT}
                   />
                 </div>
               </div>
@@ -438,9 +452,23 @@ function ReceberConteudo() {
 
             {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
 
-            <button type="submit" disabled={enviando} className={CLASSE_BOTAO_PRIMARIO}>
-              {enviando ? "Salvando..." : "Salvar recebimento"}
-            </button>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="submit"
+                disabled={enviando}
+                className="inline-flex h-[42px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-indigo-600 px-6 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {enviando ? "Salvando..." : "Salvar"}
+              </button>
+              <button
+                type="button"
+                onClick={limparFormularioRecebimento}
+                disabled={enviando}
+                className="inline-flex h-[42px] min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-300 px-4 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+              >
+                Cancelar
+              </button>
+            </div>
           </form>
         </div>
       )}

@@ -110,7 +110,7 @@ export function GraficoItem({
   const alturaConteudoBarra = Math.max(itens.length * 32 + 20, ALTURA_CARTAO);
 
   return (
-    <div className={`${CLASSE_CARD} flex h-full min-h-0 flex-col`}>
+    <div className={`${CLASSE_CARD} flex flex-col lg:h-full lg:min-h-0`}>
       <p className="mb-2 shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100">{titulo}</p>
       {itens.length === 0 ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados para o mês.</p>

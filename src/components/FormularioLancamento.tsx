@@ -15,6 +15,7 @@ export default function FormularioLancamento({
   desabilitarContaFixaEProvisao,
   ocultarDataCompra,
   pularVerificacaoDuplicata,
+  observacaoObrigatoria,
   textoBotaoSalvar = "Salvar lançamento",
   onSalvar,
   onCancelar,
@@ -25,6 +26,7 @@ export default function FormularioLancamento({
   desabilitarContaFixaEProvisao?: boolean;
   ocultarDataCompra?: boolean;
   pularVerificacaoDuplicata?: boolean;
+  observacaoObrigatoria?: boolean;
   textoBotaoSalvar?: string;
   onSalvar: (input: { contaFixa: boolean; dados: NovoLancamento }) => Promise<void>;
   onCancelar?: () => void;
@@ -91,7 +93,14 @@ export default function FormularioLancamento({
     const valor = calcularValorTotal();
     const parcelas = Number(parcelaTotal);
 
-    if (!credor || !dataCompraEfetiva || !inicioCobranca || !grupo || !aplicacao) {
+    if (
+      !credor ||
+      !dataCompraEfetiva ||
+      !inicioCobranca ||
+      !grupo ||
+      !aplicacao ||
+      (observacaoObrigatoria && !observacao.trim())
+    ) {
       setErro("Preencha todos os campos obrigatórios.");
       return;
     }
@@ -156,6 +165,24 @@ export default function FormularioLancamento({
     }
   }
 
+  function limparFormulario() {
+    setCredor("");
+    setDataCompra(hojeISO());
+    setInicioCobranca(somarMeses(hojeISO(), 1));
+    setInicioEditadoManualmente(false);
+    setObservacao("");
+    setValorTotal("");
+    setValorPorParcela(false);
+    setParcelaTotal("1");
+    setComp("");
+    if (!grupoFixo) setGrupo("");
+    setAplicacao("");
+    setContaFixa(false);
+    setProvisao(false);
+    setErro("");
+    setSucesso(false);
+  }
+
   if (confirmarCancelar) {
     return (
       <div className={`mx-auto max-w-md ${CLASSE_CARD} flex flex-col gap-3`}>
@@ -180,201 +207,230 @@ export default function FormularioLancamento({
   }
 
   return (
-    <div className="mx-auto max-w-md">
+    <div className="mx-auto max-w-4xl">
       <form onSubmit={handleSubmit} className={`${CLASSE_CARD} flex flex-col gap-4`}>
-        <CampoCredor
-          id="credor"
-          label="Credor *"
-          value={credor}
-          onChange={setCredor}
-          opcoes={credoresConhecidos}
-          ativo={config.sugestaoCredor}
-          required
-        />
+        <div className="grid grid-cols-1 gap-y-4 md:grid-cols-2 md:gap-x-0">
+          <div className="flex flex-col gap-4 md:pr-6">
+            <CampoCredor
+              id="credor"
+              label="Credor *"
+              value={credor}
+              onChange={setCredor}
+              opcoes={credoresConhecidos}
+              ativo={config.sugestaoCredor}
+              required
+            />
 
-        <div className="grid grid-cols-2 gap-3">
-          {!ocultarDataCompra && (
+            <div className="grid grid-cols-2 gap-3">
+              {!ocultarDataCompra && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Data da compra *</label>
+                  <input
+                    type="date"
+                    required
+                    value={dataCompra}
+                    onChange={(e) => handleDataCompraChange(e.target.value)}
+                    className={CLASSE_INPUT}
+                  />
+                </div>
+              )}
+              <div className={ocultarDataCompra ? "col-span-2" : undefined}>
+                <label className="block text-sm font-medium mb-1">Início da cobrança *</label>
+                <input
+                  type="date"
+                  required
+                  value={inicioCobranca}
+                  onChange={(e) => {
+                    setInicioCobranca(e.target.value);
+                    setInicioEditadoManualmente(true);
+                  }}
+                  className={CLASSE_INPUT}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <label
+                    className="block min-w-0 truncate whitespace-nowrap text-sm font-medium"
+                    title={valorPorParcela ? "Valor da parcela (R$)" : "Valor total (R$)"}
+                  >
+                    {valorPorParcela ? "Valor da parcela (R$) *" : "Valor total (R$) *"}
+                  </label>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={valorPorParcela}
+                    title="Alternar entre valor total e valor da parcela"
+                    onClick={() => setValorPorParcela((v) => !v)}
+                    className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
+                      valorPorParcela ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+                    }`}
+                  >
+                    <span
+                      className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform"
+                      style={{ transform: valorPorParcela ? "translateX(12px)" : "translateX(0)" }}
+                    />
+                  </button>
+                </div>
+                <CampoValorMonetario
+                  required
+                  value={valorTotal}
+                  onChange={setValorTotal}
+                  className={CLASSE_INPUT}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Parcelas *</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  disabled={contaFixa}
+                  value={contaFixa ? 1 : parcelaTotal}
+                  onChange={(e) => setParcelaTotal(e.target.value)}
+                  className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <label
+                className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 ${
+                  desabilitarContaFixaEProvisao ? "opacity-50" : ""
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={contaFixa}
+                  disabled={desabilitarContaFixaEProvisao}
+                  onChange={(e) => setContaFixa(e.target.checked)}
+                  className="h-4 w-4 accent-indigo-600"
+                />
+                Conta fixa (recorrente)
+              </label>
+              <label
+                className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 ${
+                  desabilitarContaFixaEProvisao ? "opacity-50" : ""
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={provisao}
+                  disabled={desabilitarContaFixaEProvisao}
+                  onChange={(e) => setProvisao(e.target.checked)}
+                  className="h-4 w-4 accent-amber-500"
+                />
+                Provisão
+              </label>
+            </div>
+            {contaFixa && (
+              <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
+                O valor será lançado todo mês a partir da data de início da cobrança, até você encerrar a
+                recorrência.
+              </p>
+            )}
+            {provisao && (
+              <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
+                Os lançamentos classificados como &quot;Provisão&quot; permitem a exclusão e a edição do valor
+                lançado.
+              </p>
+            )}
+
             <div>
-              <label className="block text-sm font-medium mb-1">Data da compra *</label>
+              <label className="block text-sm font-medium mb-1">
+                {observacaoObrigatoria ? "Observação *" : "Observação"}
+              </label>
               <input
-                type="date"
-                required
-                value={dataCompra}
-                onChange={(e) => handleDataCompraChange(e.target.value)}
+                type="text"
+                required={observacaoObrigatoria}
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
                 className={CLASSE_INPUT}
               />
             </div>
-          )}
-          <div className={ocultarDataCompra ? "col-span-2" : undefined}>
-            <label className="block text-sm font-medium mb-1">Início da cobrança *</label>
-            <input
-              type="date"
-              required
-              value={inicioCobranca}
-              onChange={(e) => {
-                setInicioCobranca(e.target.value);
-                setInicioEditadoManualmente(true);
-              }}
-              className={CLASSE_INPUT}
-            />
           </div>
-        </div>
 
-        <div className="flex flex-wrap gap-4">
-          <label
-            className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 ${
-              desabilitarContaFixaEProvisao ? "opacity-50" : ""
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={contaFixa}
-              disabled={desabilitarContaFixaEProvisao}
-              onChange={(e) => setContaFixa(e.target.checked)}
-              className="h-4 w-4 accent-indigo-600"
-            />
-            Conta fixa (recorrente)
-          </label>
-          <label
-            className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 ${
-              desabilitarContaFixaEProvisao ? "opacity-50" : ""
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={provisao}
-              disabled={desabilitarContaFixaEProvisao}
-              onChange={(e) => setProvisao(e.target.checked)}
-              className="h-4 w-4 accent-amber-500"
-            />
-            Provisão
-          </label>
-        </div>
-        {contaFixa && (
-          <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
-            O valor será lançado todo mês a partir da data de início da cobrança, até você encerrar a
-            recorrência.
-          </p>
-        )}
-        {provisao && (
-          <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
-            Os lançamentos classificados como &quot;Provisão&quot; permitem a exclusão e a edição do valor
-            lançado.
-          </p>
-        )}
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Observação</label>
-          <input
-            type="text"
-            value={observacao}
-            onChange={(e) => setObservacao(e.target.value)}
-            className={CLASSE_INPUT}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="block text-sm font-medium">
-                {valorPorParcela ? "Valor da parcela (R$) *" : "Valor total (R$) *"}
-              </label>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={valorPorParcela}
-                title="Alternar entre valor total e valor da parcela"
-                onClick={() => setValorPorParcela((v) => !v)}
-                className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
-                  valorPorParcela ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
-                }`}
+          <div className="flex flex-col gap-4 md:border-l md:border-slate-200 md:pl-6 dark:md:border-slate-700">
+            <div>
+              <label className="block text-sm font-medium mb-1">Forma de pagamento *</label>
+              <select
+                required
+                disabled={!!grupoFixo}
+                value={grupo}
+                onChange={(e) => setGrupo(e.target.value)}
+                className={`${CLASSE_INPUT} h-[42px] disabled:cursor-not-allowed disabled:opacity-70`}
               >
-                <span
-                  className="absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white transition-transform"
-                  style={{ transform: valorPorParcela ? "translateX(12px)" : "translateX(0)" }}
-                />
-              </button>
-            </div>
-            <CampoValorMonetario
-              required
-              value={valorTotal}
-              onChange={setValorTotal}
-              className={CLASSE_INPUT}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Parcelas *</label>
-            <input
-              type="number"
-              min={1}
-              required
-              disabled={contaFixa}
-              value={contaFixa ? 1 : parcelaTotal}
-              onChange={(e) => setParcelaTotal(e.target.value)}
-              className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Forma de pagamento *</label>
-          <select
-            required
-            disabled={!!grupoFixo}
-            value={grupo}
-            onChange={(e) => setGrupo(e.target.value)}
-            className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-70`}
-          >
-            <option value="" disabled>
-              Selecione...
-            </option>
-            {gruposDisponiveis.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Aplicação *</label>
-          <select
-            required
-            value={aplicacao}
-            onChange={(e) => setAplicacao(e.target.value)}
-            className={CLASSE_INPUT}
-          >
-            <option value="" disabled>
-              Selecione...
-            </option>
-            {config.aplicacoes.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {compDisponiveis.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium mb-1">Reembolso</label>
-            <select value={comp} onChange={(e) => setComp(e.target.value)} className={CLASSE_INPUT}>
-              <option value="">Nenhum</option>
-              {compDisponiveis.map((c) => (
-                <option key={c.nome} value={c.nome}>
-                  {c.nome}
+                <option value="" disabled>
+                  Selecione...
                 </option>
-              ))}
-            </select>
+                {gruposDisponiveis.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Aplicação *</label>
+              <select
+                required
+                value={aplicacao}
+                onChange={(e) => setAplicacao(e.target.value)}
+                className={`${CLASSE_INPUT} h-[42px]`}
+              >
+                <option value="" disabled>
+                  Selecione...
+                </option>
+                {config.aplicacoes.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {compDisponiveis.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Reembolso</label>
+                <select value={comp} onChange={(e) => setComp(e.target.value)} className={`${CLASSE_INPUT} h-[42px]`}>
+                  <option value="">Nenhum</option>
+                  {compDisponiveis.map((c) => (
+                    <option key={c.nome} value={c.nome}>
+                      {c.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
+            {sucesso && <p className="text-sm text-green-600 dark:text-green-400">Lançamento salvo!</p>}
+
+            <div className="mt-auto flex items-center justify-end gap-3 pt-4">
+              <button
+                type="submit"
+                disabled={enviando}
+                className="inline-flex h-[42px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-indigo-600 px-6 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {enviando ? "Salvando..." : textoBotaoSalvar}
+              </button>
+              {!onCancelar && (
+                <button
+                  type="button"
+                  onClick={limparFormulario}
+                  disabled={enviando}
+                  className="inline-flex h-[42px] min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-red-300 px-4 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </div>
-        )}
+        </div>
 
-        {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
-        {sucesso && <p className="text-sm text-green-600 dark:text-green-400">Lançamento salvo!</p>}
-
-        <button type="submit" disabled={enviando} className={CLASSE_BOTAO_PRIMARIO}>
-          {enviando ? "Salvando..." : textoBotaoSalvar}
-        </button>
         {onCancelar && (
           <button
             type="button"
