@@ -52,6 +52,8 @@ export const CONFIG_PADRAO: ConfigListas = {
   itensPorPagina: 10,
   layoutMenu: "horizontal",
   compartilharLancamentos: false,
+  tipoGraficoDashboard: "pizza",
+  mostrarDashboardInicio: true,
 };
 
 export async function garantirUsuarioSemeado(
@@ -99,6 +101,14 @@ export async function atualizarItensPorPagina(uid: string, valor: number) {
 
 export async function atualizarLayoutMenu(uid: string, layout: LayoutMenu) {
   await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { layoutMenu: layout });
+}
+
+export async function atualizarTipoGraficoDashboard(uid: string, tipo: "pizza" | "barra") {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { tipoGraficoDashboard: tipo });
+}
+
+export async function atualizarMostrarDashboardInicio(uid: string, mostrar: boolean) {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { mostrarDashboardInicio: mostrar });
 }
 
 export async function atualizarResumoRelatorio(

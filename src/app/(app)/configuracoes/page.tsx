@@ -13,6 +13,8 @@ import {
   atualizarObservacaoItem,
   atualizarResumoRelatorio,
   atualizarSugestaoCredor,
+  atualizarMostrarDashboardInicio,
+  atualizarTipoGraficoDashboard,
   CONFIG_PADRAO,
   itemEstaEmUso,
   removerComp,
@@ -199,6 +201,57 @@ export default function ConfiguracoesPage() {
                   }`}
                 >
                   Vertical
+                </button>
+              </div>
+            </div>
+
+            <div className={`${CLASSE_CARD} flex flex-col justify-between p-3`}>
+              <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
+                Mini-dashboard da Início
+              </h2>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Exibir na Início</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.mostrarDashboardInicio ?? true}
+                  onClick={() =>
+                    atualizarMostrarDashboardInicio(usuario.uid, !(config.mostrarDashboardInicio ?? true))
+                  }
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                    (config.mostrarDashboardInicio ?? true) ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+                  }`}
+                >
+                  <span
+                    className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                    style={{
+                      transform: (config.mostrarDashboardInicio ?? true) ? "translateX(16px)" : "translateX(0)",
+                    }}
+                  />
+                </button>
+              </div>
+              <div className="mt-1.5 flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600">
+                <button
+                  type="button"
+                  onClick={() => atualizarTipoGraficoDashboard(usuario.uid, "pizza")}
+                  className={`flex-1 px-2.5 py-1.5 text-xs font-medium ${
+                    (config.tipoGraficoDashboard ?? "pizza") === "pizza"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  Pizza
+                </button>
+                <button
+                  type="button"
+                  onClick={() => atualizarTipoGraficoDashboard(usuario.uid, "barra")}
+                  className={`flex-1 px-2.5 py-1.5 text-xs font-medium ${
+                    config.tipoGraficoDashboard === "barra"
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  Barras
                 </button>
               </div>
             </div>

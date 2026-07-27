@@ -37,6 +37,25 @@ export function assinarRecebimentosDoMes(
   });
 }
 
+export function assinarRecebimentosDoIntervalo(
+  uid: string,
+  ymInicio: string,
+  ymFim: string,
+  callback: (recebimentos: Recebimento[]) => void
+) {
+  const inicio = `${ymInicio}-01`;
+  const fim = `${ymFim}-31`;
+  const q = query(
+    collection(db, "usuarios", uid, "recebimentos"),
+    where("recebimento", ">=", inicio),
+    where("recebimento", "<=", fim),
+    orderBy("recebimento")
+  );
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Recebimento));
+  });
+}
+
 export function assinarTodosRecebimentos(
   uid: string,
   callback: (recebimentos: Recebimento[]) => void

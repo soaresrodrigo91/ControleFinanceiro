@@ -365,6 +365,7 @@ function DashboardConteudo() {
                 recorrencias={recorrencias}
                 onSelecionarMes={irParaMes}
                 statusPorGrupo={statusPorGrupo}
+                totaisVisiveis={totaisVisiveis}
               />
             </div>
           )}
@@ -381,13 +382,14 @@ function DashboardConteudo() {
               Lançar a primeira conta
             </Link>
           </div>
-        ) : (
+        ) : config.mostrarDashboardInicio ? (
           <DashboardFormaPagamento
             parcelas={parcelasVisiveis}
             gruposConfig={config.grupos}
             aplicacoesConfig={config.aplicacoes}
+            tipoGrafico={config.tipoGraficoDashboard ?? "pizza"}
           />
-        )}
+        ) : null}
       </div>
 
       <footer className="mt-3 shrink-0 border-t border-slate-200 py-3 text-left text-xs text-slate-400 dark:border-slate-700 dark:text-slate-500">

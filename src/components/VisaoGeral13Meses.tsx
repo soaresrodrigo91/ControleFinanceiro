@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
+import { assinarRecebimentosDoIntervalo } from "@/lib/recebimentos";
 import { mesclarComRecorrencias } from "@/lib/recorrencias";
 import { formatarMesAnoAbreviado, formatarMoeda, somarMesesYM } from "@/lib/date";
-import type { ConfigListas, Parcela, Recorrencia, StatusGrupo } from "@/lib/types";
+import type { ConfigListas, Parcela, Recebimento, Recorrencia, StatusGrupo } from "@/lib/types";
 
 const HORIZONTE = 10;
 
@@ -17,6 +18,7 @@ export default function VisaoGeral13Meses({
   recorrencias,
   onSelecionarMes,
   statusPorGrupo,
+  totaisVisiveis,
 }: {
   uid: string;
   ym: string;
@@ -25,15 +27,21 @@ export default function VisaoGeral13Meses({
   recorrencias: Recorrencia[];
   onSelecionarMes: (ym: string) => void;
   statusPorGrupo?: Record<string, StatusGrupo>;
+  totaisVisiveis: boolean;
 }) {
   const meses = useMemo(() => {
     return Array.from({ length: HORIZONTE }, (_, i) => somarMesesYM(ym, i));
   }, [ym]);
 
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
+  const [recebimentos, setRecebimentos] = useState<Recebimento[]>([]);
 
   useEffect(() => {
     return assinarParcelasDoIntervalo(uid, meses[0], meses[meses.length - 1], setParcelas);
+  }, [uid, meses]);
+
+  useEffect(() => {
+    return assinarRecebimentosDoIntervalo(uid, meses[0], meses[meses.length - 1], setRecebimentos);
   }, [uid, meses]);
 
   const grupoVisivel = (grupo: string) => filtros[grupo] !== false;
@@ -52,6 +60,33 @@ export default function VisaoGeral13Meses({
     }
     return mapa;
   }, [parcelas, recorrencias, meses]);
+
+  const recebidoPorMes = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const r of recebimentos) {
+      if (!r.recebido) continue;
+      const mes = r.recebimento.slice(0, 7);
+      mapa.set(mes, (mapa.get(mes) ?? 0) + r.valor);
+    }
+    return mapa;
+  }, [recebimentos]);
+
+  const subtotalGastosPorMes = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const mes of meses) {
+      const total = grupos.reduce((s, g) => s + (totaisPorGrupoEMes.get(g)?.get(mes) ?? 0), 0);
+      mapa.set(mes, total);
+    }
+    return mapa;
+  }, [grupos, totaisPorGrupoEMes, meses]);
+
+  const liquidoPorMes = useMemo(() => {
+    const mapa = new Map<string, number>();
+    for (const mes of meses) {
+      mapa.set(mes, (recebidoPorMes.get(mes) ?? 0) - (subtotalGastosPorMes.get(mes) ?? 0));
+    }
+    return mapa;
+  }, [meses, recebidoPorMes, subtotalGastosPorMes]);
 
   const toqueInicioX = useRef<number | null>(null);
 
@@ -90,16 +125,15 @@ export default function VisaoGeral13Meses({
                   indice === 0 ? "" : "hidden md:table-cell"
                 }`}
               >
-                <button
-                  onClick={() => onSelecionarMes(mes)}
-                  className={`w-full rounded-md px-1 py-1 text-[15px] transition-colors ${
+                <span
+                  className={`block w-full rounded-md px-1 py-1 text-[15px] ${
                     mes === ym
                       ? "bg-indigo-600 text-white"
-                      : "text-indigo-500 hover:bg-slate-100 dark:text-indigo-400 dark:hover:bg-slate-700"
+                      : "text-indigo-500 dark:text-indigo-400"
                   }`}
                 >
                   {formatarMesAnoAbreviado(mes)}
-                </button>
+                </span>
               </th>
             ))}
           </tr>
@@ -154,6 +188,49 @@ export default function VisaoGeral13Meses({
               </tr>
             );
           })}
+
+          <tr className="border-t border-slate-200 dark:border-slate-700">
+            <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 md:static md:w-auto dark:bg-slate-800">
+              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Subtotal</span>
+            </td>
+            {meses.map((mes, indice) => {
+              const valor = subtotalGastosPorMes.get(mes) ?? 0;
+              return (
+                <td
+                  key={mes}
+                  className={`min-w-[76px] px-1 py-1.5 text-center text-[11px] tabular-nums text-slate-400 md:min-w-0 dark:text-slate-500 ${
+                    indice === 0 ? "" : "hidden md:table-cell"
+                  } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""}`}
+                >
+                  {totaisVisiveis ? (valor > 0 ? formatarMoeda(valor) : "—") : "••••••"}
+                </td>
+              );
+            })}
+          </tr>
+          <tr>
+            <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 pb-2 md:static md:w-auto dark:bg-slate-800">
+              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Líquido mensal</span>
+            </td>
+            {meses.map((mes, indice) => {
+              const valor = liquidoPorMes.get(mes) ?? 0;
+              return (
+                <td
+                  key={mes}
+                  className={`min-w-[76px] px-1 py-1.5 pb-2 text-center text-[11px] tabular-nums md:min-w-0 ${
+                    indice === 0 ? "" : "hidden md:table-cell"
+                  } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""} ${
+                    totaisVisiveis
+                      ? valor < 0
+                        ? "text-red-500 dark:text-red-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                      : "text-slate-400 dark:text-slate-500"
+                  }`}
+                >
+                  {totaisVisiveis ? formatarMoeda(valor) : "••••••"}
+                </td>
+              );
+            })}
+          </tr>
         </tbody>
         </table>
       </div>

@@ -27,6 +27,8 @@ export type ConfigListas = {
   observacoesListas?: { grupos?: Record<string, string>; aplicacoes?: Record<string, string> };
   layoutMenu?: LayoutMenu;
   compartilharLancamentos: boolean;
+  tipoGraficoDashboard?: "pizza" | "barra";
+  mostrarDashboardInicio?: boolean;
 };
 
 export type Parcela = {
