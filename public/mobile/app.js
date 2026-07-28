@@ -562,19 +562,27 @@ function renderChips(seletorContainer, valores, valorAtivo, aoSelecionar) {
     .map((v) => `<button class="chip ${v === valorAtivo ? "ativo" : ""}" data-valor="${esc(v)}">${esc(v)}</button>`)
     .join("");
   cont.querySelectorAll(".chip").forEach((btn) => {
-    btn.onclick = () => aoSelecionar(btn.dataset.valor === valorAtivo ? null : btn.dataset.valor);
+    btn.onclick = () => aoSelecionar(btn.dataset.valor);
   });
 }
 
 /* ---------- lista Pagar ---------- */
 function renderPagar() {
   const gruposDoMes = [...new Set(parcelasAtuais.map((p) => p.grupo))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  if (gruposDoMes.length && !gruposDoMes.includes(filtroGrupoPagar)) {
+    filtroGrupoPagar = gruposDoMes[0];
+  }
   renderChips("#filtros-pagar", gruposDoMes, filtroGrupoPagar, (valor) => {
     filtroGrupoPagar = valor;
     renderPagar();
   });
 
   const itens = filtroGrupoPagar ? parcelasAtuais.filter((p) => p.grupo === filtroGrupoPagar) : parcelasAtuais;
+
+  const somaItens = itens.reduce((s, p) => s + p.valorParcela, 0);
+  $("#resumo-pagar").textContent = itens.length
+    ? `${itens.length} lançamento${itens.length > 1 ? "s" : ""} · ${formatarMoeda(somaItens)}`
+    : "";
 
   const lista = $("#lista-pagar");
   if (!itens.length) {
@@ -621,12 +629,20 @@ async function marcarPago(parcela) {
 /* ---------- lista Receber ---------- */
 function renderReceber() {
   const origensDoMes = [...new Set(recebimentosAtuais.map((r) => r.origem))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  if (origensDoMes.length && !origensDoMes.includes(filtroOrigemReceber)) {
+    filtroOrigemReceber = origensDoMes[0];
+  }
   renderChips("#filtros-receber", origensDoMes, filtroOrigemReceber, (valor) => {
     filtroOrigemReceber = valor;
     renderReceber();
   });
 
   const itens = filtroOrigemReceber ? recebimentosAtuais.filter((r) => r.origem === filtroOrigemReceber) : recebimentosAtuais;
+
+  const somaItens = itens.reduce((s, r) => s + r.valor, 0);
+  $("#resumo-receber").textContent = itens.length
+    ? `${itens.length} recebimento${itens.length > 1 ? "s" : ""} · ${formatarMoeda(somaItens)}`
+    : "";
 
   const lista = $("#lista-receber");
   if (!itens.length) {
