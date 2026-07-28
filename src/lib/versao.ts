@@ -4,4 +4,4 @@
 //
 // Atualize a constante abaixo (data/hora + código) a cada alteração ou correção feita no
 // sistema.
-export const VERSAO_SISTEMA = "27.07.2026.21.15.00 - 01.89";
+export const VERSAO_SISTEMA = "28.07.2026.18.40.00 - 01.90";

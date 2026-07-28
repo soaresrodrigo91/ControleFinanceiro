@@ -3,7 +3,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, writeBatch, updateDoc, onSnapshot,
+  getFirestore, collection, doc, getDoc, writeBatch, updateDoc, deleteDoc, onSnapshot,
   query, where, orderBy, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -57,6 +57,13 @@ function paraNumero(texto) {
   const n = Number(String(texto).replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
+function formatarTelefone(valor) {
+  const digitos = valor.replace(/\D/g, "").slice(0, 11);
+  if (digitos.length === 0) return "";
+  if (digitos.length <= 2) return `(${digitos}`;
+  if (digitos.length <= 7) return `(${digitos.slice(0, 2)}) ${digitos.slice(2)}`;
+  return `(${digitos.slice(0, 2)}) ${digitos.slice(2, 7)}-${digitos.slice(7)}`;
+}
 function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
@@ -70,6 +77,11 @@ let configListas = { grupos: [], aplicacoes: [] };
 let parcelasAtuais = [];
 let recebimentosAtuais = [];
 let unsubParcelas = null, unsubRecebimentos = null;
+let filtroGrupoPagar = null;
+let filtroOrigemReceber = null;
+let telaAnterior = "inicio";
+let notificacoesAtuais = [];
+let unsubNotificacoes = null;
 
 /* ---------- inicialização ---------- */
 window.addEventListener("DOMContentLoaded", () => {
@@ -80,6 +92,8 @@ window.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (u) => {
     if (u) {
       usuario = u;
+      assinarPerfilUsuario();
+      assinarNotificacoesUsuario();
       await carregarConfig();
       assinarMes();
       atualizarLabelsMes();
@@ -90,6 +104,8 @@ window.addEventListener("DOMContentLoaded", () => {
       usuario = null;
       if (unsubParcelas) unsubParcelas();
       if (unsubRecebimentos) unsubRecebimentos();
+      if (unsubPerfil) unsubPerfil();
+      if (unsubNotificacoes) unsubNotificacoes();
       $("#carregando").classList.add("hidden");
       $("#app").classList.add("hidden");
       $("#tela-login").classList.remove("hidden");
@@ -148,6 +164,159 @@ async function esqueciSenha() {
   } catch {
     mostrarMsg("#msg-login", "Não foi possível enviar. Confira o e-mail digitado.", "erro");
   }
+}
+
+/* ---------- perfil (mesmos dados do site: nome, sobrenome, telefone, foto) ---------- */
+let perfilAtual = { nome: "", sobrenome: "", telefone: "", fotoUrl: null };
+let unsubPerfil = null;
+
+function iniciaisPerfil() {
+  const primeira = perfilAtual.nome.trim().charAt(0);
+  const segunda = perfilAtual.sobrenome.trim().charAt(0);
+  const iniciais = (primeira + segunda).toUpperCase();
+  if (iniciais) return iniciais;
+  if (usuario?.email) return usuario.email[0].toUpperCase();
+  return "U";
+}
+
+function atualizarAvatarTopbar() {
+  const el = $("#topbar-avatar");
+  el.innerHTML = perfilAtual.fotoUrl
+    ? `<img src="${perfilAtual.fotoUrl}" alt="Foto de perfil">`
+    : iniciaisPerfil();
+}
+
+function atualizarSaudacao() {
+  $("#saudacao-nome").textContent = perfilAtual.nome ? `Olá, ${perfilAtual.nome}!` : "Olá!";
+}
+
+function assinarPerfilUsuario() {
+  if (unsubPerfil) unsubPerfil();
+  unsubPerfil = onSnapshot(doc(bd, "usuarios", usuario.uid), (snap) => {
+    const d = snap.data();
+    perfilAtual = {
+      nome: d?.nome ?? "",
+      sobrenome: d?.sobrenome ?? "",
+      telefone: d?.telefone ?? "",
+      fotoUrl: d?.fotoUrl ?? null,
+    };
+    atualizarAvatarTopbar();
+    atualizarSaudacao();
+    if (!$("#tela-perfil").classList.contains("hidden")) preencherFormPerfil();
+  });
+}
+
+function preencherFormPerfil() {
+  $("#pf-nome").value = perfilAtual.nome;
+  $("#pf-sobrenome").value = perfilAtual.sobrenome;
+  $("#pf-telefone").value = perfilAtual.telefone;
+  $("#pf-avatar").innerHTML = perfilAtual.fotoUrl
+    ? `<img src="${perfilAtual.fotoUrl}" alt="Foto de perfil">`
+    : iniciaisPerfil();
+  mostrarMsg("#msg-perfil", "", "");
+}
+
+async function salvarPerfil() {
+  const nome = $("#pf-nome").value.trim();
+  const sobrenome = $("#pf-sobrenome").value.trim();
+  const telefone = $("#pf-telefone").value.trim();
+
+  $("#btn-salvar-perfil").disabled = true;
+  try {
+    await updateDoc(doc(bd, "usuarios", usuario.uid), { nome, sobrenome, telefone });
+    irParaTela(telaAnterior);
+  } catch {
+    mostrarMsg("#msg-perfil", "Não foi possível salvar. Tente novamente.", "erro");
+  }
+  $("#btn-salvar-perfil").disabled = false;
+}
+
+async function redimensionarFotoPerfil(arquivo) {
+  const bitmap = await createImageBitmap(arquivo);
+  const TAMANHO_MAX = 256;
+  const escala = Math.min(1, TAMANHO_MAX / Math.max(bitmap.width, bitmap.height));
+  const largura = Math.round(bitmap.width * escala);
+  const altura = Math.round(bitmap.height * escala);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = largura;
+  canvas.height = altura;
+  const contexto = canvas.getContext("2d");
+  contexto.drawImage(bitmap, 0, 0, largura, altura);
+  return canvas.toDataURL("image/jpeg", 0.8);
+}
+
+async function salvarFotoPerfil(arquivo) {
+  const texto = $("#pf-label-foto-texto");
+  texto.textContent = "Enviando...";
+  try {
+    const dataUrl = await redimensionarFotoPerfil(arquivo);
+    await updateDoc(doc(bd, "usuarios", usuario.uid), { fotoUrl: dataUrl });
+  } catch {
+    mostrarMsg("#msg-perfil", "Não foi possível enviar a foto. Tente novamente.", "erro");
+  }
+  texto.textContent = "Alterar foto";
+}
+
+/* ---------- notificações (mesmas do sistema web: lançamentos compartilhados/solicitações) ---------- */
+// Só leitura no mobile: ver e excluir. Sem aceitar/recusar (isso continua só no site).
+function formatarQuandoNotificacao(iso) {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutos = Math.floor(diffMs / 60000);
+  if (minutos < 1) return "agora";
+  if (minutos < 60) return `há ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `há ${horas}h`;
+  const dias = Math.floor(horas / 24);
+  return `há ${dias}d`;
+}
+
+function assinarNotificacoesUsuario() {
+  if (unsubNotificacoes) unsubNotificacoes();
+  const q = query(collection(bd, "notificacoes"), where("uidDestino", "==", usuario.uid));
+  unsubNotificacoes = onSnapshot(q, (snap) => {
+    notificacoesAtuais = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
+    renderNotificacoes();
+  });
+}
+
+function renderNotificacoes() {
+  const naoLidas = notificacoesAtuais.filter((n) => !n.lida).length;
+  const badge = $("#badge-sino");
+  badge.textContent = naoLidas > 9 ? "9+" : String(naoLidas);
+  badge.classList.toggle("hidden", naoLidas === 0);
+
+  const lista = $("#lista-notificacoes");
+  if (notificacoesAtuais.length === 0) {
+    lista.innerHTML = `<div class="notif-vazio">Nenhuma notificação.</div>`;
+    return;
+  }
+  lista.innerHTML = notificacoesAtuais
+    .map(
+      (n) => `
+    <div class="notif-item ${n.lida ? "" : "nao-lida"}" data-id="${n.id}">
+      <div class="notif-corpo">
+        <div class="notif-msg">${esc(n.mensagem)}</div>
+        <div class="notif-quando">${formatarQuandoNotificacao(n.criadoEm)}</div>
+      </div>
+      <button type="button" class="btn-excluir-notif" data-acao="excluir" aria-label="Excluir notificação">✕</button>
+    </div>`
+    )
+    .join("");
+  lista.querySelectorAll(".btn-excluir-notif").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.closest(".notif-item").dataset.id;
+      deleteDoc(doc(bd, "notificacoes", id));
+    };
+  });
+}
+
+async function limparTodasNotificacoes() {
+  const batch = writeBatch(bd);
+  notificacoesAtuais.forEach((n) => batch.delete(doc(bd, "notificacoes", n.id)));
+  await batch.commit();
 }
 
 /* ---------- config (grupos / aplicações) ---------- */
@@ -211,30 +380,145 @@ function atualizarLabelsMes() {
 }
 
 /* ---------- resumo (Início) ---------- */
+// Mesmas cores de status do site (src/app/(app)/inicio/page.tsx):
+// total sempre vermelho, pago sempre verde, pendente sempre vermelho,
+// recebimentos verde (ou âmbar se ainda falta receber) e líquido conforme o sinal.
+let valoresVisiveis = false;
+
+function mascarar(texto) {
+  return valoresVisiveis ? texto : "••••••";
+}
+
 function renderInicio() {
   const total = parcelasAtuais.reduce((s, p) => s + p.valorParcela, 0);
   const pago = parcelasAtuais.filter((p) => p.pago).reduce((s, p) => s + p.valorParcela, 0);
   const pendente = total - pago;
+  const totalAReceber = recebimentosAtuais.reduce((s, r) => s + r.valor, 0);
   const totalRecebido = recebimentosAtuais.filter((r) => r.recebido).reduce((s, r) => s + r.valor, 0);
   const liquido = totalRecebido - total;
+  const faltaReceber = totalRecebido < totalAReceber;
 
-  $("#r-total").textContent = formatarMoeda(total);
-  $("#r-recebido").textContent = formatarMoeda(totalRecebido);
-  $("#r-pago").textContent = formatarMoeda(pago);
-  $("#r-pendente").textContent = formatarMoeda(pendente);
+  const elTotal = $("#r-total");
+  elTotal.textContent = mascarar(formatarMoeda(total));
+  elTotal.className = "valor negativo";
+
+  const elRecebido = $("#r-recebido");
+  elRecebido.textContent = mascarar(formatarMoeda(totalRecebido));
+  elRecebido.className = `valor ${faltaReceber ? "amber" : "positivo"}`;
+
+  const elPago = $("#r-pago");
+  elPago.textContent = mascarar(formatarMoeda(pago));
+  elPago.className = "valor positivo";
+
+  const elPendente = $("#r-pendente");
+  elPendente.textContent = mascarar(formatarMoeda(pendente));
+  elPendente.className = "valor negativo";
+
   const elLiquido = $("#r-liquido");
-  elLiquido.textContent = formatarMoeda(liquido);
-  elLiquido.className = `valor ${liquido >= 0 ? "positivo" : "negativo"}`;
+  elLiquido.textContent = mascarar(formatarMoeda(liquido));
+  elLiquido.className = `valor ${liquido < 0 ? "negativo" : liquido === 0 ? "" : "positivo"}`;
+
+  $("#card-dashboard-aplicacoes").classList.toggle("hidden", !valoresVisiveis);
+
+  renderDashboardAplicacoes();
+}
+
+/* ---------- dashboard: aplicações dos lançamentos ---------- */
+// Mesma paleta e mesma lógica de atribuição de cor (por posição na lista
+// configurada de aplicações) usadas em DashboardFormaPagamento.tsx no site,
+// para que cada aplicação sempre apareça com a mesma cor nos dois lugares.
+const PALETA_CATEGORICA_DARK = [
+  "#3987e5", "#008300", "#d55181", "#c98500",
+  "#199e70", "#d95926", "#9085e9", "#e66767",
+];
+
+function montarItensAplicacao(soma, ordem) {
+  const copia = new Map(soma);
+  const itens = [];
+  let indice = 0;
+
+  ordem.forEach((nome) => {
+    const valor = copia.get(nome);
+    if (!valor) return;
+    itens.push({ nome, valor, cor: PALETA_CATEGORICA_DARK[indice % PALETA_CATEGORICA_DARK.length] });
+    indice++;
+    copia.delete(nome);
+  });
+
+  for (const [nome, valor] of copia) {
+    itens.push({ nome, valor, cor: PALETA_CATEGORICA_DARK[indice % PALETA_CATEGORICA_DARK.length] });
+    indice++;
+  }
+
+  return itens.sort((a, b) => b.valor - a.valor);
+}
+
+function renderDashboardAplicacoes() {
+  const barra = $("#barra-aplicacoes");
+  const lista = $("#lista-aplicacoes");
+
+  const soma = new Map();
+  for (const p of parcelasAtuais) {
+    soma.set(p.aplicacao, (soma.get(p.aplicacao) || 0) + p.valorParcela);
+  }
+  const itens = montarItensAplicacao(soma, configListas.aplicacoes);
+
+  if (itens.length === 0) {
+    barra.innerHTML = "";
+    lista.innerHTML = `<div class="dash-vazio">Nenhum lançamento neste mês.</div>`;
+    return;
+  }
+
+  const total = itens.reduce((s, i) => s + i.valor, 0);
+
+  barra.innerHTML = itens
+    .map((i) => `<span style="width:${total > 0 ? (i.valor / total) * 100 : 0}%; background:${i.cor}"></span>`)
+    .join("");
+
+  lista.innerHTML = itens
+    .map(
+      (i) => `
+    <div class="item-aplicacao">
+      <span class="dot" style="background:${i.cor}"></span>
+      <span class="nome">${esc(i.nome)}</span>
+      <span class="valor">${formatarMoeda(i.valor)}</span>
+      <span class="percentual">${total > 0 ? Math.round((i.valor / total) * 100) : 0}%</span>
+    </div>`
+    )
+    .join("");
+}
+
+/* ---------- filtros (chips de seleção única) ---------- */
+function renderChips(seletorContainer, valores, valorAtivo, aoSelecionar) {
+  const cont = $(seletorContainer);
+  if (valores.length < 2) {
+    cont.innerHTML = "";
+    return;
+  }
+  cont.innerHTML = valores
+    .map((v) => `<button class="chip ${v === valorAtivo ? "ativo" : ""}" data-valor="${esc(v)}">${esc(v)}</button>`)
+    .join("");
+  cont.querySelectorAll(".chip").forEach((btn) => {
+    btn.onclick = () => aoSelecionar(btn.dataset.valor === valorAtivo ? null : btn.dataset.valor);
+  });
 }
 
 /* ---------- lista Pagar ---------- */
 function renderPagar() {
+  const gruposDoMes = [...new Set(parcelasAtuais.map((p) => p.grupo))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  renderChips("#filtros-pagar", gruposDoMes, filtroGrupoPagar, (valor) => {
+    filtroGrupoPagar = valor;
+    renderPagar();
+  });
+
+  const itens = filtroGrupoPagar ? parcelasAtuais.filter((p) => p.grupo === filtroGrupoPagar) : parcelasAtuais;
+
   const lista = $("#lista-pagar");
-  if (!parcelasAtuais.length) {
+  if (!itens.length) {
     lista.innerHTML = `<div class="vazio">Nenhum lançamento neste mês.</div>`;
     return;
   }
-  lista.innerHTML = parcelasAtuais
+  lista.innerHTML = itens
     .map(
       (p) => `
     <div class="item ${p.pago ? "pago" : ""}" data-id="${p.id}">
@@ -248,10 +532,17 @@ function renderPagar() {
     )
     .join("");
   lista.querySelectorAll(".chk").forEach((btn) => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const id = btn.closest(".item").dataset.id;
       const parcela = parcelasAtuais.find((p) => p.id === id);
       marcarPago(parcela);
+    };
+  });
+  lista.querySelectorAll(".item").forEach((el) => {
+    el.onclick = () => {
+      const parcela = parcelasAtuais.find((p) => p.id === el.dataset.id);
+      abrirDetalhePagar(parcela);
     };
   });
 }
@@ -266,12 +557,20 @@ async function marcarPago(parcela) {
 
 /* ---------- lista Receber ---------- */
 function renderReceber() {
+  const origensDoMes = [...new Set(recebimentosAtuais.map((r) => r.origem))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  renderChips("#filtros-receber", origensDoMes, filtroOrigemReceber, (valor) => {
+    filtroOrigemReceber = valor;
+    renderReceber();
+  });
+
+  const itens = filtroOrigemReceber ? recebimentosAtuais.filter((r) => r.origem === filtroOrigemReceber) : recebimentosAtuais;
+
   const lista = $("#lista-receber");
-  if (!recebimentosAtuais.length) {
+  if (!itens.length) {
     lista.innerHTML = `<div class="vazio">Nenhum recebimento neste mês.</div>`;
     return;
   }
-  lista.innerHTML = recebimentosAtuais
+  lista.innerHTML = itens
     .map(
       (r) => `
     <div class="item ${r.recebido ? "recebido" : ""}" data-id="${r.id}">
@@ -285,10 +584,17 @@ function renderReceber() {
     )
     .join("");
   lista.querySelectorAll(".chk").forEach((btn) => {
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
       const id = btn.closest(".item").dataset.id;
       const receb = recebimentosAtuais.find((r) => r.id === id);
       marcarRecebido(receb);
+    };
+  });
+  lista.querySelectorAll(".item").forEach((el) => {
+    el.onclick = () => {
+      const receb = recebimentosAtuais.find((r) => r.id === el.dataset.id);
+      abrirDetalheReceber(receb);
     };
   });
 }
@@ -299,25 +605,51 @@ async function marcarRecebido(receb) {
   });
 }
 
+/* ---------- chave (valor total / valor da parcela) ---------- */
+function ligarChave(idBotao, idLabel) {
+  const botao = $(idBotao);
+  botao.onclick = () => {
+    const ligada = botao.getAttribute("aria-checked") !== "true";
+    botao.setAttribute("aria-checked", String(ligada));
+    botao.classList.toggle("ligada", ligada);
+    $(idLabel).textContent = ligada ? "Valor da parcela *" : "Valor total *";
+  };
+}
+function chaveLigada(idBotao) {
+  return $(idBotao).getAttribute("aria-checked") === "true";
+}
+function resetarChave(idBotao, idLabel) {
+  const botao = $(idBotao);
+  botao.setAttribute("aria-checked", "false");
+  botao.classList.remove("ligada");
+  $(idLabel).textContent = "Valor total *";
+}
+
 /* ---------- criar lançamento (Pagar) ---------- */
 async function salvarLancamento() {
   const credor = $("#fp-credor").value.trim();
   const dataCompra = $("#fp-data").value || hojeISO();
   const inicioCobranca = $("#fp-inicio").value || somarMeses(hojeISO(), 1);
-  const valorTotal = paraNumero($("#fp-valor").value);
+  const valorDigitado = paraNumero($("#fp-valor").value);
   const parcelaTotal = Math.max(1, parseInt($("#fp-parcelas").value || "1", 10));
+  const valorPorParcela = chaveLigada("#fp-chave-valor");
+  const valorTotal = valorPorParcela ? valorDigitado * parcelaTotal : valorDigitado;
   const grupo = $("#fp-grupo").value;
   const aplicacao = $("#fp-aplicacao").value;
   const observacao = $("#fp-observacao").value.trim();
 
-  if (!credor) return mostrarMsg("#msg-pagar", "Informe o credor.", "erro");
-  if (!(valorTotal > 0)) return mostrarMsg("#msg-pagar", "Informe um valor válido.", "erro");
+  // Mesmas obrigatoriedades do site (FormularioLancamento.tsx com observacaoObrigatoria em /lancar).
+  if (!credor || !dataCompra || !inicioCobranca || !observacao) {
+    return mostrarMsg("#msg-pagar", "Preencha todos os campos obrigatórios.", "erro");
+  }
   if (!grupo || !aplicacao) return mostrarMsg("#msg-pagar", "Configure grupos e categorias pelo site primeiro.", "erro");
+  if (!(valorTotal > 0)) return mostrarMsg("#msg-pagar", "Informe um valor total válido.", "erro");
+  if (!(parcelaTotal >= 1)) return mostrarMsg("#msg-pagar", "O número de parcelas deve ser pelo menos 1.", "erro");
 
   $("#btn-salvar-pagar").disabled = true;
   try {
     const lancamentoId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-    const valores = dividirValor(valorTotal, parcelaTotal);
+    const valores = valorPorParcela ? new Array(parcelaTotal).fill(valorDigitado) : dividirValor(valorTotal, parcelaTotal);
     const batch = writeBatch(bd);
     const colecao = collection(bd, "usuarios", usuario.uid, "parcelas");
     valores.forEach((valorParcela, i) => {
@@ -342,7 +674,7 @@ async function salvarLancamento() {
       });
     });
     await batch.commit();
-    fecharPainel();
+    irParaTela(telaAnterior);
     limparFormularioPagar();
   } catch {
     mostrarMsg("#msg-pagar", "Não foi possível salvar. Tente novamente.", "erro");
@@ -357,6 +689,7 @@ function limparFormularioPagar() {
   $("#fp-valor").value = "";
   $("#fp-parcelas").value = "1";
   $("#fp-observacao").value = "";
+  resetarChave("#fp-chave-valor", "#fp-valor-label");
   mostrarMsg("#msg-pagar", "", "");
 }
 
@@ -365,12 +698,15 @@ async function salvarRecebimento() {
   const origem = $("#fr-origem").value.trim();
   const valor = paraNumero($("#fr-valor").value);
   const parcelaTotal = Math.max(1, parseInt($("#fr-parcelas").value || "1", 10));
-  const valorPorParcela = $("#fr-valor-por-parcela").checked;
+  const valorPorParcela = chaveLigada("#fr-chave-valor");
   const dataRecebimento = $("#fr-data").value || hojeISO();
   const observacao = $("#fr-observacao").value.trim();
 
-  if (!origem) return mostrarMsg("#msg-receber", "Informe a origem.", "erro");
-  if (!(valor > 0)) return mostrarMsg("#msg-receber", "Informe um valor válido.", "erro");
+  // Mesmas obrigatoriedades do site (src/app/(app)/receber/page.tsx): Origem, Valor,
+  // Parcelas e 1ª data são obrigatórios; Observação é opcional.
+  if (!origem || !dataRecebimento) return mostrarMsg("#msg-receber", "Preencha origem e data.", "erro");
+  if (!(valor > 0)) return mostrarMsg("#msg-receber", "Informe um valor total válido.", "erro");
+  if (!(parcelaTotal >= 1)) return mostrarMsg("#msg-receber", "O número de parcelas deve ser pelo menos 1.", "erro");
 
   $("#btn-salvar-receber").disabled = true;
   try {
@@ -393,7 +729,7 @@ async function salvarRecebimento() {
       });
     });
     await batch.commit();
-    fecharPainel();
+    irParaTela(telaAnterior);
     limparFormularioReceber();
   } catch {
     mostrarMsg("#msg-receber", "Não foi possível salvar. Tente novamente.", "erro");
@@ -405,35 +741,147 @@ function limparFormularioReceber() {
   $("#fr-origem").value = "";
   $("#fr-valor").value = "";
   $("#fr-parcelas").value = "1";
-  $("#fr-valor-por-parcela").checked = false;
-  $("#fr-valor-label").textContent = "Valor total";
+  resetarChave("#fr-chave-valor", "#fr-valor-label");
   $("#fr-data").value = "";
   $("#fr-observacao").value = "";
   mostrarMsg("#msg-receber", "", "");
 }
 
 /* ---------- navegação / painel ---------- */
-function irParaTela(nome) {
-  ["inicio", "pagar", "receber"].forEach((t) => {
-    $(`#tela-${t}`).classList.toggle("hidden", t !== nome);
-    $(`#nav-${t}`).classList.toggle("ativa", t === nome);
-  });
+const TITULOS_TELA = {
+  inicio: "Início",
+  pagar: "Contas a pagar",
+  receber: "Contas a receber",
+  configuracoes: "Configurações",
+};
+const TODAS_AS_TELAS = [
+  "inicio", "pagar", "receber", "detalhe", "configuracoes",
+  "novo-pagar", "novo-receber", "perfil", "notificacoes",
+];
+
+function telaAtualPrincipal() {
+  for (const t of ["inicio", "pagar", "receber", "configuracoes"]) {
+    if (!$(`#tela-${t}`).classList.contains("hidden")) return t;
+  }
+  return "inicio";
 }
 
-function abrirPainel(folha) {
-  $("#folha-pagar").classList.toggle("hidden", folha !== "pagar");
-  $("#folha-receber").classList.toggle("hidden", folha !== "receber");
-  $("#painel").classList.remove("hidden");
-  if (folha === "pagar" && !$("#fp-data").value) {
+function irParaTela(nome) {
+  TODAS_AS_TELAS.forEach((t) => {
+    $(`#tela-${t}`).classList.toggle("hidden", t !== nome);
+  });
+  document.querySelectorAll(".menu-item").forEach((item) => {
+    item.classList.toggle("ativa", item.dataset.tela === nome);
+  });
+  $("#topbar-titulo").textContent = TITULOS_TELA[nome] ?? "Controle Financeiro";
+  $("#btn-menu").classList.remove("modo-voltar");
+}
+
+// Telas cheias que se abrem "por cima" (detalhe, novo lançamento/recebimento):
+// guardam de onde vieram em telaAnterior e mostram a seta de voltar na topbar.
+function mostrarTelaCheia(nome, titulo) {
+  TODAS_AS_TELAS.forEach((t) => {
+    $(`#tela-${t}`).classList.toggle("hidden", t !== nome);
+  });
+  $("#topbar-titulo").textContent = titulo;
+  $("#btn-menu").classList.add("modo-voltar");
+}
+
+/* ---------- tela de detalhes (lançamento ou recebimento) ---------- */
+function linhaDetalhe(rotulo, valor) {
+  return `<div class="detalhe-linha"><span class="rotulo">${esc(rotulo)}</span><span class="valor-detalhe">${esc(String(valor))}</span></div>`;
+}
+
+function abrirDetalhePagar(p) {
+  telaAnterior = "pagar";
+  $("#detalhe-conteudo").innerHTML =
+    `<div class="detalhe-titulo-credor">${esc(p.credor)}</div>` +
+    [
+      ["Valor da parcela", formatarMoeda(p.valorParcela)],
+      ["Valor total", formatarMoeda(p.valorTotal)],
+      ["Parcela", p.parcelaTotal > 1 ? `${p.parcelaNum}/${p.parcelaTotal}` : "Única"],
+      ["Vencimento", formatarDataBR(p.vencimento)],
+      ["Forma de pagamento", p.grupo],
+      ["Categoria", p.aplicacao],
+      ["Status", p.pago ? "Pago" : "Pendente"],
+      ["Observação", p.observacao || "—"],
+    ]
+      .map(([rotulo, valor]) => linhaDetalhe(rotulo, valor))
+      .join("");
+  mostrarTelaCheia("detalhe", "Detalhes");
+}
+
+function abrirDetalheReceber(r) {
+  telaAnterior = "receber";
+  $("#detalhe-conteudo").innerHTML =
+    `<div class="detalhe-titulo-credor">${esc(r.origem)}</div>` +
+    [
+      ["Valor", formatarMoeda(r.valor)],
+      ["Parcela", r.qtdParcelas > 1 ? r.parcela : "Única"],
+      ["Data do recebimento", formatarDataBR(r.recebimento)],
+      ["Status", r.recebido ? "Recebido" : "Pendente"],
+      ["Observação", r.observacao || "—"],
+    ]
+      .map(([rotulo, valor]) => linhaDetalhe(rotulo, valor))
+      .join("");
+  mostrarTelaCheia("detalhe", "Detalhes");
+}
+
+/* ---------- telas novo lançamento / novo recebimento (tela cheia) ---------- */
+function abrirTelaNovoPagar(origem) {
+  telaAnterior = origem;
+  if (!$("#fp-data").value) {
     $("#fp-data").value = hojeISO();
     $("#fp-inicio").value = somarMeses(hojeISO(), 1);
   }
-  if (folha === "receber" && !$("#fr-data").value) {
+  mostrarTelaCheia("novo-pagar", "Novo lançamento");
+}
+
+function abrirTelaNovoReceber(origem) {
+  telaAnterior = origem;
+  if (!$("#fr-data").value) {
     $("#fr-data").value = hojeISO();
   }
+  mostrarTelaCheia("novo-receber", "Novo recebimento");
 }
-function fecharPainel() {
-  $("#painel").classList.add("hidden");
+
+function abrirMenu() {
+  $("#menu-lateral").classList.add("aberto");
+  $("#overlay-menu").classList.remove("hidden");
+}
+function fecharMenu() {
+  $("#menu-lateral").classList.remove("aberto");
+  $("#overlay-menu").classList.add("hidden");
+}
+
+/* ---------- mini-menu do "+" na tela Início (escolher pagar ou receber) ---------- */
+function alternarFabInicio() {
+  const aberto = $("#fab-inicio-dial").classList.toggle("aberto");
+  $("#fab-inicio").classList.toggle("aberto", aberto);
+  $("#fab-inicio-overlay").classList.toggle("hidden", !aberto);
+}
+function fecharFabInicio() {
+  $("#fab-inicio-dial").classList.remove("aberto");
+  $("#fab-inicio").classList.remove("aberto");
+  $("#fab-inicio-overlay").classList.add("hidden");
+}
+
+/* ---------- tema escuro (opcional, ligado em Configurações) ---------- */
+function aplicarTema(escuro) {
+  if (escuro) document.documentElement.setAttribute("data-tema", "escuro");
+  else document.documentElement.removeAttribute("data-tema");
+  const meta = $('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", escuro ? "#0e1220" : "#f5f6fa");
+}
+
+function abrirPerfil() {
+  telaAnterior = telaAtualPrincipal();
+  preencherFormPerfil();
+  mostrarTelaCheia("perfil", "Meu perfil");
+}
+function abrirNotificacoes() {
+  telaAnterior = telaAtualPrincipal();
+  mostrarTelaCheia("notificacoes", "Notificações");
 }
 
 function ligarEventos() {
@@ -444,29 +892,90 @@ function ligarEventos() {
   $("#btn-esqueci").onclick = esqueciSenha;
 
   ["inicio", "pagar", "receber"].forEach((t) => {
-    $(`#btn-sair-${t}`).onclick = () => signOut(auth);
     $(`#mes-anterior-${t}`).onclick = () => mudarMes(-1);
     $(`#mes-proximo-${t}`).onclick = () => mudarMes(1);
   });
 
-  $("#nav-inicio").onclick = () => irParaTela("inicio");
-  $("#nav-pagar").onclick = () => irParaTela("pagar");
-  $("#nav-receber").onclick = () => irParaTela("receber");
-
-  $("#fab-pagar").onclick = () => abrirPainel("pagar");
-  $("#fab-receber").onclick = () => abrirPainel("receber");
-  $("#btn-cancelar-pagar").onclick = fecharPainel;
-  $("#btn-cancelar-receber").onclick = fecharPainel;
-  $("#painel").addEventListener("click", (e) => {
-    if (e.target.id === "painel") fecharPainel();
+  $("#btn-menu").onclick = () => {
+    if ($("#btn-menu").classList.contains("modo-voltar")) {
+      irParaTela(telaAnterior);
+    } else {
+      abrirMenu();
+    }
+  };
+  $("#overlay-menu").onclick = fecharMenu;
+  document.querySelectorAll(".menu-item").forEach((item) => {
+    item.onclick = () => {
+      irParaTela(item.dataset.tela);
+      fecharMenu();
+    };
   });
+  $("#card-total-gastos").onclick = () => irParaTela("pagar");
+  $("#card-recebimentos").onclick = () => irParaTela("receber");
+
+  $("#btn-olho").onclick = () => {
+    valoresVisiveis = !valoresVisiveis;
+    $("#btn-olho").textContent = valoresVisiveis ? "👁️" : "🙈";
+    $("#btn-olho").setAttribute("aria-label", valoresVisiveis ? "Ocultar valores" : "Mostrar valores");
+    renderInicio();
+  };
+  $("#btn-sair").onclick = () => {
+    if (confirm("Tem certeza que deseja sair da sua conta?")) {
+      fecharMenu();
+      signOut(auth);
+    }
+  };
+
+  $("#fab-pagar").onclick = () => abrirTelaNovoPagar("pagar");
+  $("#fab-receber").onclick = () => abrirTelaNovoReceber("receber");
+  $("#topbar-avatar").onclick = abrirPerfil;
+
+  $("#fab-inicio").onclick = alternarFabInicio;
+  $("#fab-inicio-overlay").onclick = fecharFabInicio;
+  document.querySelectorAll(".fab-opcao").forEach((btn) => {
+    btn.onclick = () => {
+      fecharFabInicio();
+      if (btn.dataset.tipo === "pagar") abrirTelaNovoPagar("inicio");
+      else abrirTelaNovoReceber("inicio");
+    };
+  });
+  $("#btn-cancelar-pagar").onclick = () => irParaTela(telaAnterior);
+  $("#btn-cancelar-receber").onclick = () => irParaTela(telaAnterior);
+  $("#btn-cancelar-perfil").onclick = () => irParaTela(telaAnterior);
+
+  $("#topbar-sino").onclick = abrirNotificacoes;
+  $("#btn-limpar-notificacoes").onclick = limparTodasNotificacoes;
+
+  const chaveTema = $("#chave-tema-escuro");
+  const temaEscuroSalvo = document.documentElement.getAttribute("data-tema") === "escuro";
+  chaveTema.setAttribute("aria-checked", String(temaEscuroSalvo));
+  chaveTema.classList.toggle("ligada", temaEscuroSalvo);
+  chaveTema.onclick = () => {
+    const escuro = chaveTema.getAttribute("aria-checked") !== "true";
+    chaveTema.setAttribute("aria-checked", String(escuro));
+    chaveTema.classList.toggle("ligada", escuro);
+    try {
+      localStorage.setItem("temaEscuro", String(escuro));
+    } catch {
+      /* localStorage indisponível (modo privado); tema não será lembrado */
+    }
+    aplicarTema(escuro);
+  };
 
   $("#btn-salvar-pagar").onclick = salvarLancamento;
   $("#btn-salvar-receber").onclick = salvarRecebimento;
+  $("#btn-salvar-perfil").onclick = salvarPerfil;
 
-  $("#fr-valor-por-parcela").addEventListener("change", (e) => {
-    $("#fr-valor-label").textContent = e.target.checked ? "Valor de cada parcela" : "Valor total";
+  $("#pf-telefone").addEventListener("input", (e) => {
+    e.target.value = formatarTelefone(e.target.value);
   });
+  $("#pf-foto-input").addEventListener("change", (e) => {
+    const arquivo = e.target.files?.[0];
+    if (arquivo) salvarFotoPerfil(arquivo);
+  });
+
+  ligarChave("#fp-chave-valor", "#fp-valor-label");
+  ligarChave("#fr-chave-valor", "#fr-valor-label");
 
   $("#fp-data").addEventListener("change", (e) => {
     $("#fp-inicio").value = somarMeses(e.target.value, 1);

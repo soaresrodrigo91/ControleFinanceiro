@@ -1,4 +1,4 @@
-const CACHE = "cf-mobile-v1";
+const CACHE = "cf-mobile-v2";
 const SHELL = ["/mobile/index.html", "/mobile/style.css", "/mobile/app.js", "/mobile/manifest.json"];
 
 self.addEventListener("install", (evento) => {
