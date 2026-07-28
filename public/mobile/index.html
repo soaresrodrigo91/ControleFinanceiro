@@ -81,7 +81,7 @@
       <span class="icone-hamburger"><span></span><span></span><span></span></span>
       <span class="icone-voltar">←</span>
     </button>
-    <span class="topbar-titulo" id="topbar-titulo">Início</span>
+    <span class="topbar-titulo" id="topbar-titulo">Controle</span>
     <div class="topbar-acoes">
       <button class="topbar-sino" id="topbar-sino" aria-label="Notificações">
         🔔
@@ -92,18 +92,19 @@
   </header>
 
   <div id="tela-inicio" class="screen">
-    <div class="seletor-mes">
-      <button id="mes-anterior-inicio">◀</button>
-      <span class="mes-atual" id="mes-atual-inicio">—</span>
-      <button id="mes-proximo-inicio">▶</button>
-    </div>
     <main>
       <div class="saudacao">
-        <div class="saudacao-topo">
-          <h2 id="saudacao-nome">Olá!</h2>
-          <button class="btn-olho" id="btn-olho" aria-label="Mostrar valores">🙈</button>
-        </div>
+        <h2 id="saudacao-nome">Olá!</h2>
         <p>Aqui está o resumo do seu mês.</p>
+      </div>
+
+      <div class="linha-mes-olho">
+        <div class="seletor-mes">
+          <button id="mes-anterior-inicio">◀</button>
+          <span class="mes-atual" id="mes-atual-inicio">—</span>
+          <button id="mes-proximo-inicio">▶</button>
+        </div>
+        <button class="btn-olho" id="btn-olho" aria-label="Mostrar valores">🙈</button>
       </div>
 
       <div class="grade-resumo">
@@ -111,19 +112,19 @@
         <div class="card-resumo clicavel" id="card-recebimentos"><span class="rotulo"><span class="rotulo-icone">📥</span>Recebimentos</span><span class="valor" id="r-recebido">R$ 0,00</span></div>
         <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">✅</span>Pago</span><span class="valor" id="r-pago">R$ 0,00</span></div>
         <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">⏳</span>Pendente</span><span class="valor" id="r-pendente">R$ 0,00</span></div>
-        <div class="card-resumo full"><span class="rotulo"><span class="rotulo-icone">📊</span>Líquido mensal</span><span class="valor" id="r-liquido">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">📊</span>Líquido mensal</span><span class="valor" id="r-liquido">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">🧮</span>Provisão Líquido</span><span class="valor" id="r-provisao-liquido">R$ 0,00</span></div>
       </div>
 
       <div class="card-dashboard" id="card-dashboard-aplicacoes">
         <div class="card-dashboard-header">
           <span class="card-dashboard-titulo">Aplicações dos lançamentos</span>
-          <span class="card-dashboard-sub">Contas a pagar do mês, por forma de pagamento</span>
         </div>
         <div class="barra-proporcao" id="barra-aplicacoes"></div>
         <div class="lista-aplicacoes" id="lista-aplicacoes"></div>
       </div>
 
-      <p class="legenda">Não inclui contas fixas/recorrentes — para vê-las, abra pelo computador.</p>
+      <p class="legenda">Algumas funções ainda não estão disponíveis no app — para gerenciá-las ou consultá-las, acesse o sistema web.</p>
     </main>
 
     <div class="fab-menu-overlay hidden" id="fab-inicio-overlay"></div>
@@ -200,9 +201,17 @@
         </div>
         <div class="field"><label>Parcelas *</label><input id="fp-parcelas" type="number" min="1" value="1"></div>
       </div>
+      <label class="check-linha"><input type="checkbox" id="fp-conta-fixa"> Conta fixa (recorrente)</label>
+      <p class="legenda-campo hidden" id="fp-legenda-conta-fixa">O valor será lançado todo mês a partir da data de início da cobrança, até você encerrar a recorrência.</p>
+      <label class="check-linha"><input type="checkbox" id="fp-provisao"> Provisão</label>
+      <p class="legenda-campo hidden" id="fp-legenda-provisao">Lançamentos classificados como "Provisão" permitem exclusão e edição do valor lançado.</p>
       <div class="linha-dupla">
         <div class="field"><label>Forma de pagamento *</label><select id="fp-grupo"></select></div>
-        <div class="field"><label>Categoria *</label><select id="fp-aplicacao"></select></div>
+        <div class="field"><label>Aplicação *</label><select id="fp-aplicacao"></select></div>
+      </div>
+      <div class="field hidden" id="fp-comp-wrap">
+        <label>Reembolso</label>
+        <select id="fp-comp"><option value="">Nenhum</option></select>
       </div>
       <div class="field"><label>Observação *</label><input id="fp-observacao" type="text" placeholder=""></div>
       <div id="msg-pagar"></div>
@@ -224,6 +233,8 @@
         </div>
         <div class="field"><label>Parcelas *</label><input id="fr-parcelas" type="number" min="1" value="1"></div>
       </div>
+      <label class="check-linha"><input type="checkbox" id="fr-conta-fixa"> Conta fixa (recorrente)</label>
+      <p class="legenda-campo hidden" id="fr-legenda-conta-fixa">O valor será lançado todo mês a partir da 1ª data, até você encerrar a recorrência.</p>
       <div class="field"><label>Data do primeiro recebimento *</label><input id="fr-data" type="date"></div>
       <div class="field"><label>Observação</label><input id="fr-observacao" type="text" placeholder="Opcional"></div>
       <div id="msg-receber"></div>

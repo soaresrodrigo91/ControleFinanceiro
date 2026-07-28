@@ -3,7 +3,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, writeBatch, updateDoc, deleteDoc, onSnapshot,
+  getFirestore, collection, doc, getDoc, addDoc, writeBatch, updateDoc, deleteDoc, onSnapshot,
   query, where, orderBy, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -97,6 +97,7 @@ window.addEventListener("DOMContentLoaded", () => {
       await carregarConfig();
       assinarMes();
       atualizarLabelsMes();
+      irParaTela("inicio");
       $("#carregando").classList.add("hidden");
       $("#tela-login").classList.add("hidden");
       $("#app").classList.remove("hidden");
@@ -320,20 +321,33 @@ async function limparTodasNotificacoes() {
 }
 
 /* ---------- config (grupos / aplicações) ---------- */
+// Mesmos valores padrão de CONFIG_PADRAO em src/lib/config.ts: se o documento de
+// configuração do usuário não tiver grupos/aplicações definidos (ou não existir
+// ainda), o site usa esses valores-semente — o mobile precisa fazer o mesmo,
+// senão os campos ficam com o <select> vazio (parecendo que "sumiram").
+const GRUPOS_PADRAO = ["Fixas", "Cartão de Crédito", "Provisões", "Outros"];
+const APLICACOES_PADRAO = ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Assinaturas", "Parcelamentos", "Outros"];
+
 async function carregarConfig() {
   try {
     const snap = await getDoc(doc(bd, "usuarios", usuario.uid, "config", "listas"));
-    if (snap.exists()) {
-      const d = snap.data();
-      configListas = { grupos: d.grupos || [], aplicacoes: d.aplicacoes || [] };
-    } else {
-      configListas = { grupos: [], aplicacoes: [] };
-    }
+    const d = snap.exists() ? snap.data() : {};
+    configListas = {
+      grupos: d.grupos ?? GRUPOS_PADRAO,
+      aplicacoes: d.aplicacoes ?? APLICACOES_PADRAO,
+      comp: d.comp ?? [],
+    };
   } catch {
-    configListas = { grupos: [], aplicacoes: [] };
+    configListas = { grupos: GRUPOS_PADRAO, aplicacoes: APLICACOES_PADRAO, comp: [] };
   }
   $("#fp-grupo").innerHTML = configListas.grupos.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join("");
   $("#fp-aplicacao").innerHTML = configListas.aplicacoes.map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
+
+  const compDisponiveis = configListas.comp.filter((c) => c.ativo !== false);
+  $("#fp-comp-wrap").classList.toggle("hidden", compDisponiveis.length === 0);
+  $("#fp-comp").innerHTML =
+    `<option value="">Nenhum</option>` +
+    compDisponiveis.map((c) => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join("");
 }
 
 /* ---------- assinatura do mês (parcelas + recebimentos) ---------- */
@@ -417,6 +431,14 @@ function renderInicio() {
   const elLiquido = $("#r-liquido");
   elLiquido.textContent = mascarar(formatarMoeda(liquido));
   elLiquido.className = `valor ${liquido < 0 ? "negativo" : liquido === 0 ? "" : "positivo"}`;
+
+  // Versão simplificada do "Provisão Líquido" do site (VisaoGeral13Meses.tsx): lá o subtotal
+  // de gastos considera só as formas de pagamento marcadas como visíveis numa configuração
+  // que o mobile ainda não tem; aqui usamos o total de gastos do mês inteiro.
+  const provisaoLiquido = totalAReceber - total;
+  const elProvisaoLiquido = $("#r-provisao-liquido");
+  elProvisaoLiquido.textContent = mascarar(formatarMoeda(provisaoLiquido));
+  elProvisaoLiquido.className = `valor ${provisaoLiquido < 0 ? "negativo" : provisaoLiquido === 0 ? "" : "positivo"}`;
 
   $("#card-dashboard-aplicacoes").classList.toggle("hidden", !valoresVisiveis);
 
@@ -625,17 +647,72 @@ function resetarChave(idBotao, idLabel) {
   $(idLabel).textContent = "Valor total *";
 }
 
+/* ---------- recorrências (conta fixa) — mesma lógica de src/lib/recorrencias.ts ---------- */
+async function criarRecorrencia(uid, dados) {
+  const [, , dia] = dados.inicio.split("-").map(Number);
+  await addDoc(collection(bd, "usuarios", uid, "recorrencias"), {
+    tipo: dados.tipo,
+    credor: dados.credor,
+    observacao: dados.observacao || null,
+    valorAtual: dados.valor,
+    comp: dados.comp || null,
+    grupo: dados.grupo || null,
+    aplicacao: dados.aplicacao || null,
+    diaVencimento: dia,
+    inicio: dados.inicio,
+    fim: null,
+    historicoValores: [{ valor: dados.valor, desde: dados.inicio }],
+    provisao: dados.provisao === true,
+  });
+}
+
+/* ---------- reembolso — mesma lógica de sincronizarReembolso em src/lib/recebimentos.ts ---------- */
+async function sincronizarReembolso(uid, dados) {
+  if (!dados.compNome) return;
+
+  const configSnap = await getDoc(doc(bd, "usuarios", uid, "config", "listas"));
+  const itemComp = (configSnap.data()?.comp || []).find((c) => c.nome === dados.compNome);
+  if (!itemComp || itemComp.modo === "nenhum") return;
+
+  const valorReembolso = itemComp.modo === "metade" ? dados.valorTotal / 2 : dados.valorTotal;
+  const valores = dividirValor(valorReembolso, dados.parcelaTotal);
+
+  const batch = writeBatch(bd);
+  const recebimentosRef = collection(bd, "usuarios", uid, "recebimentos");
+  valores.forEach((valorParcela, indice) => {
+    const ref = doc(recebimentosRef);
+    batch.set(ref, {
+      lancamentoId: dados.lancamentoId,
+      origem: dados.compNome,
+      valor: valorParcela,
+      recebimento: somarMeses(dados.dataInicio, indice),
+      qtdParcelas: dados.parcelaTotal,
+      parcela: `${indice + 1}/${dados.parcelaTotal}`,
+      observacao: dados.observacao,
+      recebido: false,
+      origemComp: true,
+      formaPagamentoOrigem: dados.grupoOrigem,
+      provisao: dados.provisao === true,
+      criadoEm: serverTimestamp(),
+    });
+  });
+  await batch.commit();
+}
+
 /* ---------- criar lançamento (Pagar) ---------- */
 async function salvarLancamento() {
   const credor = $("#fp-credor").value.trim();
   const dataCompra = $("#fp-data").value || hojeISO();
   const inicioCobranca = $("#fp-inicio").value || somarMeses(hojeISO(), 1);
   const valorDigitado = paraNumero($("#fp-valor").value);
-  const parcelaTotal = Math.max(1, parseInt($("#fp-parcelas").value || "1", 10));
+  const contaFixa = $("#fp-conta-fixa").checked;
+  const provisao = $("#fp-provisao").checked;
+  const parcelaTotal = contaFixa ? 1 : Math.max(1, parseInt($("#fp-parcelas").value || "1", 10));
   const valorPorParcela = chaveLigada("#fp-chave-valor");
   const valorTotal = valorPorParcela ? valorDigitado * parcelaTotal : valorDigitado;
   const grupo = $("#fp-grupo").value;
   const aplicacao = $("#fp-aplicacao").value;
+  const comp = $("#fp-comp").value || null;
   const observacao = $("#fp-observacao").value.trim();
 
   // Mesmas obrigatoriedades do site (FormularioLancamento.tsx com observacaoObrigatoria em /lancar).
@@ -644,36 +721,59 @@ async function salvarLancamento() {
   }
   if (!grupo || !aplicacao) return mostrarMsg("#msg-pagar", "Configure grupos e categorias pelo site primeiro.", "erro");
   if (!(valorTotal > 0)) return mostrarMsg("#msg-pagar", "Informe um valor total válido.", "erro");
-  if (!(parcelaTotal >= 1)) return mostrarMsg("#msg-pagar", "O número de parcelas deve ser pelo menos 1.", "erro");
+  if (!contaFixa && !(parcelaTotal >= 1)) return mostrarMsg("#msg-pagar", "O número de parcelas deve ser pelo menos 1.", "erro");
 
   $("#btn-salvar-pagar").disabled = true;
   try {
-    const lancamentoId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-    const valores = valorPorParcela ? new Array(parcelaTotal).fill(valorDigitado) : dividirValor(valorTotal, parcelaTotal);
-    const batch = writeBatch(bd);
-    const colecao = collection(bd, "usuarios", usuario.uid, "parcelas");
-    valores.forEach((valorParcela, i) => {
-      const ref = doc(colecao);
-      batch.set(ref, {
-        lancamentoId,
+    if (contaFixa) {
+      await criarRecorrencia(usuario.uid, {
+        tipo: "pagar",
         credor,
-        dataCompra,
-        observacao: observacao || null,
-        valorTotal,
-        parcelaNum: i + 1,
-        parcelaTotal,
-        valorParcela,
-        comp: null,
+        observacao,
+        valor: valorTotal,
         grupo,
         aplicacao,
-        vencimento: somarMeses(inicioCobranca, i),
-        pago: false,
-        pagoEm: null,
-        provisao: false,
-        criadoEm: serverTimestamp(),
+        inicio: inicioCobranca,
+        provisao,
       });
-    });
-    await batch.commit();
+    } else {
+      const lancamentoId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const valores = valorPorParcela ? new Array(parcelaTotal).fill(valorDigitado) : dividirValor(valorTotal, parcelaTotal);
+      const batch = writeBatch(bd);
+      const colecao = collection(bd, "usuarios", usuario.uid, "parcelas");
+      valores.forEach((valorParcela, i) => {
+        const ref = doc(colecao);
+        batch.set(ref, {
+          lancamentoId,
+          credor,
+          dataCompra,
+          observacao: observacao || null,
+          valorTotal,
+          parcelaNum: i + 1,
+          parcelaTotal,
+          valorParcela,
+          comp,
+          grupo,
+          aplicacao,
+          vencimento: somarMeses(inicioCobranca, i),
+          pago: false,
+          pagoEm: null,
+          provisao,
+          criadoEm: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+      await sincronizarReembolso(usuario.uid, {
+        lancamentoId,
+        compNome: comp,
+        observacao: observacao || null,
+        valorTotal,
+        parcelaTotal,
+        dataInicio: inicioCobranca,
+        grupoOrigem: grupo,
+        provisao,
+      });
+    }
     irParaTela(telaAnterior);
     limparFormularioPagar();
   } catch {
@@ -690,6 +790,12 @@ function limparFormularioPagar() {
   $("#fp-parcelas").value = "1";
   $("#fp-observacao").value = "";
   resetarChave("#fp-chave-valor", "#fp-valor-label");
+  $("#fp-conta-fixa").checked = false;
+  $("#fp-provisao").checked = false;
+  $("#fp-parcelas").disabled = false;
+  $("#fp-legenda-conta-fixa").classList.add("hidden");
+  $("#fp-legenda-provisao").classList.add("hidden");
+  $("#fp-comp").value = "";
   mostrarMsg("#msg-pagar", "", "");
 }
 
@@ -697,7 +803,8 @@ function limparFormularioPagar() {
 async function salvarRecebimento() {
   const origem = $("#fr-origem").value.trim();
   const valor = paraNumero($("#fr-valor").value);
-  const parcelaTotal = Math.max(1, parseInt($("#fr-parcelas").value || "1", 10));
+  const contaFixa = $("#fr-conta-fixa").checked;
+  const parcelaTotal = contaFixa ? 1 : Math.max(1, parseInt($("#fr-parcelas").value || "1", 10));
   const valorPorParcela = chaveLigada("#fr-chave-valor");
   const dataRecebimento = $("#fr-data").value || hojeISO();
   const observacao = $("#fr-observacao").value.trim();
@@ -706,29 +813,39 @@ async function salvarRecebimento() {
   // Parcelas e 1ª data são obrigatórios; Observação é opcional.
   if (!origem || !dataRecebimento) return mostrarMsg("#msg-receber", "Preencha origem e data.", "erro");
   if (!(valor > 0)) return mostrarMsg("#msg-receber", "Informe um valor total válido.", "erro");
-  if (!(parcelaTotal >= 1)) return mostrarMsg("#msg-receber", "O número de parcelas deve ser pelo menos 1.", "erro");
+  if (!contaFixa && !(parcelaTotal >= 1)) return mostrarMsg("#msg-receber", "O número de parcelas deve ser pelo menos 1.", "erro");
 
   $("#btn-salvar-receber").disabled = true;
   try {
-    const lancamentoId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-    const valores = valorPorParcela ? new Array(parcelaTotal).fill(valor) : dividirValor(valor, parcelaTotal);
-    const batch = writeBatch(bd);
-    const colecao = collection(bd, "usuarios", usuario.uid, "recebimentos");
-    valores.forEach((valorParcela, i) => {
-      const ref = doc(colecao);
-      batch.set(ref, {
-        lancamentoId,
-        origem,
-        valor: valorParcela,
-        recebimento: somarMeses(dataRecebimento, i),
-        qtdParcelas: parcelaTotal,
-        parcela: `${i + 1}/${parcelaTotal}`,
-        observacao: observacao || null,
-        recebido: false,
-        criadoEm: serverTimestamp(),
+    if (contaFixa) {
+      await criarRecorrencia(usuario.uid, {
+        tipo: "receber",
+        credor: origem,
+        observacao,
+        valor,
+        inicio: dataRecebimento,
       });
-    });
-    await batch.commit();
+    } else {
+      const lancamentoId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const valores = valorPorParcela ? new Array(parcelaTotal).fill(valor) : dividirValor(valor, parcelaTotal);
+      const batch = writeBatch(bd);
+      const colecao = collection(bd, "usuarios", usuario.uid, "recebimentos");
+      valores.forEach((valorParcela, i) => {
+        const ref = doc(colecao);
+        batch.set(ref, {
+          lancamentoId,
+          origem,
+          valor: valorParcela,
+          recebimento: somarMeses(dataRecebimento, i),
+          qtdParcelas: parcelaTotal,
+          parcela: `${i + 1}/${parcelaTotal}`,
+          observacao: observacao || null,
+          recebido: false,
+          criadoEm: serverTimestamp(),
+        });
+      });
+      await batch.commit();
+    }
     irParaTela(telaAnterior);
     limparFormularioReceber();
   } catch {
@@ -742,18 +859,15 @@ function limparFormularioReceber() {
   $("#fr-valor").value = "";
   $("#fr-parcelas").value = "1";
   resetarChave("#fr-chave-valor", "#fr-valor-label");
+  $("#fr-conta-fixa").checked = false;
+  $("#fr-parcelas").disabled = false;
+  $("#fr-legenda-conta-fixa").classList.add("hidden");
   $("#fr-data").value = "";
   $("#fr-observacao").value = "";
   mostrarMsg("#msg-receber", "", "");
 }
 
 /* ---------- navegação / painel ---------- */
-const TITULOS_TELA = {
-  inicio: "Início",
-  pagar: "Contas a pagar",
-  receber: "Contas a receber",
-  configuracoes: "Configurações",
-};
 const TODAS_AS_TELAS = [
   "inicio", "pagar", "receber", "detalhe", "configuracoes",
   "novo-pagar", "novo-receber", "perfil", "notificacoes",
@@ -773,7 +887,8 @@ function irParaTela(nome) {
   document.querySelectorAll(".menu-item").forEach((item) => {
     item.classList.toggle("ativa", item.dataset.tela === nome);
   });
-  $("#topbar-titulo").textContent = TITULOS_TELA[nome] ?? "Controle Financeiro";
+  // Nas telas principais o topo sempre mostra a marca do app (não o nome da aba).
+  $("#topbar-titulo").textContent = "Controle";
   $("#btn-menu").classList.remove("modo-voltar");
 }
 
@@ -979,5 +1094,19 @@ function ligarEventos() {
 
   $("#fp-data").addEventListener("change", (e) => {
     $("#fp-inicio").value = somarMeses(e.target.value, 1);
+  });
+
+  $("#fp-conta-fixa").addEventListener("change", (e) => {
+    $("#fp-legenda-conta-fixa").classList.toggle("hidden", !e.target.checked);
+    $("#fp-parcelas").disabled = e.target.checked;
+    if (e.target.checked) $("#fp-parcelas").value = "1";
+  });
+  $("#fp-provisao").addEventListener("change", (e) => {
+    $("#fp-legenda-provisao").classList.toggle("hidden", !e.target.checked);
+  });
+  $("#fr-conta-fixa").addEventListener("change", (e) => {
+    $("#fr-legenda-conta-fixa").classList.toggle("hidden", !e.target.checked);
+    $("#fr-parcelas").disabled = e.target.checked;
+    if (e.target.checked) $("#fr-parcelas").value = "1";
   });
 }

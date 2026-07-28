@@ -17,9 +17,6 @@
   --status-amber: #d97706;
   --borda-glass: rgba(15, 23, 42, 0.08);
   --superficie-glass: linear-gradient(165deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.25));
-  --tint-roxo: rgba(79, 70, 229, 0.1);
-  --tint-verde: rgba(34, 197, 94, 0.08);
-  --topbar-bg: rgba(255, 255, 255, 0.75);
   --drawer-bg: rgba(255, 255, 255, 0.9);
   --drawer-shadow: rgba(15, 23, 42, 0.08);
   --card-shadow: rgba(15, 23, 42, 0.08);
@@ -42,9 +39,6 @@
   --status-amber: #fbbf24;
   --borda-glass: rgba(255, 255, 255, 0.08);
   --superficie-glass: linear-gradient(165deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
-  --tint-roxo: rgba(79, 70, 229, 0.28);
-  --tint-verde: rgba(34, 197, 94, 0.14);
-  --topbar-bg: rgba(13, 17, 23, 0.72);
   --drawer-bg: rgba(15, 25, 35, 0.88);
   --drawer-shadow: rgba(0, 0, 0, 0.35);
   --card-shadow: rgba(0, 0, 0, 0.22);
@@ -66,11 +60,17 @@ body {
   height: 100%;
 }
 
+html,
 body {
-  background:
-    radial-gradient(900px 480px at 12% -8%, var(--tint-roxo), transparent 60%),
-    radial-gradient(700px 420px at 108% 8%, var(--tint-verde), transparent 55%),
-    var(--bg);
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background: var(--bg);
   color: var(--text);
   font-family: "Inter", system-ui, sans-serif;
   padding-top: env(safe-area-inset-top);
@@ -183,6 +183,11 @@ textarea {
 .field textarea:focus {
   border-color: var(--primary);
 }
+.field input:disabled,
+.field select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn {
   width: 100%;
   padding: 15px;
@@ -264,17 +269,22 @@ textarea {
   justify-content: space-between;
   gap: 12px;
   padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
-  background: var(--topbar-bg);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  border-bottom: 1px solid var(--borda-glass);
+  background: var(--bg);
 }
 .btn-menu {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--borda-glass);
+  box-shadow: 0 4px 10px var(--chip-shadow);
   display: grid;
   place-items: center;
   flex-shrink: 0;
+  transition: transform 0.12s ease;
+}
+.btn-menu:active {
+  transform: scale(0.94);
 }
 .icone-hamburger {
   display: flex;
@@ -308,11 +318,15 @@ textarea {
 }
 .topbar-titulo {
   flex: 1;
-  text-align: center;
+  text-align: left;
   font-family: "Sora";
   font-weight: 700;
-  font-size: 16px;
+  font-size: 20px;
+  letter-spacing: -0.3px;
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .topbar-acoes {
   display: flex;
@@ -378,13 +392,13 @@ textarea {
 
 /* ---------- menu lateral / drawer (estilo CineList) ---------- */
 .overlay-menu {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 40;
   background: rgba(0, 0, 0, 0.6);
 }
 .menu-lateral {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
@@ -554,30 +568,39 @@ textarea {
 }
 
 .seletor-mes {
-  display: flex;
+  display: inline-flex;
+  align-self: flex-start;
   align-items: center;
-  justify-content: center;
-  gap: 18px;
-  padding: 4px 20px 14px;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--borda-glass);
+  box-shadow: 0 4px 10px var(--chip-shadow);
+  margin: 2px 0 16px 16px;
+}
+main .seletor-mes {
+  margin-left: 0;
 }
 .seletor-mes button {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   background: var(--bg-soft);
-  border: 1px solid var(--line);
+  border: none;
   color: var(--text);
-  font-size: 15px;
+  font-size: 12px;
   display: grid;
   place-items: center;
 }
 .seletor-mes .mes-atual {
   font-family: "Sora";
   font-weight: 700;
-  font-size: 15px;
-  min-width: 110px;
+  font-size: 13px;
+  min-width: 84px;
   text-align: center;
   text-transform: capitalize;
+  padding: 0 2px;
 }
 
 main {
@@ -593,20 +616,24 @@ main {
 .saudacao {
   margin: 2px 0 4px;
 }
-.saudacao-topo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 .saudacao h2 {
-  font-size: 22px;
-  letter-spacing: -0.4px;
+  font-size: 26px;
+  letter-spacing: -0.5px;
 }
 .saudacao p {
   color: var(--muted);
   font-size: 13px;
   margin-top: 2px;
+}
+.linha-mes-olho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 0 16px;
+}
+.linha-mes-olho .seletor-mes {
+  margin: 0;
 }
 .btn-olho {
   width: 36px;
@@ -844,7 +871,7 @@ main {
 
 /* ---------- fab ---------- */
 .fab {
-  position: absolute;
+  position: fixed;
   right: 20px;
   bottom: calc(20px + env(safe-area-inset-bottom));
   width: 56px;
@@ -871,13 +898,13 @@ main {
 
 /* ---------- mini-menu do "+" na tela Início ---------- */
 .fab-menu-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 14;
   background: rgba(0, 0, 0, 0.35);
 }
 .fab-speeddial {
-  position: absolute;
+  position: fixed;
   right: 20px;
   bottom: calc(20px + 56px + 14px + env(safe-area-inset-bottom));
   z-index: 16;
@@ -922,6 +949,40 @@ main {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+.linha-dupla > .field {
+  min-width: 0;
+}
+.linha-dupla > .field label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linha-dupla > .field input,
+.linha-dupla > .field select {
+  min-width: 0;
+  width: 100%;
+}
+
+.check-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.check-linha input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+.legenda-campo {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: -2px 0 10px 28px;
+}
+
 /* ---------- chave (valor total / valor da parcela) ---------- */
 .campo-cabecalho {
   display: flex;
@@ -1079,5 +1140,11 @@ main {
     box-shadow:
       0 0 0 1px var(--line),
       0 30px 80px rgba(0, 0, 0, 0.6);
+  }
+  /* No preview de desktop, mantém o FAB alinhado à moldura do celular
+     em vez do canto da janela inteira do navegador. */
+  .fab,
+  .fab-speeddial {
+    right: calc(50% - (var(--frame-width) / 2) + 20px);
   }
 }
