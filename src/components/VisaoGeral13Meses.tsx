@@ -225,7 +225,7 @@ export default function VisaoGeral13Meses({
             );
           })}
 
-          {mostrarSubtotalProvisao && (
+          {mostrarSubtotalProvisao && grupos.length > 0 && (
             <>
               <tr className="border-t border-slate-200 dark:border-slate-700">
                 <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 md:static md:w-auto dark:bg-slate-800">
