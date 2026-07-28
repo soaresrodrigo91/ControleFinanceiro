@@ -65,13 +65,13 @@
       <span>Controle Financeiro</span>
     </div>
     <nav class="menu-nav">
-      <button class="menu-item ativa" data-tela="inicio"><span class="icone">🏠</span>Início</button>
-      <button class="menu-item" data-tela="pagar"><span class="icone">📤</span>Contas a pagar</button>
-      <button class="menu-item" data-tela="receber"><span class="icone">📥</span>Contas a receber</button>
-      <button class="menu-item" data-tela="configuracoes"><span class="icone">⚙️</span>Configurações</button>
+      <button class="menu-item" data-tela="inicio"><span class="icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M3.5 11.5 12 4l8.5 7.5"/><path d="M5.5 9.8V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.8"/></svg></span>Início</button>
+      <button class="menu-item" data-tela="pagar"><span class="icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg></span>Contas a pagar</button>
+      <button class="menu-item" data-tela="receber"><span class="icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4.5 19.5h15"/></svg></span>Contas a receber</button>
+      <button class="menu-item" data-tela="configuracoes"><span class="icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V19.5a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H4.5a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H10.5a1.7 1.7 0 0 0 1.04-1.56V4.5a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V10.5a1.7 1.7 0 0 0 1.56 1.04H19.5a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.56 1.04Z"/></svg></span>Configurações</button>
     </nav>
     <div class="menu-rodape">
-      <button id="btn-sair" class="menu-sair"><span class="icone">🚪</span>Sair</button>
+      <button id="btn-sair" class="menu-sair"><span class="icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>Sair</button>
     </div>
   </aside>
 
@@ -79,12 +79,17 @@
   <header class="topbar">
     <button id="btn-menu" class="btn-menu" aria-label="Abrir menu">
       <span class="icone-hamburger"><span></span><span></span><span></span></span>
-      <span class="icone-voltar">←</span>
+      <span class="icone-voltar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </span>
     </button>
-    <span class="topbar-titulo" id="topbar-titulo">Controle</span>
+    <button class="topbar-sino" id="btn-topbar-inicio" aria-label="Início">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M3.5 11.5 12 4l8.5 7.5"/><path d="M5.5 9.8V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.8"/></svg>
+    </button>
+    <span class="topbar-titulo" id="topbar-titulo">Início</span>
     <div class="topbar-acoes">
       <button class="topbar-sino" id="topbar-sino" aria-label="Notificações">
-        🔔
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="badge-sino hidden" id="badge-sino">0</span>
       </button>
       <button class="topbar-avatar" id="topbar-avatar" aria-label="Perfil">U</button>
@@ -92,28 +97,30 @@
   </header>
 
   <div id="tela-inicio" class="screen">
-    <main>
-      <div class="saudacao">
-        <h2 id="saudacao-nome">Olá!</h2>
-        <p>Aqui está o resumo do seu mês.</p>
-      </div>
-
+    <div class="cabecalho-fixo">
       <div class="linha-mes-olho">
         <div class="seletor-mes">
           <button id="mes-anterior-inicio">◀</button>
           <span class="mes-atual" id="mes-atual-inicio">—</span>
           <button id="mes-proximo-inicio">▶</button>
         </div>
-        <button class="btn-olho" id="btn-olho" aria-label="Mostrar valores">🙈</button>
+        <button class="btn-olho" id="btn-olho" aria-label="Mostrar valores"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M3 3l18 18"/><path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c7 0 10.5 7 10.5 7a13.4 13.4 0 0 1-3 3.9M6.5 6.4C3.7 8.1 1.5 12 1.5 12s3.5 7 10.5 7a10.4 10.4 0 0 0 4.6-1"/><path d="M9.9 10a3 3 0 0 0 4.2 4.2"/></svg></button>
       </div>
+    </div>
 
+    <div class="saudacao">
+      <h2 id="saudacao-nome">Olá!</h2>
+      <p>Aqui está o resumo do seu mês.</p>
+    </div>
+
+    <main>
       <div class="grade-resumo">
-        <div class="card-resumo clicavel" id="card-total-gastos"><span class="rotulo"><span class="rotulo-icone">💸</span>Total de gastos</span><span class="valor" id="r-total">R$ 0,00</span></div>
-        <div class="card-resumo clicavel" id="card-recebimentos"><span class="rotulo"><span class="rotulo-icone">📥</span>Recebimentos</span><span class="valor" id="r-recebido">R$ 0,00</span></div>
-        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">✅</span>Pago</span><span class="valor" id="r-pago">R$ 0,00</span></div>
-        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">⏳</span>Pendente</span><span class="valor" id="r-pendente">R$ 0,00</span></div>
-        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">📊</span>Líquido mensal</span><span class="valor" id="r-liquido">R$ 0,00</span></div>
-        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone">🧮</span>Provisão Líquido</span><span class="valor" id="r-provisao-liquido">R$ 0,00</span></div>
+        <div class="card-resumo clicavel" id="card-total-gastos"><span class="rotulo"><span class="rotulo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg></span>Total de gastos</span><span class="valor" id="r-total">R$ 0,00</span></div>
+        <div class="card-resumo clicavel" id="card-recebimentos"><span class="rotulo"><span class="rotulo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M17 7 7 17"/><path d="M16 17H7V8"/></svg></span>Recebimentos</span><span class="valor" id="r-recebido">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>Pago</span><span class="valor" id="r-pago">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></span>Pendente</span><span class="valor" id="r-pendente">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M4 20V10M11 20V4M18 20v-7"/><path d="M3.5 20.5h17"/></svg></span>Líquido mensal</span><span class="valor" id="r-liquido">R$ 0,00</span></div>
+        <div class="card-resumo"><span class="rotulo"><span class="rotulo-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span>Provisão Líquido</span><span class="valor" id="r-provisao-liquido">R$ 0,00</span></div>
       </div>
 
       <div class="card-dashboard" id="card-dashboard-aplicacoes">
@@ -131,23 +138,25 @@
     <div class="fab-speeddial" id="fab-inicio-dial">
       <button class="fab-opcao" data-tipo="receber">
         <span class="fab-opcao-label">Conta a receber</span>
-        <span class="fab-opcao-icone">📥</span>
+        <span class="fab-opcao-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4.5 19.5h15"/></svg></span>
       </button>
       <button class="fab-opcao" data-tipo="pagar">
         <span class="fab-opcao-label">Conta a pagar</span>
-        <span class="fab-opcao-icone">📤</span>
+        <span class="fab-opcao-icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></svg></span>
       </button>
     </div>
     <button class="fab" id="fab-inicio">+</button>
   </div>
 
   <div id="tela-pagar" class="screen hidden">
-    <div class="seletor-mes">
-      <button id="mes-anterior-pagar">◀</button>
-      <span class="mes-atual" id="mes-atual-pagar">—</span>
-      <button id="mes-proximo-pagar">▶</button>
+    <div class="cabecalho-fixo">
+      <div class="seletor-mes">
+        <button id="mes-anterior-pagar">◀</button>
+        <span class="mes-atual" id="mes-atual-pagar">—</span>
+        <button id="mes-proximo-pagar">▶</button>
+      </div>
+      <div class="filtros-chip" id="filtros-pagar"></div>
     </div>
-    <div class="filtros-chip" id="filtros-pagar"></div>
     <main>
       <div class="lista" id="lista-pagar"></div>
     </main>
@@ -155,12 +164,14 @@
   </div>
 
   <div id="tela-receber" class="screen hidden">
-    <div class="seletor-mes">
-      <button id="mes-anterior-receber">◀</button>
-      <span class="mes-atual" id="mes-atual-receber">—</span>
-      <button id="mes-proximo-receber">▶</button>
+    <div class="cabecalho-fixo">
+      <div class="seletor-mes">
+        <button id="mes-anterior-receber">◀</button>
+        <span class="mes-atual" id="mes-atual-receber">—</span>
+        <button id="mes-proximo-receber">▶</button>
+      </div>
+      <div class="filtros-chip" id="filtros-receber"></div>
     </div>
-    <div class="filtros-chip" id="filtros-receber"></div>
     <main>
       <div class="lista" id="lista-receber"></div>
     </main>
@@ -177,7 +188,7 @@
     <main>
       <div class="detalhe-lista">
         <div class="detalhe-linha">
-          <span class="rotulo">🌙 Tema escuro</span>
+          <span class="rotulo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" style="vertical-align:-3px;margin-right:6px"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>Tema escuro</span>
           <button type="button" class="chave" id="chave-tema-escuro" role="switch" aria-checked="false" title="Alternar tema escuro"><span class="chave-bolinha"></span></button>
         </div>
       </div>
@@ -269,6 +280,17 @@
       </div>
       <div id="lista-notificacoes"></div>
     </main>
+  </div>
+
+  <div class="overlay-mes hidden" id="overlay-mes">
+    <div class="cartao-mes">
+      <div class="cartao-mes-ano">
+        <button type="button" id="ano-anterior" aria-label="Ano anterior">◀</button>
+        <span id="ano-atual">2026</span>
+        <button type="button" id="ano-proximo" aria-label="Próximo ano">▶</button>
+      </div>
+      <div class="grade-meses" id="grade-meses"></div>
+    </div>
   </div>
 </div>
 

@@ -118,6 +118,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   ligarEventos();
+  observarSaudacao();
 });
 
 /* ---------- login ---------- */
@@ -386,11 +387,51 @@ function mudarMes(delta) {
   assinarMes();
 }
 
+function irParaMesEscolhido(novoYm) {
+  if (!novoYm || novoYm === ym) return;
+  ym = novoYm;
+  atualizarLabelsMes();
+  assinarMes();
+}
+
 function atualizarLabelsMes() {
   const label = formatarMesAno(ym);
-  $("#mes-atual-inicio").textContent = label;
-  $("#mes-atual-pagar").textContent = label;
-  $("#mes-atual-receber").textContent = label;
+  ["inicio", "pagar", "receber"].forEach((t) => {
+    $(`#mes-atual-${t}`).textContent = label;
+  });
+}
+
+/* ---------- seletor de mês/ano (customizado, sem depender do calendário do aparelho) ---------- */
+const NOMES_MESES = [
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+];
+let anoNoSeletor = new Date().getFullYear();
+
+function renderSeletorMes() {
+  $("#ano-atual").textContent = String(anoNoSeletor);
+  const [anoSelecionado, mesSelecionado] = ym.split("-").map(Number);
+  $("#grade-meses").innerHTML = NOMES_MESES.map((nome, indice) => {
+    const selecionado = anoNoSeletor === anoSelecionado && indice + 1 === mesSelecionado;
+    return `<button type="button" class="${selecionado ? "mes-selecionado" : ""}" data-mes="${indice + 1}">${nome}</button>`;
+  }).join("");
+  $("#grade-meses").querySelectorAll("button").forEach((btn) => {
+    btn.onclick = () => {
+      const mes = String(btn.dataset.mes).padStart(2, "0");
+      irParaMesEscolhido(`${anoNoSeletor}-${mes}`);
+      fecharSeletorMes();
+    };
+  });
+}
+
+function abrirSeletorMes() {
+  anoNoSeletor = Number(ym.split("-")[0]);
+  renderSeletorMes();
+  $("#overlay-mes").classList.remove("hidden");
+}
+
+function fecharSeletorMes() {
+  $("#overlay-mes").classList.add("hidden");
 }
 
 /* ---------- resumo (Início) ---------- */
@@ -880,6 +921,13 @@ function telaAtualPrincipal() {
   return "inicio";
 }
 
+const TITULOS_TELA_PRINCIPAL = {
+  inicio: "Início",
+  pagar: "Lançamentos",
+  receber: "Recebimentos",
+  configuracoes: "Configurações",
+};
+
 function irParaTela(nome) {
   TODAS_AS_TELAS.forEach((t) => {
     $(`#tela-${t}`).classList.toggle("hidden", t !== nome);
@@ -887,8 +935,7 @@ function irParaTela(nome) {
   document.querySelectorAll(".menu-item").forEach((item) => {
     item.classList.toggle("ativa", item.dataset.tela === nome);
   });
-  // Nas telas principais o topo sempre mostra a marca do app (não o nome da aba).
-  $("#topbar-titulo").textContent = "Controle";
+  $("#topbar-titulo").textContent = TITULOS_TELA_PRINCIPAL[nome] ?? "Início";
   $("#btn-menu").classList.remove("modo-voltar");
 }
 
@@ -999,6 +1046,22 @@ function abrirNotificacoes() {
   mostrarTelaCheia("notificacoes", "Notificações");
 }
 
+// Ao rolar a tela de Início, some suavemente só a saudação — o restante
+// (mês/ano, olhinho, cartões) continua visível normalmente.
+function observarSaudacao() {
+  const saudacao = document.querySelector("#tela-inicio .saudacao");
+  const topbar = document.querySelector(".topbar");
+  if (!saudacao || !topbar || !("IntersectionObserver" in window)) return;
+  const altura = Math.round(topbar.getBoundingClientRect().height) || 70;
+  const observador = new IntersectionObserver(
+    ([entrada]) => {
+      saudacao.style.opacity = entrada.intersectionRatio < 0.4 ? "0" : "1";
+    },
+    { threshold: [0, 0.2, 0.4, 0.6, 0.8, 1], rootMargin: `-${altura}px 0px 0px 0px` }
+  );
+  observador.observe(saudacao);
+}
+
 function ligarEventos() {
   $("#btn-entrar").onclick = entrar;
   $("#login-senha").addEventListener("keydown", (e) => {
@@ -1009,6 +1072,19 @@ function ligarEventos() {
   ["inicio", "pagar", "receber"].forEach((t) => {
     $(`#mes-anterior-${t}`).onclick = () => mudarMes(-1);
     $(`#mes-proximo-${t}`).onclick = () => mudarMes(1);
+    $(`#mes-atual-${t}`).onclick = abrirSeletorMes;
+  });
+
+  $("#ano-anterior").onclick = () => {
+    anoNoSeletor--;
+    renderSeletorMes();
+  };
+  $("#ano-proximo").onclick = () => {
+    anoNoSeletor++;
+    renderSeletorMes();
+  };
+  $("#overlay-mes").addEventListener("click", (e) => {
+    if (e.target.id === "overlay-mes") fecharSeletorMes();
   });
 
   $("#btn-menu").onclick = () => {
@@ -1027,10 +1103,15 @@ function ligarEventos() {
   });
   $("#card-total-gastos").onclick = () => irParaTela("pagar");
   $("#card-recebimentos").onclick = () => irParaTela("receber");
+  $("#btn-topbar-inicio").onclick = () => irParaTela("inicio");
 
+  const ICONE_OLHO_ABERTO =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const ICONE_OLHO_FECHADO =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17"><path d="M3 3l18 18"/><path d="M10.6 5.2A10.6 10.6 0 0 1 12 5c7 0 10.5 7 10.5 7a13.4 13.4 0 0 1-3 3.9M6.5 6.4C3.7 8.1 1.5 12 1.5 12s3.5 7 10.5 7a10.4 10.4 0 0 0 4.6-1"/><path d="M9.9 10a3 3 0 0 0 4.2 4.2"/></svg>';
   $("#btn-olho").onclick = () => {
     valoresVisiveis = !valoresVisiveis;
-    $("#btn-olho").textContent = valoresVisiveis ? "👁️" : "🙈";
+    $("#btn-olho").innerHTML = valoresVisiveis ? ICONE_OLHO_ABERTO : ICONE_OLHO_FECHADO;
     $("#btn-olho").setAttribute("aria-label", valoresVisiveis ? "Ocultar valores" : "Mostrar valores");
     renderInicio();
   };
