@@ -14,6 +14,7 @@ import {
   atualizarResumoRelatorio,
   atualizarSugestaoCredor,
   atualizarMostrarDashboardInicio,
+  atualizarMostrarSubtotalProvisaoInicio,
   atualizarTipoGraficoDashboard,
   CONFIG_PADRAO,
   itemEstaEmUso,
@@ -207,10 +208,10 @@ export default function ConfiguracoesPage() {
 
             <div className={`${CLASSE_CARD} flex flex-col justify-between p-3`}>
               <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
-                Mini-dashboard da Início
+                Mini-dashboard na tela de Início
               </h2>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Exibir na Início</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Exibir na tela de Início</span>
                 <button
                   type="button"
                   role="switch"
@@ -252,6 +253,38 @@ export default function ConfiguracoesPage() {
                   }`}
                 >
                   Barras
+                </button>
+              </div>
+            </div>
+
+            <div className={`${CLASSE_CARD} flex flex-col justify-between p-3`}>
+              <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
+                Subtotal e Provisão na tela de Início
+              </h2>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Exibir na Janela de 10 meses</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={config.mostrarSubtotalProvisaoInicio ?? false}
+                  onClick={() =>
+                    atualizarMostrarSubtotalProvisaoInicio(
+                      usuario.uid,
+                      !(config.mostrarSubtotalProvisaoInicio ?? false)
+                    )
+                  }
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                    (config.mostrarSubtotalProvisaoInicio ?? false) ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+                  }`}
+                >
+                  <span
+                    className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                    style={{
+                      transform: (config.mostrarSubtotalProvisaoInicio ?? false)
+                        ? "translateX(16px)"
+                        : "translateX(0)",
+                    }}
+                  />
                 </button>
               </div>
             </div>

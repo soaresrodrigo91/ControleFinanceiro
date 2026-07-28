@@ -366,6 +366,7 @@ function DashboardConteudo() {
                 onSelecionarMes={irParaMes}
                 statusPorGrupo={statusPorGrupo}
                 totaisVisiveis={totaisVisiveis}
+                mostrarSubtotalProvisao={config.mostrarSubtotalProvisaoInicio ?? false}
               />
             </div>
           )}

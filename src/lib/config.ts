@@ -54,6 +54,7 @@ export const CONFIG_PADRAO: ConfigListas = {
   compartilharLancamentos: false,
   tipoGraficoDashboard: "pizza",
   mostrarDashboardInicio: true,
+  mostrarSubtotalProvisaoInicio: false,
 };
 
 export async function garantirUsuarioSemeado(
@@ -109,6 +110,12 @@ export async function atualizarTipoGraficoDashboard(uid: string, tipo: "pizza" |
 
 export async function atualizarMostrarDashboardInicio(uid: string, mostrar: boolean) {
   await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { mostrarDashboardInicio: mostrar });
+}
+
+export async function atualizarMostrarSubtotalProvisaoInicio(uid: string, mostrar: boolean) {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), {
+    mostrarSubtotalProvisaoInicio: mostrar,
+  });
 }
 
 export async function atualizarResumoRelatorio(

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
 import { assinarRecebimentosDoIntervalo } from "@/lib/recebimentos";
-import { mesclarComRecorrencias } from "@/lib/recorrencias";
+import { assinarRecorrencias, ativaNoMes, mesclarComRecorrencias, valorNoMes } from "@/lib/recorrencias";
 import { formatarMesAnoAbreviado, formatarMoeda, somarMesesYM } from "@/lib/date";
 import type { ConfigListas, Parcela, Recebimento, Recorrencia, StatusGrupo } from "@/lib/types";
 
@@ -19,6 +19,7 @@ export default function VisaoGeral13Meses({
   onSelecionarMes,
   statusPorGrupo,
   totaisVisiveis,
+  mostrarSubtotalProvisao,
 }: {
   uid: string;
   ym: string;
@@ -28,6 +29,7 @@ export default function VisaoGeral13Meses({
   onSelecionarMes: (ym: string) => void;
   statusPorGrupo?: Record<string, StatusGrupo>;
   totaisVisiveis: boolean;
+  mostrarSubtotalProvisao: boolean;
 }) {
   const meses = useMemo(() => {
     return Array.from({ length: HORIZONTE }, (_, i) => somarMesesYM(ym, i));
@@ -35,14 +37,21 @@ export default function VisaoGeral13Meses({
 
   const [parcelas, setParcelas] = useState<Parcela[]>([]);
   const [recebimentos, setRecebimentos] = useState<Recebimento[]>([]);
+  const [recorrenciasReceber, setRecorrenciasReceber] = useState<Recorrencia[]>([]);
 
   useEffect(() => {
     return assinarParcelasDoIntervalo(uid, meses[0], meses[meses.length - 1], setParcelas);
   }, [uid, meses]);
 
   useEffect(() => {
+    if (!mostrarSubtotalProvisao) return;
     return assinarRecebimentosDoIntervalo(uid, meses[0], meses[meses.length - 1], setRecebimentos);
-  }, [uid, meses]);
+  }, [uid, meses, mostrarSubtotalProvisao]);
+
+  useEffect(() => {
+    if (!mostrarSubtotalProvisao) return;
+    return assinarRecorrencias(uid, "receber", setRecorrenciasReceber);
+  }, [uid, mostrarSubtotalProvisao]);
 
   const grupoVisivel = (grupo: string) => filtros[grupo] !== false;
   const grupos = config.grupos.filter(grupoVisivel);
@@ -61,15 +70,42 @@ export default function VisaoGeral13Meses({
     return mapa;
   }, [parcelas, recorrencias, meses]);
 
-  const recebidoPorMes = useMemo(() => {
+  const aReceberPorMes = useMemo(() => {
+    const modoPorNomeComp = Object.fromEntries((config.comp ?? []).map((c) => [c.nome, c.modo]));
     const mapa = new Map<string, number>();
-    for (const r of recebimentos) {
-      if (!r.recebido) continue;
-      const mes = r.recebimento.slice(0, 7);
-      mapa.set(mes, (mapa.get(mes) ?? 0) + r.valor);
+    for (const mes of meses) {
+      const reaisDoMes = recebimentos.filter((r) => r.recebimento.slice(0, 7) === mes);
+      let total = reaisDoMes.reduce((s, r) => s + r.valor, 0);
+
+      // Recorrências "receber" (contas fixas a receber) ainda não materializadas neste mês.
+      const idsJaMaterializados = new Set(
+        reaisDoMes.filter((r) => r.recorrenciaId).map((r) => r.recorrenciaId)
+      );
+      for (const rec of recorrenciasReceber) {
+        if (ativaNoMes(rec, mes) && !idsJaMaterializados.has(rec.id)) {
+          total += valorNoMes(rec, mes);
+        }
+      }
+
+      // Reembolsos de recorrências "pagar" com reembolso configurado, ainda não materializados
+      // neste mês (o materializado só acontece quando o usuário abre aquele mês específico —
+      // aqui calculamos a projeção sem depender disso).
+      const lancamentosComReembolsoJaMaterializados = new Set(
+        reaisDoMes.filter((r) => r.origemComp).map((r) => r.lancamentoId)
+      );
+      for (const rec of recorrencias) {
+        if (!rec.comp || !ativaNoMes(rec, mes)) continue;
+        if (lancamentosComReembolsoJaMaterializados.has(rec.id)) continue;
+        const modo = modoPorNomeComp[rec.comp];
+        if (!modo || modo === "nenhum") continue;
+        const valor = valorNoMes(rec, mes);
+        total += modo === "metade" ? valor / 2 : valor;
+      }
+
+      mapa.set(mes, total);
     }
     return mapa;
-  }, [recebimentos]);
+  }, [recebimentos, recorrenciasReceber, recorrencias, config.comp, meses]);
 
   const subtotalGastosPorMes = useMemo(() => {
     const mapa = new Map<string, number>();
@@ -80,13 +116,13 @@ export default function VisaoGeral13Meses({
     return mapa;
   }, [grupos, totaisPorGrupoEMes, meses]);
 
-  const liquidoPorMes = useMemo(() => {
+  const provisaoLiquidoPorMes = useMemo(() => {
     const mapa = new Map<string, number>();
     for (const mes of meses) {
-      mapa.set(mes, (recebidoPorMes.get(mes) ?? 0) - (subtotalGastosPorMes.get(mes) ?? 0));
+      mapa.set(mes, (aReceberPorMes.get(mes) ?? 0) - (subtotalGastosPorMes.get(mes) ?? 0));
     }
     return mapa;
-  }, [meses, recebidoPorMes, subtotalGastosPorMes]);
+  }, [meses, aReceberPorMes, subtotalGastosPorMes]);
 
   const toqueInicioX = useRef<number | null>(null);
 
@@ -189,48 +225,52 @@ export default function VisaoGeral13Meses({
             );
           })}
 
-          <tr className="border-t border-slate-200 dark:border-slate-700">
-            <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 md:static md:w-auto dark:bg-slate-800">
-              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Subtotal</span>
-            </td>
-            {meses.map((mes, indice) => {
-              const valor = subtotalGastosPorMes.get(mes) ?? 0;
-              return (
-                <td
-                  key={mes}
-                  className={`min-w-[76px] px-1 py-1.5 text-center text-[11px] tabular-nums text-slate-400 md:min-w-0 dark:text-slate-500 ${
-                    indice === 0 ? "" : "hidden md:table-cell"
-                  } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""}`}
-                >
-                  {totaisVisiveis ? (valor > 0 ? formatarMoeda(valor) : "—") : "••••••"}
+          {mostrarSubtotalProvisao && (
+            <>
+              <tr className="border-t border-slate-200 dark:border-slate-700">
+                <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 md:static md:w-auto dark:bg-slate-800">
+                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Subtotal</span>
                 </td>
-              );
-            })}
-          </tr>
-          <tr>
-            <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 pb-2 md:static md:w-auto dark:bg-slate-800">
-              <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Líquido mensal</span>
-            </td>
-            {meses.map((mes, indice) => {
-              const valor = liquidoPorMes.get(mes) ?? 0;
-              return (
-                <td
-                  key={mes}
-                  className={`min-w-[76px] px-1 py-1.5 pb-2 text-center text-[11px] tabular-nums md:min-w-0 ${
-                    indice === 0 ? "" : "hidden md:table-cell"
-                  } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""} ${
-                    totaisVisiveis
-                      ? valor < 0
-                        ? "text-red-500 dark:text-red-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                      : "text-slate-400 dark:text-slate-500"
-                  }`}
-                >
-                  {totaisVisiveis ? formatarMoeda(valor) : "••••••"}
+                {meses.map((mes, indice) => {
+                  const valor = subtotalGastosPorMes.get(mes) ?? 0;
+                  return (
+                    <td
+                      key={mes}
+                      className={`min-w-[76px] px-1 py-1.5 text-center text-[11px] tabular-nums text-slate-400 md:min-w-0 dark:text-slate-500 ${
+                        indice === 0 ? "" : "hidden md:table-cell"
+                      } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""}`}
+                    >
+                      {totaisVisiveis ? (valor > 0 ? formatarMoeda(valor) : "—") : "••••••"}
+                    </td>
+                  );
+                })}
+              </tr>
+              <tr>
+                <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 pb-2 md:static md:w-auto dark:bg-slate-800">
+                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Provisão Líquido</span>
                 </td>
-              );
-            })}
-          </tr>
+                {meses.map((mes, indice) => {
+                  const valor = provisaoLiquidoPorMes.get(mes) ?? 0;
+                  return (
+                    <td
+                      key={mes}
+                      className={`min-w-[76px] px-1 py-1.5 pb-2 text-center text-[11px] tabular-nums md:min-w-0 ${
+                        indice === 0 ? "" : "hidden md:table-cell"
+                      } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""} ${
+                        totaisVisiveis
+                          ? valor < 0
+                            ? "text-red-500 dark:text-red-400"
+                            : "text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-400 dark:text-slate-500"
+                      }`}
+                    >
+                      {totaisVisiveis ? formatarMoeda(valor) : "••••••"}
+                    </td>
+                  );
+                })}
+              </tr>
+            </>
+          )}
         </tbody>
         </table>
       </div>

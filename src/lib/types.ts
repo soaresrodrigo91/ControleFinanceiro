@@ -29,6 +29,7 @@ export type ConfigListas = {
   compartilharLancamentos: boolean;
   tipoGraficoDashboard?: "pizza" | "barra";
   mostrarDashboardInicio?: boolean;
+  mostrarSubtotalProvisaoInicio?: boolean;
 };
 
 export type Parcela = {
