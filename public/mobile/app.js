@@ -1063,17 +1063,18 @@ function abrirNotificacoes() {
 }
 
 // Ao rolar a tela de Início, some suavemente só a saudação — o restante
-// (mês/ano, olhinho, cartões) continua visível normalmente.
+// (mês/ano, olhinho, cartões) continua visível normalmente. A saudação
+// vive dentro do <main> (é ele quem realmente rola), então o observer
+// usa o próprio <main> como root em vez da viewport.
 function observarSaudacao() {
   const saudacao = document.querySelector("#tela-inicio .saudacao");
-  const topbar = document.querySelector(".topbar");
-  if (!saudacao || !topbar || !("IntersectionObserver" in window)) return;
-  const altura = Math.round(topbar.getBoundingClientRect().height) || 70;
+  const raiz = document.querySelector("#tela-inicio main");
+  if (!saudacao || !raiz || !("IntersectionObserver" in window)) return;
   const observador = new IntersectionObserver(
     ([entrada]) => {
       saudacao.style.opacity = entrada.intersectionRatio < 0.4 ? "0" : "1";
     },
-    { threshold: [0, 0.2, 0.4, 0.6, 0.8, 1], rootMargin: `-${altura}px 0px 0px 0px` }
+    { root: raiz, threshold: [0, 0.2, 0.4, 0.6, 0.8, 1] }
   );
   observador.observe(saudacao);
 }
