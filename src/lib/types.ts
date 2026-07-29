@@ -53,6 +53,7 @@ export type Parcela = {
   provisao?: boolean;
   renegociacaoId?: string | null;
   renegociacaoNumero?: number | null;
+  origemMobile?: boolean;
 };
 
 export type NovoLancamento = {
@@ -85,6 +86,7 @@ export type Recorrencia = {
   historicoValores: HistoricoValor[];
   mesesExcluidos?: string[];
   provisao?: boolean;
+  origemMobile?: boolean;
 };
 
 export type Recebimento = {
@@ -104,6 +106,7 @@ export type Recebimento = {
   provisao?: boolean;
   renegociacaoId?: string | null;
   renegociacaoNumero?: number | null;
+  origemMobile?: boolean;
 };
 
 export type NovoRecebimento = {

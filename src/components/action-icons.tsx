@@ -133,3 +133,12 @@ export function IconSetaDireita(props: SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+export function IconCelular(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+      <rect x="7" y="2.5" width="10" height="19" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M11 18.3h2" strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -16,7 +16,7 @@ import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
 import { formatarDataBR, formatarMoeda, hojeISO } from "@/lib/date";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos";
 import { EditarRecebimentoModal, ExcluirRecebimentoModal } from "@/components/modals/RecebimentoModals";
-import { IconBuscar, IconEditar, IconExcluir } from "@/components/action-icons";
+import { IconBuscar, IconCelular, IconEditar, IconExcluir } from "@/components/action-icons";
 import FiltroMultiSelect from "@/components/FiltroMultiSelect";
 import SeletorMarcarTodos from "@/components/SeletorMarcarTodos";
 import SeletorMesAno from "@/components/SeletorMesAno";
@@ -149,6 +149,7 @@ function ReceberConteudo() {
         recebido: false,
         recorrenciaId: r.id,
         virtual: true,
+        origemMobile: r.origemMobile ?? false,
       }));
     return [...recebimentosReais, ...virtuais].sort((a, b) =>
       a.recebimento.localeCompare(b.recebimento)
@@ -631,9 +632,16 @@ function ReceberConteudo() {
                             Renegociação
                           </span>
                         )}
-                        {r.formaPagamentoOrigem && (
-                          <p className="truncate text-xs font-normal text-slate-500 dark:text-slate-400">
+                        {(r.formaPagamentoOrigem || r.origemMobile) && (
+                          <p className="flex items-center gap-1 truncate text-xs font-normal text-slate-500 dark:text-slate-400">
                             {r.formaPagamentoOrigem}
+                            {r.origemMobile && (
+                              <span className="inline-flex items-center gap-0.5" title="Lançado pelo app mobile">
+                                {r.formaPagamentoOrigem && <span aria-hidden>·</span>}
+                                <IconCelular className="h-3 w-3" />
+                                Mobile
+                              </span>
+                            )}
                           </p>
                         )}
                       </td>

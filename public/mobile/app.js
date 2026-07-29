@@ -206,6 +206,16 @@ function mostrarMsg(seletor, texto, tipo) {
   el.className = texto ? `aviso ${tipo || ""}` : "";
 }
 
+let timeoutToastSucesso = null;
+function exibirSucesso(texto) {
+  $("#toast-sucesso-texto").textContent = texto;
+  $("#toast-sucesso").classList.remove("hidden");
+  clearTimeout(timeoutToastSucesso);
+  timeoutToastSucesso = setTimeout(() => {
+    $("#toast-sucesso").classList.add("hidden");
+  }, 1800);
+}
+
 async function entrar() {
   const email = $("#login-email").value.trim();
   const senha = $("#login-senha").value;
@@ -868,6 +878,7 @@ async function criarRecorrencia(uid, dados) {
     fim: null,
     historicoValores: [{ valor: dados.valor, desde: dados.inicio }],
     provisao: dados.provisao === true,
+    origemMobile: true,
   });
 }
 
@@ -898,6 +909,7 @@ async function sincronizarReembolso(uid, dados) {
       origemComp: true,
       formaPagamentoOrigem: dados.grupoOrigem,
       provisao: dados.provisao === true,
+      origemMobile: dados.origemMobile === true,
       criadoEm: serverTimestamp(),
     });
   });
@@ -927,6 +939,7 @@ async function materializarPagamentoRecorrencia(uid, recorrencia, ymAlvo) {
     pago: true,
     pagoEm: hojeISO(),
     provisao: recorrencia.provisao === true,
+    origemMobile: recorrencia.origemMobile === true,
     criadoEm: serverTimestamp(),
   });
 
@@ -949,6 +962,7 @@ async function materializarPagamentoRecorrencia(uid, recorrencia, ymAlvo) {
     dataInicio: vencimento,
     grupoOrigem: grupo,
     provisao: recorrencia.provisao === true,
+    origemMobile: recorrencia.origemMobile === true,
   });
 }
 
@@ -963,6 +977,7 @@ async function materializarRecebimentoRecorrencia(uid, recorrencia, ymAlvo) {
     observacao: recorrencia.observacao,
     recebido: true,
     recorrenciaId: recorrencia.id,
+    origemMobile: recorrencia.origemMobile === true,
   });
 }
 
@@ -1026,6 +1041,7 @@ async function salvarLancamento() {
           pago: false,
           pagoEm: null,
           provisao,
+          origemMobile: true,
           criadoEm: serverTimestamp(),
         });
       });
@@ -1039,10 +1055,11 @@ async function salvarLancamento() {
         dataInicio: inicioCobranca,
         grupoOrigem: grupo,
         provisao,
+        origemMobile: true,
       });
     }
-    irParaTela(telaAnterior);
     limparFormularioPagar();
+    exibirSucesso("Lançamento salvo com sucesso!");
   } catch {
     mostrarMsg("#msg-pagar", "Não foi possível salvar. Tente novamente.", "erro");
   }
@@ -1108,13 +1125,14 @@ async function salvarRecebimento() {
           parcela: `${i + 1}/${parcelaTotal}`,
           observacao: observacao || null,
           recebido: false,
+          origemMobile: true,
           criadoEm: serverTimestamp(),
         });
       });
       await batch.commit();
     }
-    irParaTela(telaAnterior);
     limparFormularioReceber();
+    exibirSucesso("Recebimento salvo com sucesso!");
   } catch {
     mostrarMsg("#msg-receber", "Não foi possível salvar. Tente novamente.", "erro");
   }

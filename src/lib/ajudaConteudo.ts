@@ -171,7 +171,8 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Excluir uma conta fixa oferece três alcances: apenas este mês, deste mês em diante, ou a recorrência inteira (com aviso extra, porque é irreversível).",
       "Excluir uma conta com reembolso vinculado também remove o(s) recebimento(s) gerado(s) por ela.",
       "O filtro Valor aceita o valor exato do lançamento, já com máscara de R$ (separador de milhar e centavos automáticos).",
-      "A coluna Aplicação aparece logo depois de Observação, mostrando a aplicação de cada lançamento sem precisar abrir para editar.",
+      "A coluna Aplicação aparece logo depois de Observação, mostrando a aplicação de cada lançamento sem precisar abrir para editar. A descrição abaixo do nome do credor mostra só a forma de pagamento (a aplicação já está na sua própria coluna, então não se repete ali).",
+      "Lançamentos criados pelo app mobile mostram um ícone discreto de celular com a palavra \"Mobile\" ao lado da forma de pagamento, abaixo do nome do credor.",
       "O checkbox do cabeçalho marca/desmarca todos os lançamentos como pago na página atual; a setinha ao lado dele abre um menu só com \"Todas as páginas\" (marcar a página atual já é o próprio checkbox) — essa opção pede confirmação antes de aplicar, por afetar itens que nem estão visíveis na tela.",
       "Lançamentos com o selo \"Renegociação\" vieram de uma renegociação e não podem ser editados ou excluídos por aqui — veja a aba Renegociação.",
       "Lançamentos com reembolso configurado têm um botão extra (avião de papel) depois do de excluir — só aparece com \"Compartilhar Lançamentos\" ativo em Configurações. Ele NÃO envia nada diretamente: só restaura a pendência de envio em Lançamentos Compartilhados caso ela tenha sido removida de lá (veja \"Excluir pendência\" nessa outra tela); por isso fica inativo sempre que já existe uma pendência ativa, o lançamento já foi enviado, ou o reembolso não tem e-mail vinculado — nesses casos não há nada para restaurar. Quando ativo, ao clicar pergunta o alcance: apenas este mês, este mês e os futuros, ou todos desde o início.",
@@ -315,6 +316,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "O filtro Valor aceita o valor exato do recebimento, já com máscara de R$.",
       "O checkbox do cabeçalho marca/desmarca como recebido na página atual; a setinha ao lado abre um menu só com \"Todas as páginas\" — pede confirmação antes de aplicar.",
       "Recebimentos com o selo \"Renegociação\" vieram de uma renegociação em Contas a Pagar e não podem ser editados ou excluídos por aqui.",
+      "Recebimentos criados pelo app mobile mostram um ícone discreto de celular com a palavra \"Mobile\" abaixo da origem, junto da forma de pagamento (quando houver).",
     ],
     validacoes: [
       "Tentar editar ou excluir um recebimento de reembolso é bloqueado, com mensagem explicativa e botão \"Entendi\".",

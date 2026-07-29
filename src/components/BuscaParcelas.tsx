@@ -16,7 +16,7 @@ import {
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { formatarDataBR, formatarMoeda } from "@/lib/date";
 import { EditarParcelaModal, ExcluirParcelaModal } from "@/components/modals/ParcelaModals";
-import { IconEditar, IconEnviar, IconExcluir } from "@/components/action-icons";
+import { IconCelular, IconEditar, IconEnviar, IconExcluir } from "@/components/action-icons";
 import FiltroMultiSelect from "@/components/FiltroMultiSelect";
 import SeletorMarcarTodos from "@/components/SeletorMarcarTodos";
 import SeletorMesAno from "@/components/SeletorMesAno";
@@ -407,8 +407,15 @@ export default function BuscaParcelas({
                             Renegociação
                           </span>
                         )}
-                        <p className="truncate text-xs font-normal text-slate-500 dark:text-slate-400">
-                          {p.grupo} · {p.aplicacao}
+                        <p className="flex items-center gap-1 truncate text-xs font-normal text-slate-500 dark:text-slate-400">
+                          {p.grupo}
+                          {p.origemMobile && (
+                            <span className="inline-flex items-center gap-0.5" title="Lançado pelo app mobile">
+                              <span aria-hidden>·</span>
+                              <IconCelular className="h-3 w-3" />
+                              Mobile
+                            </span>
+                          )}
                         </p>
                       </td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.observacao || "—"}</td>

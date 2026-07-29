@@ -320,6 +320,7 @@ export function mesclarComRecorrencias(
       pagoEm: null,
       virtual: true,
       provisao: r.provisao ?? false,
+      origemMobile: r.origemMobile ?? false,
     }));
   return [...parcelasReaisDoMes, ...virtuais].sort((a, b) =>
     a.vencimento.localeCompare(b.vencimento)
