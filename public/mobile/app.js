@@ -137,6 +137,7 @@ function mesclarRecebimentosComRecorrencias(recebimentosReaisDoMes, recorrencias
       recebido: false,
       recorrenciaId: r.id,
       virtual: true,
+      provisao: r.provisao ?? false,
     }));
   return [...recebimentosReaisDoMes, ...virtuais].sort((a, b) => a.recebimento.localeCompare(b.recebimento));
 }
@@ -1210,6 +1211,7 @@ function abrirDetalhePagar(p) {
       ["Forma de pagamento", p.grupo],
       ["Categoria", p.aplicacao],
       ["Status", p.pago ? "Pago" : "Pendente"],
+      ["Provisão", p.provisao ? "Sim" : "Não"],
       ["Observação", p.observacao || "—"],
     ]
       .map(([rotulo, valor]) => linhaDetalhe(rotulo, valor))
@@ -1226,6 +1228,7 @@ function abrirDetalheReceber(r) {
       ["Parcela", r.qtdParcelas > 1 ? r.parcela : "Única"],
       ["Data do recebimento", formatarDataBR(r.recebimento)],
       ["Status", r.recebido ? "Recebido" : "Pendente"],
+      ["Provisão", r.provisao ? "Sim" : "Não"],
       ["Observação", r.observacao || "—"],
     ]
       .map(([rotulo, valor]) => linhaDetalhe(rotulo, valor))
