@@ -52,12 +52,13 @@ function montarItens(mapa: Map<string, number>, ordem: string[], paleta: string[
   return itens.sort((a, b) => b.valor - a.valor);
 }
 
-// Alturas mínimas (em px) estimadas para o mini-dashboard caber sem cortar nada: um
-// cartão completo (título + padding + gráfico) precisa de ~260px; a versão compacta
-// (título + padding + lista de 3 itens, sem gráfico) cabe em ~180px. Abaixo disso não
-// há espaço nem para a lista, e o mini-dashboard inteiro fica oculto.
-const LIMIAR_COMPLETO = 280;
-const LIMIAR_COMPACTO = 180;
+// Altura mínima (em px) para o mini-dashboard caber inteiro sem cortar nada. Os cartões
+// não esticam mais para acompanhar a altura do vizinho mais alto: cada um fica do
+// tamanho do círculo do gráfico (170px) + título + padding (~230px), com a lista
+// rolando dentro do próprio quadro. Abaixo disso vira lista compacta (título + padding
+// + lista, sem gráfico) — a área ao redor (inclusive a Janela de 10 meses) também rola,
+// então o mini-dashboard nunca fica oculto, só compacto quando o espaço visível é curto.
+const LIMIAR_COMPLETO = 240;
 
 export default function DashboardFormaPagamento({
   parcelas,
@@ -103,14 +104,11 @@ export default function DashboardFormaPagamento({
     );
   }
 
-  if (alturaDisponivel !== null && alturaDisponivel < LIMIAR_COMPACTO) {
-    return null;
-  }
   const modoCompacto = alturaDisponivel !== null && alturaDisponivel < LIMIAR_COMPLETO;
 
   return (
-    <div className="flex flex-col pt-4 lg:h-full lg:max-h-[400px] lg:min-h-0">
-      <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-3">
+    <div className="flex flex-col pt-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
         <GraficoItem
           titulo="Valor por forma de pagamento"
           itens={valorPorGrupo}

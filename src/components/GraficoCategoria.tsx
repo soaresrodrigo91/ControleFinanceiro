@@ -16,6 +16,16 @@ import { CLASSE_CARD } from "@/lib/estilos";
 
 const COR_EIXO = "#898781";
 
+// Altura fixa de cada linha da lista (classe h-6) e espaçamento entre elas (gap-1.5),
+// usados para calcular quantas linhas cabem inteiras num espaço, sem cortar a última.
+const ALTURA_LINHA = 24;
+const ESPACO_LINHA = 6;
+
+function alturaListaSemCorte(alturaMaxima: number): number {
+  const linhas = Math.max(1, Math.floor((alturaMaxima + ESPACO_LINHA) / (ALTURA_LINHA + ESPACO_LINHA)));
+  return linhas * ALTURA_LINHA + (linhas - 1) * ESPACO_LINHA;
+}
+
 export type ItemGrafico = { nome: string; valor: number; cor: string };
 
 export function TooltipItem({
@@ -46,9 +56,10 @@ export function GraficoPizza({
 }) {
   const total = itens.reduce((s, i) => s + i.valor, 0);
   const ALTURA = 170;
+  const ALTURA_LISTA = alturaListaSemCorte(ALTURA);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-3 sm:flex-row sm:items-stretch">
+    <div className="flex w-full flex-col gap-3 sm:flex-row">
       <div className="shrink-0 sm:w-[45%]">
         <ResponsiveContainer width="100%" height={ALTURA}>
           <PieChart>
@@ -70,12 +81,14 @@ export function GraficoPizza({
         </ResponsiveContainer>
       </div>
 
+      {/* maxHeight travado em um múltiplo exato da altura da linha: nunca mostra a
+          última linha cortada — o que não cabe fica oculto até rolar o mouse. */}
       <ul
-        className="scroll-sem-barra flex min-h-0 min-w-0 flex-1 flex-col gap-1.5 overflow-y-auto sm:w-[55%]"
-        style={{ minHeight: ALTURA }}
+        className="scroll-sem-barra flex min-w-0 flex-col gap-1.5 overflow-y-auto sm:w-[55%]"
+        style={{ maxHeight: ALTURA_LISTA }}
       >
         {itens.map((item) => (
-          <li key={item.nome} className="flex items-center gap-2 text-sm">
+          <li key={item.nome} className="flex h-6 shrink-0 items-center gap-2 text-sm">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.cor }} />
             <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">{item.nome}</span>
             <span className="shrink-0 font-medium text-slate-900 dark:text-slate-100">
@@ -109,19 +122,24 @@ export function GraficoItem({
   modoCompacto?: boolean;
 }) {
   const ALTURA_CARTAO = 170;
+  const ALTURA_LISTA_COMPACTA = alturaListaSemCorte(ALTURA_CARTAO);
   const alturaConteudoBarra = Math.max(itens.length * 32 + 20, ALTURA_CARTAO);
 
   return (
-    <div className={`${CLASSE_CARD} flex flex-col lg:h-full lg:min-h-0`}>
+    <div className={`${CLASSE_CARD} flex flex-col`}>
       <p className="mb-2 shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100">{titulo}</p>
       {itens.length === 0 ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados para o mês.</p>
       ) : modoCompacto ? (
         // Sem espaço vertical suficiente para o gráfico: mesma informação em lista,
-        // sem os círculos/barras.
-        <ul className="scroll-sem-barra flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
+        // sem os círculos/barras. maxHeight travado em um múltiplo exato da altura da
+        // linha para nunca cortar a última linha visível.
+        <ul
+          className="scroll-sem-barra flex flex-col gap-1.5 overflow-y-auto"
+          style={{ maxHeight: ALTURA_LISTA_COMPACTA }}
+        >
           {itens.map((item) => (
-            <li key={item.nome} className="flex items-center gap-2 text-sm">
+            <li key={item.nome} className="flex h-6 shrink-0 items-center gap-2 text-sm">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.cor }} />
               <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">{item.nome}</span>
               <span className="shrink-0 font-medium text-slate-900 dark:text-slate-100">
@@ -131,9 +149,11 @@ export function GraficoItem({
           ))}
         </ul>
       ) : (
-        <div className="flex min-h-0 flex-1 justify-center">
+        <div className="flex justify-center">
           {tipoGrafico === "barra" ? (
-            <div className="scroll-sem-barra w-full min-h-0 overflow-y-auto" style={{ minHeight: ALTURA_CARTAO }}>
+            // Altura travada no tamanho do círculo da pizza: a lista rola com o mouse
+            // dentro do quadro em vez de esticar o cartão para caber tudo.
+            <div className="scroll-sem-barra w-full overflow-y-auto" style={{ height: ALTURA_CARTAO }}>
               <ResponsiveContainer width="100%" height={alturaConteudoBarra}>
                 <BarChart data={itens} layout="vertical" margin={{ left: 8, right: 24 }}>
                   <CartesianGrid horizontal={false} stroke={corGrid} />
