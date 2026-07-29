@@ -442,7 +442,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Cada forma de pagamento e cada aplicação pode ter uma observação própria (ícone de balão) — só um lembrete visível ao editar o item, não aparece nos lançamentos.",
       "O tema escuro é exclusivo do plano Premium.",
       "O menu do sistema pode ser Horizontal (padrão, barra no topo) ou Vertical (menu lateral recolhível, com Perfil e Sair no rodapé) — a mudança vale para todas as telas. No modo Vertical, o sino de notificações também fica no rodapé do menu lateral (em vez do canto superior direito) e abre para cima.",
-      "O card \"Mini-dashboard na tela de Início\" controla o mini-dashboard de formas de pagamento que aparece no final da tela Início: a chave liga/desliga a exibição dele lá, e os botões escolhem entre pizza ou barras nos três gráficos.",
+      "O card \"Mini-dashboard na tela de Início\" controla o mini-dashboard de formas de pagamento que aparece no final da tela Início: a chave liga/desliga a exibição dele lá, e os botões escolhem entre pizza ou barras nos três gráficos. Em monitores com pouca altura de tela, ele se adapta automaticamente: primeiro troca os gráficos por uma lista simples com os mesmos valores, e se a tela ficar baixa demais, ele some — nesses casos, role a página ou aumente a janela para vê-lo.",
       "O card \"Subtotal e Provisão na tela de Início\" liga/desliga as linhas \"Subtotal\" e \"Provisão Líquido\" ao final da Janela de 10 meses, na tela Início — desativado por padrão para novas contas.",
     ],
     validacoes: [
