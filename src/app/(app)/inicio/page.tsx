@@ -61,6 +61,29 @@ function DashboardConteudo() {
     parcelasReais: [],
   });
 
+  // Mede o espaço realmente disponível entre a Janela de 10 meses e o rodapé, para o
+  // mini-dashboard decidir se cabe inteiro, se precisa virar lista compacta (sem os
+  // gráficos) ou se nem cabe — sem cortar cartões nem o título dele pela metade.
+  const refAreaDashboard = useRef<HTMLDivElement | null>(null);
+  const [alturaAreaDashboard, setAlturaAreaDashboard] = useState<number | null>(null);
+
+  useEffect(() => {
+    const el = refAreaDashboard.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    // Só restringe em telas grandes (breakpoint lg do Tailwind) — no celular o dashboard
+    // sempre mostra tudo normalmente, empilhado, rolando a tela inteira como antes.
+    const observador = new ResizeObserver((entradas) => {
+      if (window.innerWidth < 1024) {
+        setAlturaAreaDashboard(null);
+        return;
+      }
+      const altura = entradas[0]?.contentRect.height;
+      if (altura !== undefined) setAlturaAreaDashboard(altura);
+    });
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!usuario) return;
     queueMicrotask(() => {
@@ -372,7 +395,7 @@ function DashboardConteudo() {
         </div>
       </div>
 
-      <div className="scroll-sem-barra lg:min-h-[340px] lg:flex-1 lg:overflow-y-auto">
+      <div ref={refAreaDashboard} className="scroll-sem-barra lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {carregando ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
         ) : parcelas.length === 0 ? (
@@ -388,6 +411,7 @@ function DashboardConteudo() {
             gruposConfig={config.grupos}
             aplicacoesConfig={config.aplicacoes}
             tipoGrafico={config.tipoGraficoDashboard ?? "pizza"}
+            alturaDisponivel={alturaAreaDashboard}
           />
         ) : null}
       </div>

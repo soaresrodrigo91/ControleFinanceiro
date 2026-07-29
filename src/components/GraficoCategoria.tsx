@@ -98,6 +98,7 @@ export function GraficoItem({
   formatarValor,
   corGrid,
   corTextoSecundario,
+  modoCompacto = false,
 }: {
   titulo: string;
   itens: ItemGrafico[];
@@ -105,6 +106,7 @@ export function GraficoItem({
   formatarValor: (v: number) => string;
   corGrid: string;
   corTextoSecundario: string;
+  modoCompacto?: boolean;
 }) {
   const ALTURA_CARTAO = 170;
   const alturaConteudoBarra = Math.max(itens.length * 32 + 20, ALTURA_CARTAO);
@@ -114,61 +116,59 @@ export function GraficoItem({
       <p className="mb-2 shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100">{titulo}</p>
       {itens.length === 0 ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados para o mês.</p>
+      ) : modoCompacto ? (
+        // Sem espaço vertical suficiente para o gráfico: mesma informação em lista,
+        // sem os círculos/barras.
+        <ul className="scroll-sem-barra flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
+          {itens.map((item) => (
+            <li key={item.nome} className="flex items-center gap-2 text-sm">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.cor }} />
+              <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">{item.nome}</span>
+              <span className="shrink-0 font-medium text-slate-900 dark:text-slate-100">
+                {formatarValor(item.valor)}
+              </span>
+            </li>
+          ))}
+        </ul>
       ) : (
-        <>
-          <div className="flex min-h-0 flex-1 justify-center lg:[@media(max-height:750px)]:hidden">
-            {tipoGrafico === "barra" ? (
-              <div className="scroll-sem-barra w-full min-h-0 overflow-y-auto" style={{ minHeight: ALTURA_CARTAO }}>
-                <ResponsiveContainer width="100%" height={alturaConteudoBarra}>
-                  <BarChart data={itens} layout="vertical" margin={{ left: 8, right: 24 }}>
-                    <CartesianGrid horizontal={false} stroke={corGrid} />
-                    <XAxis
-                      type="number"
-                      tickFormatter={formatarValor}
-                      tick={{ fill: COR_EIXO, fontSize: 11 }}
-                      axisLine={{ stroke: corGrid }}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="nome"
-                      width={110}
-                      tick={{ fill: corTextoSecundario, fontSize: 12 }}
-                      axisLine={{ stroke: corGrid }}
-                      tickLine={false}
-                    />
-                    <Tooltip
-                      content={<TooltipItem formatarValor={formatarValor} />}
-                      cursor={{ fill: "rgba(148,163,184,0.12)" }}
-                    />
-                    <Bar dataKey="valor" barSize={20} radius={[0, 4, 4, 0]}>
-                      {itens.map((item) => (
-                        <Cell key={item.nome} fill={item.cor} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <GraficoPizza itens={itens} formatarValor={formatarValor} />
-            )}
-          </div>
-
-          {/* Telas baixas (monitor pequeno, sem altura pra caber o gráfico): mesma
-              informação em lista, sem os círculos/barras. */}
-          <ul className="scroll-sem-barra hidden min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto lg:[@media(max-height:750px)]:flex">
-            {itens.map((item) => (
-              <li key={item.nome} className="flex items-center gap-2 text-sm">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.cor }} />
-                <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">{item.nome}</span>
-                <span className="shrink-0 font-medium text-slate-900 dark:text-slate-100">
-                  {formatarValor(item.valor)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
+        <div className="flex min-h-0 flex-1 justify-center">
+          {tipoGrafico === "barra" ? (
+            <div className="scroll-sem-barra w-full min-h-0 overflow-y-auto" style={{ minHeight: ALTURA_CARTAO }}>
+              <ResponsiveContainer width="100%" height={alturaConteudoBarra}>
+                <BarChart data={itens} layout="vertical" margin={{ left: 8, right: 24 }}>
+                  <CartesianGrid horizontal={false} stroke={corGrid} />
+                  <XAxis
+                    type="number"
+                    tickFormatter={formatarValor}
+                    tick={{ fill: COR_EIXO, fontSize: 11 }}
+                    axisLine={{ stroke: corGrid }}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="nome"
+                    width={110}
+                    tick={{ fill: corTextoSecundario, fontSize: 12 }}
+                    axisLine={{ stroke: corGrid }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    content={<TooltipItem formatarValor={formatarValor} />}
+                    cursor={{ fill: "rgba(148,163,184,0.12)" }}
+                  />
+                  <Bar dataKey="valor" barSize={20} radius={[0, 4, 4, 0]}>
+                    {itens.map((item) => (
+                      <Cell key={item.nome} fill={item.cor} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <GraficoPizza itens={itens} formatarValor={formatarValor} />
+          )}
+        </div>
       )}
     </div>
   );

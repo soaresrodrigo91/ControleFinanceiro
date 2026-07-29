@@ -52,16 +52,25 @@ function montarItens(mapa: Map<string, number>, ordem: string[], paleta: string[
   return itens.sort((a, b) => b.valor - a.valor);
 }
 
+// Alturas mínimas (em px) estimadas para o mini-dashboard caber sem cortar nada: um
+// cartão completo (título + padding + gráfico) precisa de ~260px; a versão compacta
+// (título + padding + lista de 3 itens, sem gráfico) cabe em ~180px. Abaixo disso não
+// há espaço nem para a lista, e o mini-dashboard inteiro fica oculto.
+const LIMIAR_COMPLETO = 280;
+const LIMIAR_COMPACTO = 180;
+
 export default function DashboardFormaPagamento({
   parcelas,
   gruposConfig,
   aplicacoesConfig,
   tipoGrafico,
+  alturaDisponivel,
 }: {
   parcelas: Parcela[];
   gruposConfig: string[];
   aplicacoesConfig: string[];
   tipoGrafico: "barra" | "pizza";
+  alturaDisponivel: number | null;
 }) {
   const { tema } = useTheme();
   const paleta = tema === "dark" ? PALETA_CATEGORICA_DARK : PALETA_CATEGORICA_LIGHT;
@@ -94,8 +103,13 @@ export default function DashboardFormaPagamento({
     );
   }
 
+  if (alturaDisponivel !== null && alturaDisponivel < LIMIAR_COMPACTO) {
+    return null;
+  }
+  const modoCompacto = alturaDisponivel !== null && alturaDisponivel < LIMIAR_COMPLETO;
+
   return (
-    <div className="flex flex-col lg:h-full lg:max-h-[440px] lg:min-h-0 lg:[@media(max-height:550px)]:hidden">
+    <div className="flex flex-col lg:h-full lg:max-h-[400px] lg:min-h-0">
       <div className="mb-3 shrink-0">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
           Dashboard das formas de pagamento marcadas
@@ -110,6 +124,7 @@ export default function DashboardFormaPagamento({
           formatarValor={formatarMoeda}
           corGrid={corGrid}
           corTextoSecundario={corTextoSecundario}
+          modoCompacto={modoCompacto}
         />
         <GraficoItem
           titulo="Lançamentos por forma de pagamento"
@@ -118,6 +133,7 @@ export default function DashboardFormaPagamento({
           formatarValor={(v) => String(v)}
           corGrid={corGrid}
           corTextoSecundario={corTextoSecundario}
+          modoCompacto={modoCompacto}
         />
         <GraficoItem
           titulo="Aplicações dos lançamentos"
@@ -126,6 +142,7 @@ export default function DashboardFormaPagamento({
           formatarValor={formatarMoeda}
           corGrid={corGrid}
           corTextoSecundario={corTextoSecundario}
+          modoCompacto={modoCompacto}
         />
       </div>
     </div>
