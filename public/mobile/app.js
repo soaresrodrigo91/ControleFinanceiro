@@ -3,7 +3,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, doc, getDoc, addDoc, writeBatch, updateDoc, deleteDoc, onSnapshot,
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, writeBatch, updateDoc, deleteDoc, onSnapshot,
   query, where, orderBy, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -116,6 +116,29 @@ function mesclarComRecorrencias(parcelasReaisDoMes, recorrencias, ymAlvo) {
       provisao: r.provisao ?? false,
     }));
   return [...parcelasReaisDoMes, ...virtuais].sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+}
+
+// Mesma lógica de mesclagem usada em src/app/(app)/receber/page.tsx: recebimentos
+// recorrentes ainda não materializados no mês também entram como itens "virtuais".
+function mesclarRecebimentosComRecorrencias(recebimentosReaisDoMes, recorrencias, ymAlvo) {
+  const idsJaMaterializados = new Set(
+    recebimentosReaisDoMes.filter((r) => r.recorrenciaId).map((r) => r.recorrenciaId)
+  );
+  const virtuais = recorrencias
+    .filter((r) => ativaNoMes(r, ymAlvo) && !idsJaMaterializados.has(r.id))
+    .map((r) => ({
+      id: `virtual:${r.id}`,
+      origem: r.credor,
+      valor: valorNoMes(r, ymAlvo),
+      recebimento: vencimentoNoMes(r, ymAlvo),
+      qtdParcelas: 1,
+      parcela: "1/1",
+      observacao: r.observacao,
+      recebido: false,
+      recorrenciaId: r.id,
+      virtual: true,
+    }));
+  return [...recebimentosReaisDoMes, ...virtuais].sort((a, b) => a.recebimento.localeCompare(b.recebimento));
 }
 
 const $ = (s) => document.querySelector(s);
@@ -274,6 +297,7 @@ function assinarRecorrenciasContasFixas() {
   unsubRecorrenciasPagar = onSnapshot(qPagar, (snap) => {
     recorrenciasPagarAtuais = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderInicio();
+    renderPagar();
   });
 
   if (unsubRecorrenciasReceber) unsubRecorrenciasReceber();
@@ -281,6 +305,7 @@ function assinarRecorrenciasContasFixas() {
   unsubRecorrenciasReceber = onSnapshot(qReceber, (snap) => {
     recorrenciasReceberAtuais = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     renderInicio();
+    renderReceber();
   });
 }
 
@@ -679,13 +704,15 @@ function renderChips(seletorContainer, valores, valorAtivo, aoSelecionar) {
 
 /* ---------- lista Pagar ---------- */
 function renderPagar() {
-  const gruposDoMes = [...new Set(parcelasAtuais.map((p) => p.grupo))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const parcelas = mesclarComRecorrencias(parcelasAtuais, recorrenciasPagarAtuais, ym);
+
+  const gruposDoMes = [...new Set(parcelas.map((p) => p.grupo))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   renderChips("#filtros-pagar", gruposDoMes, filtroGrupoPagar, (valor) => {
     filtroGrupoPagar = valor;
     renderPagar();
   });
 
-  const itens = filtroGrupoPagar ? parcelasAtuais.filter((p) => p.grupo === filtroGrupoPagar) : parcelasAtuais;
+  const itens = filtroGrupoPagar ? parcelas.filter((p) => p.grupo === filtroGrupoPagar) : parcelas;
 
   const somaItens = itens.reduce((s, p) => s + p.valorParcela, 0);
   $("#resumo-pagar").textContent = itens.length
@@ -703,7 +730,7 @@ function renderPagar() {
     <div class="item ${p.pago ? "pago" : ""}" data-id="${p.id}">
       <div class="info">
         <div class="nome">${esc(p.credor)}</div>
-        <div class="detalhe"><span>${formatarDataBR(p.vencimento)}</span><span>·</span><span>${esc(p.grupo)}</span>${p.parcelaTotal > 1 ? `<span>· ${p.parcelaNum}/${p.parcelaTotal}</span>` : ""}</div>
+        <div class="detalhe"><span>${formatarDataBR(p.vencimento)}</span><span>·</span><span>${esc(p.grupo)}</span>${p.recorrenciaId ? `<span>· Fixa</span>` : p.parcelaTotal > 1 ? `<span>· ${p.parcelaNum}/${p.parcelaTotal}</span>` : ""}</div>
       </div>
       <div class="valor">${formatarMoeda(p.valorParcela)}</div>
       <button class="chk" data-acao="pagar">✓</button>
@@ -714,19 +741,26 @@ function renderPagar() {
     btn.onclick = (e) => {
       e.stopPropagation();
       const id = btn.closest(".item").dataset.id;
-      const parcela = parcelasAtuais.find((p) => p.id === id);
+      const parcela = parcelas.find((p) => p.id === id);
       marcarPago(parcela);
     };
   });
   lista.querySelectorAll(".item").forEach((el) => {
     el.onclick = () => {
-      const parcela = parcelasAtuais.find((p) => p.id === el.dataset.id);
+      const parcela = parcelas.find((p) => p.id === el.dataset.id);
       abrirDetalhePagar(parcela);
     };
   });
 }
 
 async function marcarPago(parcela) {
+  if (parcela.virtual) {
+    if (!parcela.pago) {
+      const recorrencia = recorrenciasPagarAtuais.find((r) => r.id === parcela.recorrenciaId);
+      if (recorrencia) await materializarPagamentoRecorrencia(usuario.uid, recorrencia, ym);
+    }
+    return;
+  }
   const novoValor = !parcela.pago;
   await updateDoc(doc(bd, "usuarios", usuario.uid, "parcelas", parcela.id), {
     pago: novoValor,
@@ -736,13 +770,15 @@ async function marcarPago(parcela) {
 
 /* ---------- lista Receber ---------- */
 function renderReceber() {
-  const origensDoMes = [...new Set(recebimentosAtuais.map((r) => r.origem))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const recebimentos = mesclarRecebimentosComRecorrencias(recebimentosAtuais, recorrenciasReceberAtuais, ym);
+
+  const origensDoMes = [...new Set(recebimentos.map((r) => r.origem))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   renderChips("#filtros-receber", origensDoMes, filtroOrigemReceber, (valor) => {
     filtroOrigemReceber = valor;
     renderReceber();
   });
 
-  const itens = filtroOrigemReceber ? recebimentosAtuais.filter((r) => r.origem === filtroOrigemReceber) : recebimentosAtuais;
+  const itens = filtroOrigemReceber ? recebimentos.filter((r) => r.origem === filtroOrigemReceber) : recebimentos;
 
   const somaItens = itens.reduce((s, r) => s + r.valor, 0);
   $("#resumo-receber").textContent = itens.length
@@ -760,7 +796,7 @@ function renderReceber() {
     <div class="item ${r.recebido ? "recebido" : ""}" data-id="${r.id}">
       <div class="info">
         <div class="nome">${esc(r.origem)}</div>
-        <div class="detalhe"><span>${formatarDataBR(r.recebimento)}</span>${r.qtdParcelas > 1 ? `<span>· ${esc(r.parcela)}</span>` : ""}</div>
+        <div class="detalhe"><span>${formatarDataBR(r.recebimento)}</span>${r.recorrenciaId ? `<span>· Fixa</span>` : r.qtdParcelas > 1 ? `<span>· ${esc(r.parcela)}</span>` : ""}</div>
       </div>
       <div class="valor">${formatarMoeda(r.valor)}</div>
       <button class="chk" data-acao="receber">✓</button>
@@ -771,19 +807,26 @@ function renderReceber() {
     btn.onclick = (e) => {
       e.stopPropagation();
       const id = btn.closest(".item").dataset.id;
-      const receb = recebimentosAtuais.find((r) => r.id === id);
+      const receb = recebimentos.find((r) => r.id === id);
       marcarRecebido(receb);
     };
   });
   lista.querySelectorAll(".item").forEach((el) => {
     el.onclick = () => {
-      const receb = recebimentosAtuais.find((r) => r.id === el.dataset.id);
+      const receb = recebimentos.find((r) => r.id === el.dataset.id);
       abrirDetalheReceber(receb);
     };
   });
 }
 
 async function marcarRecebido(receb) {
+  if (receb.virtual) {
+    if (!receb.recebido) {
+      const recorrencia = recorrenciasReceberAtuais.find((r) => r.id === receb.recorrenciaId);
+      if (recorrencia) await materializarRecebimentoRecorrencia(usuario.uid, recorrencia, ym);
+    }
+    return;
+  }
   await updateDoc(doc(bd, "usuarios", usuario.uid, "recebimentos", receb.id), {
     recebido: !receb.recebido,
   });
@@ -859,6 +902,68 @@ async function sincronizarReembolso(uid, dados) {
     });
   });
   await batch.commit();
+}
+
+// Mesma lógica de materializarPagamentoRecorrencia em src/lib/parcelas.ts: transforma
+// a ocorrência "virtual" do mês em uma parcela real, já marcada como paga.
+async function materializarPagamentoRecorrencia(uid, recorrencia, ymAlvo) {
+  const valor = valorNoMes(recorrencia, ymAlvo);
+  const vencimento = vencimentoNoMes(recorrencia, ymAlvo);
+  const grupo = recorrencia.grupo || "Fixas";
+  await addDoc(collection(bd, "usuarios", uid, "parcelas"), {
+    lancamentoId: recorrencia.id,
+    recorrenciaId: recorrencia.id,
+    credor: recorrencia.credor,
+    dataCompra: recorrencia.inicio,
+    observacao: recorrencia.observacao,
+    valorTotal: valor,
+    parcelaNum: 1,
+    parcelaTotal: 1,
+    valorParcela: valor,
+    comp: recorrencia.comp || null,
+    grupo,
+    aplicacao: recorrencia.aplicacao || "Outros",
+    vencimento,
+    pago: true,
+    pagoEm: hojeISO(),
+    provisao: recorrencia.provisao === true,
+    criadoEm: serverTimestamp(),
+  });
+
+  const reembolsoExistente = await getDocs(
+    query(
+      collection(bd, "usuarios", uid, "recebimentos"),
+      where("lancamentoId", "==", recorrencia.id),
+      where("recebimento", "==", vencimento),
+      where("origemComp", "==", true)
+    )
+  );
+  if (!reembolsoExistente.empty) return;
+
+  await sincronizarReembolso(uid, {
+    lancamentoId: recorrencia.id,
+    compNome: recorrencia.comp || null,
+    observacao: recorrencia.observacao,
+    valorTotal: valor,
+    parcelaTotal: 1,
+    dataInicio: vencimento,
+    grupoOrigem: grupo,
+    provisao: recorrencia.provisao === true,
+  });
+}
+
+// Mesma lógica de materializarRecebimentoRecorrencia em src/lib/recebimentos.ts.
+async function materializarRecebimentoRecorrencia(uid, recorrencia, ymAlvo) {
+  await addDoc(collection(bd, "usuarios", uid, "recebimentos"), {
+    origem: recorrencia.credor,
+    valor: valorNoMes(recorrencia, ymAlvo),
+    recebimento: vencimentoNoMes(recorrencia, ymAlvo),
+    qtdParcelas: 1,
+    parcela: "1/1",
+    observacao: recorrencia.observacao,
+    recebido: true,
+    recorrenciaId: recorrencia.id,
+  });
 }
 
 /* ---------- criar lançamento (Pagar) ---------- */
