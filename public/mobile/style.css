@@ -457,10 +457,14 @@ textarea {
 .menu-nav {
   flex: 1;
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 8px 10px 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+.menu-nav::-webkit-scrollbar {
+  display: none;
 }
 .menu-item {
   display: flex;
@@ -716,6 +720,10 @@ main {
   gap: 10px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+main::-webkit-scrollbar {
+  display: none;
 }
 
 /* ---------- saudação ---------- */
@@ -1188,7 +1196,11 @@ main {
   flex-direction: column;
   max-height: 50vh;
   overflow-y: auto;
+  scrollbar-width: none;
   margin-bottom: 14px;
+}
+#lista-notificacoes::-webkit-scrollbar {
+  display: none;
 }
 .notif-item {
   display: flex;
