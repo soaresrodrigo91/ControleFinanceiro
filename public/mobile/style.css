@@ -179,6 +179,10 @@ textarea {
   appearance: none;
   resize: vertical;
 }
+.field input,
+.field select {
+  height: 48px;
+}
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
@@ -757,10 +761,16 @@ main {
 
 /* ---------- resumo ---------- */
 .grade-resumo {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 6px;
+  padding-top: 6px;
+  padding-bottom: 10px;
+  background: var(--bg);
 }
 .card-resumo {
   background: var(--superficie-glass), var(--card);

@@ -68,12 +68,62 @@ function esc(s) {
   return (s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+/* ---------- recorrências / contas fixas (mesma lógica de src/lib/recorrencias.ts) ---------- */
+function ativaNoMes(r, ymAlvo) {
+  if (ymAlvo < r.inicio.slice(0, 7)) return false;
+  if (r.fim && ymAlvo > r.fim.slice(0, 7)) return false;
+  if (r.mesesExcluidos?.includes(ymAlvo)) return false;
+  return true;
+}
+function valorNoMes(r, ymAlvo) {
+  const fimDoMes = `${ymAlvo}-31`;
+  let valor = r.valorAtual;
+  for (const h of [...r.historicoValores].sort((a, b) => a.desde.localeCompare(b.desde))) {
+    if (h.desde <= fimDoMes) valor = h.valor;
+  }
+  return valor;
+}
+function vencimentoNoMes(r, ymAlvo) {
+  const [ano, mes] = ymAlvo.split("-").map(Number);
+  const ultimoDiaDoMes = new Date(ano, mes, 0).getDate();
+  const dia = Math.min(r.diaVencimento, ultimoDiaDoMes);
+  return `${ymAlvo}-${String(dia).padStart(2, "0")}`;
+}
+function mesclarComRecorrencias(parcelasReaisDoMes, recorrencias, ymAlvo) {
+  const idsJaMaterializados = new Set(
+    parcelasReaisDoMes.filter((p) => p.recorrenciaId).map((p) => p.recorrenciaId)
+  );
+  const virtuais = recorrencias
+    .filter((r) => ativaNoMes(r, ymAlvo) && !idsJaMaterializados.has(r.id))
+    .map((r) => ({
+      id: `virtual:${r.id}:${ymAlvo}`,
+      lancamentoId: r.id,
+      recorrenciaId: r.id,
+      credor: r.credor,
+      dataCompra: r.inicio,
+      observacao: r.observacao,
+      valorTotal: valorNoMes(r, ymAlvo),
+      parcelaNum: 1,
+      parcelaTotal: 1,
+      valorParcela: valorNoMes(r, ymAlvo),
+      comp: r.comp ?? null,
+      grupo: r.grupo ?? "Fixas",
+      aplicacao: r.aplicacao ?? "Outros",
+      vencimento: vencimentoNoMes(r, ymAlvo),
+      pago: false,
+      pagoEm: null,
+      virtual: true,
+      provisao: r.provisao ?? false,
+    }));
+  return [...parcelasReaisDoMes, ...virtuais].sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+}
+
 const $ = (s) => document.querySelector(s);
 
 /* ---------- estado ---------- */
 let auth = null, bd = null, usuario = null;
 let ym = mesAtualYM();
-let configListas = { grupos: [], aplicacoes: [] };
+let configListas = { grupos: [], aplicacoes: [], comp: [], modoTotalizador: "todos" };
 let parcelasAtuais = [];
 let recebimentosAtuais = [];
 let unsubParcelas = null, unsubRecebimentos = null;
@@ -82,6 +132,10 @@ let filtroOrigemReceber = null;
 let telaAnterior = "inicio";
 let notificacoesAtuais = [];
 let unsubNotificacoes = null;
+let recorrenciasPagarAtuais = [];
+let recorrenciasReceberAtuais = [];
+let unsubRecorrenciasPagar = null, unsubRecorrenciasReceber = null;
+let filtrosDashboardAtuais = {};
 
 /* ---------- inicialização ---------- */
 window.addEventListener("DOMContentLoaded", () => {
@@ -94,6 +148,7 @@ window.addEventListener("DOMContentLoaded", () => {
       usuario = u;
       assinarPerfilUsuario();
       assinarNotificacoesUsuario();
+      assinarRecorrenciasContasFixas();
       await carregarConfig();
       assinarMes();
       atualizarLabelsMes();
@@ -202,9 +257,30 @@ function assinarPerfilUsuario() {
       telefone: d?.telefone ?? "",
       fotoUrl: d?.fotoUrl ?? null,
     };
+    filtrosDashboardAtuais = d?.filtrosDashboard ?? {};
     atualizarAvatarTopbar();
     atualizarSaudacao();
     if (!$("#tela-perfil").classList.contains("hidden")) preencherFormPerfil();
+    renderInicio();
+  });
+}
+
+// Formas de pagamento marcadas/desmarcadas no mini-dashboard do site (Contas a pagar) e
+// contas fixas (recorrências): usadas para reproduzir com fidelidade o Subtotal/Provisão
+// Líquido da Janela de 10 meses do site na tela Início do app.
+function assinarRecorrenciasContasFixas() {
+  if (unsubRecorrenciasPagar) unsubRecorrenciasPagar();
+  const qPagar = query(collection(bd, "usuarios", usuario.uid, "recorrencias"), where("tipo", "==", "pagar"));
+  unsubRecorrenciasPagar = onSnapshot(qPagar, (snap) => {
+    recorrenciasPagarAtuais = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderInicio();
+  });
+
+  if (unsubRecorrenciasReceber) unsubRecorrenciasReceber();
+  const qReceber = query(collection(bd, "usuarios", usuario.uid, "recorrencias"), where("tipo", "==", "receber"));
+  unsubRecorrenciasReceber = onSnapshot(qReceber, (snap) => {
+    recorrenciasReceberAtuais = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    renderInicio();
   });
 }
 
@@ -337,10 +413,12 @@ async function carregarConfig() {
       grupos: d.grupos ?? GRUPOS_PADRAO,
       aplicacoes: d.aplicacoes ?? APLICACOES_PADRAO,
       comp: d.comp ?? [],
+      modoTotalizador: d.modoTotalizador ?? "todos",
     };
   } catch {
-    configListas = { grupos: GRUPOS_PADRAO, aplicacoes: APLICACOES_PADRAO, comp: [] };
+    configListas = { grupos: GRUPOS_PADRAO, aplicacoes: APLICACOES_PADRAO, comp: [], modoTotalizador: "todos" };
   }
+  renderInicio();
   $("#fp-grupo").innerHTML = configListas.grupos.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join("");
   $("#fp-aplicacao").innerHTML = configListas.aplicacoes.map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
 
@@ -445,8 +523,15 @@ function mascarar(texto) {
 }
 
 function renderInicio() {
-  const total = parcelasAtuais.reduce((s, p) => s + p.valorParcela, 0);
-  const pago = parcelasAtuais.filter((p) => p.pago).reduce((s, p) => s + p.valorParcela, 0);
+  // Reproduz src/app/(app)/inicio/page.tsx: os cartões (Total/Pago/Pendente/Líquido) e a
+  // linha "Provisão Líquido" da Janela de 10 meses do site contam também as contas fixas
+  // (recorrências) ainda não materializadas no mês, não só os lançamentos reais já gravados.
+  const parcelasMescladas = mesclarComRecorrencias(parcelasAtuais, recorrenciasPagarAtuais, ym);
+  const parcelasVisiveis = parcelasMescladas.filter((p) => filtrosDashboardAtuais[p.grupo] !== false);
+  const baseTotais = configListas.modoTotalizador === "visiveis" ? parcelasVisiveis : parcelasMescladas;
+
+  const total = baseTotais.reduce((s, p) => s + p.valorParcela, 0);
+  const pago = baseTotais.filter((p) => p.pago).reduce((s, p) => s + p.valorParcela, 0);
   const pendente = total - pago;
   const totalAReceber = recebimentosAtuais.reduce((s, r) => s + r.valor, 0);
   const totalRecebido = recebimentosAtuais.filter((r) => r.recebido).reduce((s, r) => s + r.valor, 0);
@@ -473,17 +558,43 @@ function renderInicio() {
   elLiquido.textContent = mascarar(formatarMoeda(liquido));
   elLiquido.className = `valor ${liquido < 0 ? "negativo" : liquido === 0 ? "" : "positivo"}`;
 
-  // Versão simplificada do "Provisão Líquido" do site (VisaoGeral13Meses.tsx): lá o subtotal
-  // de gastos considera só as formas de pagamento marcadas como visíveis numa configuração
-  // que o mobile ainda não tem; aqui usamos o total de gastos do mês inteiro.
-  const provisaoLiquido = totalAReceber - total;
+  // Provisão Líquido: mesma conta da linha "Provisão Líquido" na Janela de 10 meses do site
+  // (aReceberPorMes - subtotalGastosPorMes) — sempre considera só as formas de pagamento
+  // visíveis no dashboard, mais a projeção de recebimentos recorrentes e reembolsos de
+  // contas fixas com reembolso configurado que ainda não viraram lançamentos reais.
+  const subtotalGastosVisiveis = parcelasVisiveis.reduce((s, p) => s + p.valorParcela, 0);
+
+  const idsReembolsoJaMaterializado = new Set(
+    recebimentosAtuais.filter((r) => r.origemComp).map((r) => r.lancamentoId)
+  );
+  const idsRecorrenciaReceberMaterializada = new Set(
+    recebimentosAtuais.filter((r) => r.recorrenciaId).map((r) => r.recorrenciaId)
+  );
+  const modoPorNomeComp = Object.fromEntries((configListas.comp ?? []).map((c) => [c.nome, c.modo]));
+
+  let aReceberProjetado = totalAReceber;
+  for (const rec of recorrenciasReceberAtuais) {
+    if (ativaNoMes(rec, ym) && !idsRecorrenciaReceberMaterializada.has(rec.id)) {
+      aReceberProjetado += valorNoMes(rec, ym);
+    }
+  }
+  for (const rec of recorrenciasPagarAtuais) {
+    if (!rec.comp || !ativaNoMes(rec, ym)) continue;
+    if (idsReembolsoJaMaterializado.has(rec.id)) continue;
+    const modo = modoPorNomeComp[rec.comp];
+    if (!modo || modo === "nenhum") continue;
+    const valor = valorNoMes(rec, ym);
+    aReceberProjetado += modo === "metade" ? valor / 2 : valor;
+  }
+
+  const provisaoLiquido = aReceberProjetado - subtotalGastosVisiveis;
   const elProvisaoLiquido = $("#r-provisao-liquido");
   elProvisaoLiquido.textContent = mascarar(formatarMoeda(provisaoLiquido));
   elProvisaoLiquido.className = `valor ${provisaoLiquido < 0 ? "negativo" : provisaoLiquido === 0 ? "" : "positivo"}`;
 
   $("#card-dashboard-aplicacoes").classList.toggle("hidden", !valoresVisiveis);
 
-  renderDashboardAplicacoes();
+  renderDashboardAplicacoes(parcelasVisiveis);
 }
 
 /* ---------- dashboard: aplicações dos lançamentos ---------- */
@@ -516,12 +627,12 @@ function montarItensAplicacao(soma, ordem) {
   return itens.sort((a, b) => b.valor - a.valor);
 }
 
-function renderDashboardAplicacoes() {
+function renderDashboardAplicacoes(parcelas) {
   const barra = $("#barra-aplicacoes");
   const lista = $("#lista-aplicacoes");
 
   const soma = new Map();
-  for (const p of parcelasAtuais) {
+  for (const p of parcelas) {
     soma.set(p.aplicacao, (soma.get(p.aplicacao) || 0) + p.valorParcela);
   }
   const itens = montarItensAplicacao(soma, configListas.aplicacoes);
@@ -562,16 +673,13 @@ function renderChips(seletorContainer, valores, valorAtivo, aoSelecionar) {
     .map((v) => `<button class="chip ${v === valorAtivo ? "ativo" : ""}" data-valor="${esc(v)}">${esc(v)}</button>`)
     .join("");
   cont.querySelectorAll(".chip").forEach((btn) => {
-    btn.onclick = () => aoSelecionar(btn.dataset.valor);
+    btn.onclick = () => aoSelecionar(btn.dataset.valor === valorAtivo ? null : btn.dataset.valor);
   });
 }
 
 /* ---------- lista Pagar ---------- */
 function renderPagar() {
   const gruposDoMes = [...new Set(parcelasAtuais.map((p) => p.grupo))].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  if (gruposDoMes.length && !gruposDoMes.includes(filtroGrupoPagar)) {
-    filtroGrupoPagar = gruposDoMes[0];
-  }
   renderChips("#filtros-pagar", gruposDoMes, filtroGrupoPagar, (valor) => {
     filtroGrupoPagar = valor;
     renderPagar();
@@ -629,9 +737,6 @@ async function marcarPago(parcela) {
 /* ---------- lista Receber ---------- */
 function renderReceber() {
   const origensDoMes = [...new Set(recebimentosAtuais.map((r) => r.origem))].sort((a, b) => a.localeCompare(b, "pt-BR"));
-  if (origensDoMes.length && !origensDoMes.includes(filtroOrigemReceber)) {
-    filtroOrigemReceber = origensDoMes[0];
-  }
   renderChips("#filtros-receber", origensDoMes, filtroOrigemReceber, (valor) => {
     filtroOrigemReceber = valor;
     renderReceber();
