@@ -168,7 +168,7 @@ export default function VisaoGeral13Meses({
                 <span
                   className={`block w-full rounded-md px-1 py-1 text-[15px] ${
                     mes === ym
-                      ? "bg-indigo-600 text-white"
+                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
                       : "text-indigo-500 dark:text-indigo-400"
                   }`}
                 >
