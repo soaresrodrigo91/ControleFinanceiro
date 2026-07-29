@@ -4,11 +4,11 @@
 //
 // Atualize a constante abaixo (data/hora + código) a cada alteração ou correção feita no
 // sistema.
-export const VERSAO_SISTEMA = "29.07.2026.10.30.00 - 02.10";
+export const VERSAO_SISTEMA = "29.07.2026.10.41.00 - 02.11";
 
-// Formato de exibição no rodapé do site: "v{código} - {data} - {hora}" (ex.: "v02.03 -
-// 28.07.2026 - 22:04"). O app mobile (PWA) mostra só o código de 4 dígitos (ver
+// Formato de exibição no rodapé do site: "{data} {hora} - V{código}" (ex.: "28.07.2026
+// 22:04 - V02.03"). O app mobile (PWA) mostra só o código de 4 dígitos (ver
 // public/mobile/index.html, .menu-versao) e precisa ser atualizado manualmente lá.
 const [dataHoraVersao, codigoVersao] = VERSAO_SISTEMA.split(" - ");
 const [diaVersao, mesVersao, anoVersao, horaVersao, minutoVersao] = dataHoraVersao.split(".");
-export const VERSAO_EXIBICAO = `v${codigoVersao} - ${diaVersao}.${mesVersao}.${anoVersao} - ${horaVersao}:${minutoVersao}`;
+export const VERSAO_EXIBICAO = `${diaVersao}.${mesVersao}.${anoVersao} ${horaVersao}:${minutoVersao} - V${codigoVersao}`;

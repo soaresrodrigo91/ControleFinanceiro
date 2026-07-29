@@ -65,7 +65,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {config.layoutMenu === "vertical" ? <MenuLateral /> : <TopNav />}
       <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       <footer className="shrink-0 border-t border-slate-200 px-4 py-1.5 text-center text-xs text-slate-400 print:hidden md:px-8 dark:border-slate-700 dark:text-slate-500">
-        Controle Financeiro · {VERSAO_EXIBICAO}
+        Controle Financeiro - {VERSAO_EXIBICAO}
       </footer>
       <BottomNav />
       <BoasVindasModal uid={usuario.uid} />
