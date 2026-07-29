@@ -365,20 +365,19 @@ function DashboardConteudo() {
           </div>
         )}
 
-        <div className="mb-2">
-          <div className="mb-1 flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Janela de 10 meses</span>
+        <div className="mt-2 mb-2">
+          <div className="mb-1 flex justify-end">
             <button
               onClick={handleToggle12Meses}
               aria-label={mostrar12Meses ? "Ocultar próximos 12 meses" : "Mostrar próximos 12 meses"}
-              className="rounded-lg border border-slate-300 p-1.5 text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
+              className="shrink-0 rounded-lg border border-slate-300 p-1.5 text-slate-500 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-800"
             >
               {mostrar12Meses ? <IconOlhoFechado className="h-3.5 w-3.5" /> : <IconOlho className="h-3.5 w-3.5" />}
             </button>
           </div>
 
           {mostrar12Meses && (
-            <div className="mt-1">
+            <div>
               <VisaoGeral13Meses
                 uid={usuario.uid}
                 ym={ym}

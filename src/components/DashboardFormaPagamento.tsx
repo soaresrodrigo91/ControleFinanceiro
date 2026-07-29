@@ -109,13 +109,7 @@ export default function DashboardFormaPagamento({
   const modoCompacto = alturaDisponivel !== null && alturaDisponivel < LIMIAR_COMPLETO;
 
   return (
-    <div className="flex flex-col lg:h-full lg:max-h-[400px] lg:min-h-0">
-      <div className="mb-3 shrink-0">
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-          Dashboard das formas de pagamento marcadas
-        </span>
-      </div>
-
+    <div className="flex flex-col pt-4 lg:h-full lg:max-h-[400px] lg:min-h-0">
       <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-3">
         <GraficoItem
           titulo="Valor por forma de pagamento"

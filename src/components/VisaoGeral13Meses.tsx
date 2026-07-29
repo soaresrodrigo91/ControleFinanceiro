@@ -147,7 +147,11 @@ export default function VisaoGeral13Meses({
   }
 
   return (
-    <div className="mb-3 rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+    <div className="relative mb-3 rounded-xl border-x border-b border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="absolute inset-x-3 -top-2.5 flex items-center gap-2">
+        <span className="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Janela de 10 meses</span>
+        <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+      </div>
       <div className="overflow-x-auto" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <table className="w-full table-auto text-sm md:table-fixed">
         <thead>
@@ -229,14 +233,14 @@ export default function VisaoGeral13Meses({
             <>
               <tr className="border-t border-slate-200 dark:border-slate-700">
                 <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 md:static md:w-auto dark:bg-slate-800">
-                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Subtotal</span>
+                  <span className="text-xs font-medium text-slate-400 dark:text-slate-500">Subtotal</span>
                 </td>
                 {meses.map((mes, indice) => {
                   const valor = subtotalGastosPorMes.get(mes) ?? 0;
                   return (
                     <td
                       key={mes}
-                      className={`min-w-[76px] px-1 py-1.5 text-center text-[11px] tabular-nums text-slate-400 md:min-w-0 dark:text-slate-500 ${
+                      className={`min-w-[76px] px-1 py-1.5 text-center text-xs tabular-nums text-slate-400 md:min-w-0 dark:text-slate-500 ${
                         indice === 0 ? "" : "hidden md:table-cell"
                       } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""}`}
                     >
@@ -247,14 +251,14 @@ export default function VisaoGeral13Meses({
               </tr>
               <tr>
                 <td className="sticky left-0 z-10 w-40 bg-white px-2 py-1.5 pb-2 md:static md:w-auto dark:bg-slate-800">
-                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">Provisão Líquido</span>
+                  <span className="text-xs font-medium text-slate-400 dark:text-slate-500">Provisão Líquido</span>
                 </td>
                 {meses.map((mes, indice) => {
                   const valor = provisaoLiquidoPorMes.get(mes) ?? 0;
                   return (
                     <td
                       key={mes}
-                      className={`min-w-[76px] px-1 py-1.5 pb-2 text-center text-[11px] tabular-nums md:min-w-0 ${
+                      className={`min-w-[76px] px-1 py-1.5 pb-2 text-center text-xs tabular-nums md:min-w-0 ${
                         indice === 0 ? "" : "hidden md:table-cell"
                       } ${mes === ym ? "bg-indigo-50/60 dark:bg-indigo-950/40" : ""} ${
                         totaisVisiveis
