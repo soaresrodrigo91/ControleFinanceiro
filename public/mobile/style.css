@@ -1089,6 +1089,18 @@ main::-webkit-scrollbar {
   min-width: 0;
   width: 100%;
 }
+.linha-dupla > .field input[type="date"] {
+  font-size: 13px;
+  padding-left: 10px;
+  padding-right: 6px;
+}
+.linha-dupla > .field input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+}
+.linha-dupla > .field input[type="date"]::-webkit-calendar-picker-indicator {
+  padding: 0;
+  margin-left: 2px;
+}
 
 .check-linha {
   display: flex;
