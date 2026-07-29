@@ -95,14 +95,14 @@ export default function DashboardFormaPagamento({
   }
 
   return (
-    <div className="flex flex-col lg:h-full lg:min-h-0">
+    <div className="flex flex-col">
       <div className="mb-3 shrink-0">
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
           Dashboard das formas de pagamento marcadas
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <GraficoItem
           titulo="Valor por forma de pagamento"
           itens={valorPorGrupo}

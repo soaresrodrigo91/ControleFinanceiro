@@ -13,6 +13,7 @@ import PerfilMenu from "@/components/PerfilMenu";
 import BotaoSair from "@/components/BotaoSair";
 import NotificacoesSino from "@/components/NotificacoesSino";
 import BoasVindasModal from "@/components/BoasVindasModal";
+import { VERSAO_EXIBICAO } from "@/lib/versao";
 import type { ConfigListas } from "@/lib/types";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -63,6 +64,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </header>
       {config.layoutMenu === "vertical" ? <MenuLateral /> : <TopNav />}
       <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
+      <footer className="shrink-0 border-t border-slate-200 px-4 py-1.5 text-left text-xs text-slate-400 print:hidden md:px-8 dark:border-slate-700 dark:text-slate-500">
+        Controle Financeiro · {VERSAO_EXIBICAO}
+      </footer>
       <BottomNav />
       <BoasVindasModal uid={usuario.uid} />
     </div>

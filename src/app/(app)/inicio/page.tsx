@@ -13,7 +13,6 @@ import { assinarRecebimentosDoMes, sincronizarReembolsosRecorrentes } from "@/li
 import { formatarMoeda, mesAtualYM } from "@/lib/date";
 import VisaoGeral13Meses from "@/components/VisaoGeral13Meses";
 import DashboardFormaPagamento from "@/components/DashboardFormaPagamento";
-import { VERSAO_SISTEMA } from "@/lib/versao";
 import SeletorMesAno from "@/components/SeletorMesAno";
 import { IconOlho, IconOlhoFechado } from "@/components/action-icons";
 import type { ConfigListas, Parcela, Recebimento, Recorrencia, StatusGrupo } from "@/lib/types";
@@ -392,10 +391,6 @@ function DashboardConteudo() {
           />
         ) : null}
       </div>
-
-      <footer className="mt-3 shrink-0 border-t border-slate-200 py-3 text-left text-xs text-slate-400 dark:border-slate-700 dark:text-slate-500">
-        Controle Financeiro · v{VERSAO_SISTEMA}
-      </footer>
     </div>
   );
 }
