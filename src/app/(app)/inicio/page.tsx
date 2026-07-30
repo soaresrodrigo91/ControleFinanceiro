@@ -284,7 +284,11 @@ function DashboardConteudo() {
               <p className="text-[11px] text-slate-500 dark:text-slate-400">Pendente</p>
               <p
                 className={`text-sm font-semibold ${
-                  totaisVisiveis ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-slate-100"
+                  totaisVisiveis
+                    ? totais.pendente === 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
+                    : "text-slate-900 dark:text-slate-100"
                 }`}
               >
                 {totaisVisiveis ? formatarMoeda(totais.pendente) : "••••••"}

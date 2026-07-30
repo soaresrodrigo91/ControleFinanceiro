@@ -575,7 +575,7 @@ function fecharSeletorMes() {
 
 /* ---------- resumo (Início) ---------- */
 // Mesmas cores de status do site (src/app/(app)/inicio/page.tsx):
-// total sempre vermelho, pago sempre verde, pendente sempre vermelho,
+// total sempre vermelho, pago sempre verde, pendente vermelho (verde se zerado),
 // recebimentos verde (ou âmbar se ainda falta receber) e líquido conforme o sinal.
 let valoresVisiveis = false;
 
@@ -613,7 +613,7 @@ function renderInicio() {
 
   const elPendente = $("#r-pendente");
   elPendente.textContent = mascarar(formatarMoeda(pendente));
-  elPendente.className = "valor negativo";
+  elPendente.className = `valor ${pendente === 0 ? "positivo" : "negativo"}`;
 
   const elLiquido = $("#r-liquido");
   elLiquido.textContent = mascarar(formatarMoeda(liquido));
