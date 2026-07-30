@@ -404,12 +404,12 @@ function ReceberConteudo() {
                 <div>
                   <label className="block truncate whitespace-nowrap text-sm font-medium mb-1">Parcelas *</label>
                   <input
-                    type="number"
-                    min={1}
+                    type="text"
+                    inputMode="numeric"
                     required
                     disabled={contaFixa}
                     value={contaFixa ? 1 : parcelaTotal}
-                    onChange={(e) => setParcelaTotal(e.target.value)}
+                    onChange={(e) => setParcelaTotal(e.target.value.replace(/[^0-9]/g, ""))}
                     className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
                   />
                 </div>

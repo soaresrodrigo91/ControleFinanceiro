@@ -140,6 +140,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Em telas maiores, o formulário se organiza em duas colunas, separadas por uma linha divisória discreta (credor, datas, valor/parcelas, conta fixa/provisão e observação à esquerda; forma de pagamento, aplicação e reembolso à direita) para aproveitar melhor o espaço horizontal e exigir menos rolagem — em celular, os campos continuam empilhados em uma coluna só.",
       "O botão \"Cancelar\" ao lado de \"Salvar\" limpa todos os campos do formulário (voltando credor, datas, valor, parcelas, observação e demais campos ao estado inicial), sem sair da tela — útil para recomeçar o preenchimento do zero.",
       "A Observação é obrigatória nesta tela (diferente de outras telas que reaproveitam o mesmo formulário, como a Renegociação, onde ela continua opcional).",
+      "Ao salvar com sucesso, aparece uma mensagem verde \"Lançamento salvo com sucesso!\" (igual à do app mobile), que some sozinha após 3 segundos — o formulário já é limpo na hora, pronto para um novo lançamento.",
     ],
     validacoes: [
       "Credor, data da compra, início da cobrança, valor total (ou valor da parcela, conforme a chave), parcelas, forma de pagamento, aplicação e observação são obrigatórios — mensagem: \"Preencha todos os campos obrigatórios.\"",

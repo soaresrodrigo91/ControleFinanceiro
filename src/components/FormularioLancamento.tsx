@@ -6,6 +6,7 @@ import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos"
 import CampoCredor from "@/components/CampoCredor";
 import CampoValorMonetario, { paraNumero } from "@/components/CampoValorMonetario";
 import Modal from "@/components/Modal";
+import ToastSucesso from "@/components/ToastSucesso";
 import type { ConfigListas, NovoLancamento, Parcela } from "@/lib/types";
 
 export default function FormularioLancamento({
@@ -17,6 +18,7 @@ export default function FormularioLancamento({
   pularVerificacaoDuplicata,
   observacaoObrigatoria,
   textoBotaoSalvar = "Salvar lançamento",
+  mensagemSucesso = "Lançamento salvo com sucesso!",
   onSalvar,
   onCancelar,
 }: {
@@ -28,6 +30,7 @@ export default function FormularioLancamento({
   pularVerificacaoDuplicata?: boolean;
   observacaoObrigatoria?: boolean;
   textoBotaoSalvar?: string;
+  mensagemSucesso?: string;
   onSalvar: (input: { contaFixa: boolean; dados: NovoLancamento }) => Promise<void>;
   onCancelar?: () => void;
 }) {
@@ -284,12 +287,12 @@ export default function FormularioLancamento({
               <div>
                 <label className="block text-sm font-medium mb-1">Parcelas *</label>
                 <input
-                  type="number"
-                  min={1}
+                  type="text"
+                  inputMode="numeric"
                   required
                   disabled={contaFixa}
                   value={contaFixa ? 1 : parcelaTotal}
-                  onChange={(e) => setParcelaTotal(e.target.value)}
+                  onChange={(e) => setParcelaTotal(e.target.value.replace(/[^0-9]/g, ""))}
                   className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
                 />
               </div>
@@ -407,7 +410,9 @@ export default function FormularioLancamento({
             )}
 
             {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
-            {sucesso && <p className="text-sm text-green-600 dark:text-green-400">Lançamento salvo!</p>}
+            {sucesso && (
+              <ToastSucesso mensagem={mensagemSucesso} onFechar={() => setSucesso(false)} />
+            )}
 
             <div className="mt-auto flex items-center justify-end gap-3 pt-4">
               <button
