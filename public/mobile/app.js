@@ -299,7 +299,7 @@ function assinarPerfilUsuario() {
   });
 }
 
-// Formas de pagamento marcadas/desmarcadas no mini-dashboard do site (Contas a pagar) e
+// Grupos marcados/desmarcados no mini-dashboard do site (Contas a pagar) e
 // contas fixas (recorrências): usadas para reproduzir com fidelidade o Subtotal/Provisão
 // Líquido da Janela de 10 meses do site na tela Início do app.
 function assinarRecorrenciasContasFixas() {
@@ -450,12 +450,22 @@ async function carregarConfig() {
       aplicacoes: d.aplicacoes ?? APLICACOES_PADRAO,
       comp: d.comp ?? [],
       modoTotalizador: d.modoTotalizador ?? "todos",
+      gruposInativosDesde: d.gruposInativosDesde ?? {},
     };
   } catch {
-    configListas = { grupos: GRUPOS_PADRAO, aplicacoes: APLICACOES_PADRAO, comp: [], modoTotalizador: "todos" };
+    configListas = {
+      grupos: GRUPOS_PADRAO,
+      aplicacoes: APLICACOES_PADRAO,
+      comp: [],
+      modoTotalizador: "todos",
+      gruposInativosDesde: {},
+    };
   }
   renderInicio();
-  $("#fp-grupo").innerHTML = configListas.grupos.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join("");
+  // Grupos inativos (Configurações → Grupo → Inativar no site) somem daqui, igual ao site —
+  // não é possível criar lançamento novo com um grupo inativo pelo app mobile.
+  const gruposAtivosMobile = configListas.grupos.filter((g) => !configListas.gruposInativosDesde[g]);
+  $("#fp-grupo").innerHTML = gruposAtivosMobile.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join("");
   $("#fp-aplicacao").innerHTML = configListas.aplicacoes.map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
 
   const compDisponiveis = configListas.comp.filter((c) => c.ativo !== false);
@@ -463,6 +473,21 @@ async function carregarConfig() {
   $("#fp-comp").innerHTML =
     `<option value="">Nenhum</option>` +
     compDisponiveis.map((c) => `<option value="${esc(c.nome)}">${esc(c.nome)}</option>`).join("");
+}
+
+// Reconecta todos os listeners em tempo real (parcelas, recebimentos, recorrências, perfil,
+// notificações) e recarrega as listas de configuração — mesmo efeito de deslogar e logar de
+// novo, mas sem sair da conta. Útil se o app ficou muito tempo em segundo plano e o listener
+// do Firestore não reconectou sozinho.
+async function atualizarLancamentos() {
+  fecharMenu();
+  assinarPerfilUsuario();
+  assinarNotificacoesUsuario();
+  assinarRecorrenciasContasFixas();
+  await carregarConfig();
+  assinarMes();
+  irParaTela("inicio");
+  exibirSucesso("Dados sincronizados");
 }
 
 /* ---------- assinatura do mês (parcelas + recebimentos) ---------- */
@@ -595,7 +620,7 @@ function renderInicio() {
   elLiquido.className = `valor ${liquido < 0 ? "negativo" : liquido === 0 ? "" : "positivo"}`;
 
   // Provisão Líquido: mesma conta da linha "Provisão Líquido" na Janela de 10 meses do site
-  // (aReceberPorMes - subtotalGastosPorMes) — sempre considera só as formas de pagamento
+  // (aReceberPorMes - subtotalGastosPorMes) — sempre considera só os grupos
   // visíveis no dashboard, mais a projeção de recebimentos recorrentes e reembolsos de
   // contas fixas com reembolso configurado que ainda não viraram lançamentos reais.
   const subtotalGastosVisiveis = parcelasVisiveis.reduce((s, p) => s + p.valorParcela, 0);
@@ -1208,7 +1233,7 @@ function abrirDetalhePagar(p) {
       ["Valor total", formatarMoeda(p.valorTotal)],
       ["Parcela", p.parcelaTotal > 1 ? `${p.parcelaNum}/${p.parcelaTotal}` : "Única"],
       ["Vencimento", formatarDataBR(p.vencimento)],
-      ["Forma de pagamento", p.grupo],
+      ["Grupo", p.grupo],
       ["Categoria", p.aplicacao],
       ["Status", p.pago ? "Pago" : "Pendente"],
       ["Provisão", p.provisao ? "Sim" : "Não"],
@@ -1349,6 +1374,7 @@ function ligarEventos() {
       fecharMenu();
     };
   });
+  $("#btn-atualizar-lancamentos").onclick = atualizarLancamentos;
   $("#card-total-gastos").onclick = () => irParaTela("pagar");
   $("#card-recebimentos").onclick = () => irParaTela("receber");
   $("#btn-topbar-inicio").onclick = () => irParaTela("inicio");

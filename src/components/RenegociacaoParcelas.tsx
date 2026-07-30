@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { assinarParcelasDoMes } from "@/lib/parcelas";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
+import { gruposAtivos } from "@/lib/config";
 import {
   assinarRenegociacoes,
   calcularValorRenegociacao,
@@ -45,9 +46,12 @@ export default function RenegociacaoParcelas({
   const [filtroGrupo, setFiltroGrupo] = useState<Record<string, boolean>>({});
   const [avisoSelecaoUnica, setAvisoSelecaoUnica] = useState(false);
   const [mostrarEscopo, setMostrarEscopo] = useState(false);
-  const [modoRenegociacao, setModoRenegociacao] = useState<{ grupo: string; escopo: EscopoRenegociacao } | null>(
-    null
-  );
+  const [escopoPendente, setEscopoPendente] = useState<EscopoRenegociacao | null>(null);
+  const [modoRenegociacao, setModoRenegociacao] = useState<{
+    grupo: string;
+    escopo: EscopoRenegociacao;
+    excluirRecebimentos: boolean;
+  } | null>(null);
 
   const [excluindoRenegociacao, setExcluindoRenegociacao] = useState<Renegociacao | null>(null);
   const [processandoExclusao, setProcessandoExclusao] = useState(false);
@@ -116,7 +120,13 @@ export default function RenegociacaoParcelas({
   function escolherEscopo(escopo: EscopoRenegociacao) {
     if (!grupoSelecionado) return;
     setMostrarEscopo(false);
-    setModoRenegociacao({ grupo: grupoSelecionado, escopo });
+    setEscopoPendente(escopo);
+  }
+
+  function escolherRecebimentos(excluirRecebimentos: boolean) {
+    if (!grupoSelecionado || !escopoPendente) return;
+    setModoRenegociacao({ grupo: grupoSelecionado, escopo: escopoPendente, excluirRecebimentos });
+    setEscopoPendente(null);
   }
 
   async function handleSalvarRenegociacao({ dados }: { contaFixa: boolean; dados: NovoLancamento }) {
@@ -126,6 +136,7 @@ export default function RenegociacaoParcelas({
       ym,
       escopo: modoRenegociacao.escopo,
       novoLancamento: dados,
+      excluirRecebimentos: modoRenegociacao.excluirRecebimentos,
     });
     setModoRenegociacao(null);
     setFiltroGrupo({});
@@ -162,6 +173,11 @@ export default function RenegociacaoParcelas({
           <span className="font-semibold">
             {valorRenegociacao === null ? "calculando..." : formatarMoeda(valorRenegociacao)}
           </span>
+          <br />
+          Recebimentos de reembolso vinculados:{" "}
+          <span className="font-semibold">
+            {modoRenegociacao.excluirRecebimentos ? "serão excluídos" : "serão mantidos"}
+          </span>
         </div>
         <FormularioLancamento
           config={config}
@@ -186,10 +202,10 @@ export default function RenegociacaoParcelas({
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-wrap items-end gap-3">
-            {config.grupos.length > 0 && (
+            {gruposAtivos(config).length > 0 && (
               <FiltroMultiSelect
-                rotulo="Forma de pagamento"
-                opcoes={config.grupos}
+                rotulo="Grupo"
+                opcoes={gruposAtivos(config)}
                 filtro={filtroGrupo}
                 onAlternar={handleAlternarGrupo}
                 modoInclusao
@@ -198,7 +214,7 @@ export default function RenegociacaoParcelas({
             )}
             {avisoSelecaoUnica && (
               <p className="text-sm text-amber-600 dark:text-amber-400">
-                A renegociação só pode ser feita para uma forma de pagamento por vez.
+                A renegociação só pode ser feita para um grupo por vez.
               </p>
             )}
           </div>
@@ -211,7 +227,7 @@ export default function RenegociacaoParcelas({
         <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
       ) : !grupoSelecionado ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Selecione uma forma de pagamento para renegociar.
+          Selecione um grupo para renegociar.
         </p>
       ) : (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -240,9 +256,10 @@ export default function RenegociacaoParcelas({
               <thead>
                 <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
                   <th className="py-2 pl-4">Número</th>
-                  <th className="py-2 pr-2">Forma de pagamento</th>
+                  <th className="py-2 pr-2">Grupo</th>
                   <th className="py-2 pr-2">Escopo</th>
                   <th className="py-2 pr-2">Mês de referência</th>
+                  <th className="py-2 pr-2">Recebimentos</th>
                   <th className="w-24 py-2 pr-4"></th>
                 </tr>
               </thead>
@@ -257,6 +274,9 @@ export default function RenegociacaoParcelas({
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.grupo}</td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{formatarEscopo(r.escopo)}</td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{formatarMesAno(r.ym)}</td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {r.excluirRecebimentos === false ? "Mantidos" : "Excluídos"}
+                      </td>
                       <td className="py-2.5 pr-4 text-right">
                         <button
                           onClick={() => setExcluindoRenegociacao(r)}
@@ -304,6 +324,34 @@ export default function RenegociacaoParcelas({
       </Modal>
 
       <Modal
+        aberto={!!escopoPendente}
+        onFechar={() => setEscopoPendente(null)}
+        titulo="Recebimentos de reembolso"
+      >
+        <div className="flex flex-col gap-2">
+          <p className="mb-1 text-sm text-slate-600 dark:text-slate-300">
+            Os lançamentos de &quot;{grupoSelecionado}&quot; substituídos por esta renegociação também têm
+            recebimentos de reembolso vinculados. Deseja excluir esses recebimentos junto com os lançamentos?
+          </p>
+          <button onClick={() => escolherRecebimentos(true)} className={CLASSE_BOTAO_PRIMARIO}>
+            Sim, excluir os recebimentos
+          </button>
+          <button
+            onClick={() => escolherRecebimentos(false)}
+            className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+          >
+            Não, manter os recebimentos
+          </button>
+          <button
+            onClick={() => setEscopoPendente(null)}
+            className="text-center text-sm text-slate-500 dark:text-slate-400"
+          >
+            Cancelar
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
         aberto={!!excluindoRenegociacao}
         onFechar={() => setExcluindoRenegociacao(null)}
         titulo="Excluir renegociação"
@@ -312,7 +360,10 @@ export default function RenegociacaoParcelas({
           <div className="flex flex-col gap-3">
             <p className="text-sm text-slate-600 dark:text-slate-300">
               As parcelas geradas pela renegociação nº {formatarNumeroRenegociacao(excluindoRenegociacao.numero)} serão
-              excluídas e os lançamentos anteriores serão retornados.
+              excluídas e os lançamentos anteriores serão retornados
+              {excluindoRenegociacao.excluirRecebimentos === false
+                ? "."
+                : ", junto com os recebimentos de reembolso que foram excluídos por ela."}
             </p>
             {erroExclusao && <p className="text-sm text-red-600 dark:text-red-400">{erroExclusao}</p>}
             <button

@@ -14,7 +14,8 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { ConfigListas, LayoutMenu, ModoComp } from "./types";
+import { afetaApartirDe } from "./recorrencias";
+import type { ConfigListas, LayoutMenu, ModoComp, Parcela, Recorrencia } from "./types";
 
 export type CampoLista = "grupos" | "aplicacoes";
 
@@ -32,6 +33,14 @@ export const GRUPO_PROVISAO = "Provisões";
 // Grupo reservado para recorrências (contas fixas); lançamentos avulsos não
 // podem usá-lo (ver ESPECIFICACAO.md secao 4.2-8).
 export const GRUPO_FIXAS = "Fixas";
+
+// Grupos com uma entrada em gruposInativosDesde ficam de fora dos seletores/filtros do
+// sistema (formulário de novo lançamento, renegociação, filtros de Lançamentos/Relatórios/
+// Dashboard) até serem reativados. Os lançamentos já existentes desses grupos não são
+// afetados — continuam normalmente onde já estavam.
+export function gruposAtivos(config: ConfigListas): string[] {
+  return config.grupos.filter((g) => !config.gruposInativosDesde?.[g]);
+}
 
 export const CONFIG_PADRAO: ConfigListas = {
   grupos: ["Fixas", "Cartão de Crédito", "Provisões", "Outros"],
@@ -147,6 +156,50 @@ export async function itemEstaEmUso(
     })
   );
   return emParcelas || emRecorrencias;
+}
+
+// Verifica se um grupo tem algum lançamento a partir de mesInicio (parcela avulsa com
+// vencimento >= mesInicio, ou recorrência que ainda não tinha encerrado antes de mesInicio,
+// mesmo que só comece depois dele). Usado para bloquear a inativação do grupo nesses casos.
+export async function existeLancamentoGrupoAPartirDe(
+  uid: string,
+  grupo: string,
+  mesInicio: string
+): Promise<boolean> {
+  const inicio = `${mesInicio}-01`;
+
+  const parcelasSnap = await getDocs(
+    query(collection(db, "usuarios", uid, "parcelas"), where("vencimento", ">=", inicio))
+  );
+  const temParcelaAvulsa = parcelasSnap.docs.some((d) => {
+    const p = d.data() as Parcela;
+    return p.grupo === grupo && !p.recorrenciaId;
+  });
+  if (temParcelaAvulsa) return true;
+
+  const recorrenciasSnap = await getDocs(
+    query(collection(db, "usuarios", uid, "recorrencias"), where("tipo", "==", "pagar"))
+  );
+  return recorrenciasSnap.docs.some((d) => {
+    const r = d.data() as Recorrencia;
+    if ((r.grupo ?? GRUPO_FIXAS) !== grupo) return false;
+    return afetaApartirDe(r, mesInicio);
+  });
+}
+
+export async function inativarGrupo(uid: string, grupo: string, desde: string) {
+  const ref = doc(db, "usuarios", uid, "config", "listas");
+  const snap = await getDoc(ref);
+  const atual = (snap.data() as ConfigListas | undefined)?.gruposInativosDesde ?? {};
+  await updateDoc(ref, { gruposInativosDesde: { ...atual, [grupo]: desde } });
+}
+
+export async function ativarGrupo(uid: string, grupo: string) {
+  const ref = doc(db, "usuarios", uid, "config", "listas");
+  const snap = await getDoc(ref);
+  const atual = { ...((snap.data() as ConfigListas | undefined)?.gruposInativosDesde ?? {}) };
+  delete atual[grupo];
+  await updateDoc(ref, { gruposInativosDesde: atual });
 }
 
 export async function adicionarItemLista(uid: string, campo: CampoLista, item: string) {

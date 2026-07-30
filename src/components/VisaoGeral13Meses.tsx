@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
+import { gruposAtivos } from "@/lib/config";
 import { assinarRecebimentosDoIntervalo } from "@/lib/recebimentos";
 import { assinarRecorrencias, ativaNoMes, mesclarComRecorrencias, valorNoMes } from "@/lib/recorrencias";
 import { formatarMesAnoAbreviado, formatarMoeda, somarMesesYM } from "@/lib/date";
@@ -54,7 +55,7 @@ export default function VisaoGeral13Meses({
   }, [uid, mostrarSubtotalProvisao]);
 
   const grupoVisivel = (grupo: string) => filtros[grupo] !== false;
-  const grupos = config.grupos.filter(grupoVisivel);
+  const grupos = gruposAtivos(config).filter(grupoVisivel);
 
   const totaisPorGrupoEMes = useMemo(() => {
     const mapa = new Map<string, Map<string, number>>();

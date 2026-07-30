@@ -518,7 +518,7 @@ function ReceberConteudo() {
                 />
                 {algumReembolsoMarcado && formasPagamentoDoMes.length > 0 && (
                   <FiltroMultiSelect
-                    rotulo="Forma de pagamento"
+                    rotulo="Grupo"
                     opcoes={formasPagamentoDoMes}
                     filtro={filtroFormaPagamento}
                     onAlternar={(item, visivel) =>

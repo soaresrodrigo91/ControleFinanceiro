@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { criarLancamento } from "./parcelas";
-import { ativaNoMes, valorNoMes } from "./recorrencias";
+import { afetaApartirDe, ativaNoMes, valorNoMes } from "./recorrencias";
 import { somarMesesYM } from "./date";
 import { GRUPO_FIXAS } from "./config";
 import type { EscopoRenegociacao, NovoLancamento, Parcela, Recebimento, Recorrencia, Renegociacao } from "./types";
@@ -72,9 +72,15 @@ export async function calcularValorRenegociacao(
 
 export async function renegociar(
   uid: string,
-  params: { grupo: string; ym: string; escopo: EscopoRenegociacao; novoLancamento: NovoLancamento }
+  params: {
+    grupo: string;
+    ym: string;
+    escopo: EscopoRenegociacao;
+    novoLancamento: NovoLancamento;
+    excluirRecebimentos: boolean;
+  }
 ): Promise<{ renegociacaoId: string; numero: number }> {
-  const { grupo, ym, escopo, novoLancamento } = params;
+  const { grupo, ym, escopo, novoLancamento, excluirRecebimentos } = params;
 
   const renegociacoesRef = collection(db, "usuarios", uid, "renegociacoes");
   const renegociacaoRef = doc(renegociacoesRef);
@@ -105,7 +111,11 @@ export async function renegociar(
   );
   const recorrenciasCandidatas = recorrenciasSnap.docs
     .map((d) => ({ id: d.id, dados: d.data() as Recorrencia }))
-    .filter(({ dados }) => (dados.grupo ?? GRUPO_FIXAS) === grupo && ativaNoMes(dados, ym));
+    .filter(
+      ({ dados }) =>
+        (dados.grupo ?? GRUPO_FIXAS) === grupo &&
+        (escopo === "mes" ? ativaNoMes(dados, ym) : afetaApartirDe(dados, ym))
+    );
 
   const parcelasSnapshot: { id: string; dados: Record<string, unknown> }[] = [];
   const recebimentosSnapshot: { id: string; dados: Record<string, unknown> }[] = [];
@@ -115,6 +125,8 @@ export async function renegociar(
     const p = d.data() as Parcela;
     parcelasSnapshot.push({ id: d.id, dados: d.data() as Record<string, unknown> });
     if (!substituiRenegociacaoId && p.renegociacaoId) substituiRenegociacaoId = p.renegociacaoId;
+
+    if (!excluirRecebimentos) continue;
 
     const recebSnap = await getDocs(
       query(
@@ -148,6 +160,8 @@ export async function renegociar(
       parcelasSnapshot.push({ id: d.id, dados: d.data() as Record<string, unknown> });
       if (!substituiRenegociacaoId && p.renegociacaoId) substituiRenegociacaoId = p.renegociacaoId;
     });
+
+    if (!excluirRecebimentos) continue;
 
     const recebRecSnap = await getDocs(
       query(
@@ -230,6 +244,7 @@ export async function renegociar(
       criadoEm: serverTimestamp(),
       substituiRenegociacaoId: substituiRenegociacaoId ?? null,
       recorrenciasAjustadas,
+      excluirRecebimentos,
     });
   } catch {
     throw new Error(

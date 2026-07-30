@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { assinarParcelasDoIntervalo, assinarTodasParcelas, valorEfetivo } from "@/lib/parcelas";
 import { assinarRecorrencias, mesclarComRecorrenciasIntervalo } from "@/lib/recorrencias";
-import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
+import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos } from "@/lib/config";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { dataBrParaIso, formatarDataBR, formatarMoeda } from "@/lib/date";
 import { formatarDataDigitada } from "@/lib/mascara";
@@ -121,7 +121,7 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
     try {
       const resumos: ResumoPdf[] = [];
       if (config.resumosRelatorio.formaPagamento) {
-        resumos.push({ titulo: "Por forma de pagamento", linhas: porGrupo });
+        resumos.push({ titulo: "Por grupo", linhas: porGrupo });
       }
       if (config.resumosRelatorio.aplicacao) {
         resumos.push({ titulo: "Por aplicação", linhas: porAplicacao });
@@ -215,10 +215,10 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
             placeholder="Buscar por nome..."
           />
         </div>
-        {config.grupos.length > 0 && (
+        {gruposAtivos(config).length > 0 && (
           <FiltroMultiSelect
-            rotulo="Forma de pagamento"
-            opcoes={config.grupos}
+            rotulo="Grupo"
+            opcoes={gruposAtivos(config)}
             filtro={filtroGrupos}
             onAlternar={(item, visivel) => setFiltroGrupos((atual) => ({ ...atual, [item]: visivel }))}
           />
@@ -290,7 +290,7 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
             config.resumosRelatorio.compartilhamento) && (
             <div className={`mb-6 grid grid-cols-1 gap-4 ${GRID_COLS_RESUMO[qtdResumosVisiveis]}`}>
               {config.resumosRelatorio.formaPagamento && (
-                <TabelaResumo titulo="Por forma de pagamento" linhas={porGrupo} />
+                <TabelaResumo titulo="Por grupo" linhas={porGrupo} />
               )}
               {config.resumosRelatorio.aplicacao && (
                 <TabelaResumo titulo="Por aplicação" linhas={porAplicacao} />

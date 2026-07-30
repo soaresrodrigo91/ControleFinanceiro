@@ -6,6 +6,7 @@ import {
   adicionarComp,
   adicionarItemLista,
   alternarAtivoComp,
+  ativarGrupo,
   assinarConfigListas,
   atualizarItensPorPagina,
   atualizarLayoutMenu,
@@ -17,12 +18,16 @@ import {
   atualizarMostrarSubtotalProvisaoInicio,
   atualizarTipoGraficoDashboard,
   CONFIG_PADRAO,
+  existeLancamentoGrupoAPartirDe,
+  inativarGrupo,
   itemEstaEmUso,
   removerComp,
   removerItemLista,
   type CampoLista,
 } from "@/lib/config";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos";
+import { formatarMesAno, mesAtualYM } from "@/lib/date";
+import SeletorMesAno from "@/components/SeletorMesAno";
 import { Tab, Tabs } from "@/components/Tabs";
 import CompartilharLancamentosCard from "@/components/config/CompartilharLancamentosCard";
 import { mensagemErroAuth } from "@/lib/authErrors";
@@ -33,7 +38,7 @@ import { usePlano } from "@/contexts/PlanoContext";
 import type { ConfigListas, ModoComp } from "@/lib/types";
 
 const SECOES: { campo: CampoLista; titulo: string; ajuda: string }[] = [
-  { campo: "grupos", titulo: "Formas de pagamento", ajuda: "Ex.: Fixas, Cartão de Crédito, Provisões" },
+  { campo: "grupos", titulo: "Grupos", ajuda: "Ex.: Fixas, Cartão de Crédito, Provisões" },
   { campo: "aplicacoes", titulo: "Aplicações", ajuda: "Ex.: Alimentação, Moradia, Transporte" },
 ];
 
@@ -100,7 +105,7 @@ export default function ConfiguracoesPage() {
                     }
                     className="h-3.5 w-3.5 accent-indigo-600"
                   />
-                  Por forma de pagamento
+                  Por grupo
                 </label>
                 <label className="flex items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
                   <input
@@ -339,6 +344,7 @@ export default function ConfiguracoesPage() {
                 itens={config[secao.campo]}
                 observacoes={config.observacoesListas?.[secao.campo] ?? {}}
                 protegidos={[]}
+                inativos={secao.campo === "grupos" ? (config.gruposInativosDesde ?? {}) : undefined}
               />
             ))}
           </div>
@@ -598,6 +604,7 @@ function ListaEditavel({
   itens,
   observacoes,
   protegidos = [],
+  inativos,
 }: {
   uid: string;
   campo: CampoLista;
@@ -606,6 +613,7 @@ function ListaEditavel({
   itens: string[];
   observacoes: Record<string, string>;
   protegidos?: string[];
+  inativos?: Record<string, string>;
 }) {
   const [novoItem, setNovoItem] = useState("");
   const [novaObservacao, setNovaObservacao] = useState("");
@@ -614,6 +622,11 @@ function ListaEditavel({
   const [editandoObservacaoDe, setEditandoObservacaoDe] = useState<string | null>(null);
   const [textoObservacao, setTextoObservacao] = useState("");
   const [salvandoObservacao, setSalvandoObservacao] = useState(false);
+  const [inativando, setInativando] = useState<string | null>(null);
+  const [ativando, setAtivando] = useState<string | null>(null);
+  const [mesInativar, setMesInativar] = useState(mesAtualYM());
+  const [erroInativar, setErroInativar] = useState("");
+  const [processandoInativar, setProcessandoInativar] = useState(false);
 
   async function handleAdicionar(e: FormEvent) {
     e.preventDefault();
@@ -635,7 +648,7 @@ function ListaEditavel({
   async function handleRemover(item: string) {
     setErro("");
     if (protegidos.includes(item)) {
-      setErro(`"${item}" é uma forma de pagamento fixa do sistema e não pode ser removida.`);
+      setErro(`"${item}" é um grupo fixo do sistema e não pode ser removido.`);
       return;
     }
     setRemovendo(item);
@@ -648,6 +661,40 @@ function ListaEditavel({
       await removerItemLista(uid, campo, item);
     } finally {
       setRemovendo(null);
+    }
+  }
+
+  function abrirInativar(item: string) {
+    setErroInativar("");
+    setMesInativar(mesAtualYM());
+    setInativando(item);
+  }
+
+  async function confirmarInativar() {
+    if (!inativando) return;
+    setErroInativar("");
+    setProcessandoInativar(true);
+    try {
+      const emUso = await existeLancamentoGrupoAPartirDe(uid, inativando, mesInativar);
+      if (emUso) {
+        setErroInativar(
+          `"${inativando}" tem lançamento a partir de ${formatarMesAno(mesInativar)} e não pode ser inativado.`
+        );
+        return;
+      }
+      await inativarGrupo(uid, inativando, mesInativar);
+      setInativando(null);
+    } finally {
+      setProcessandoInativar(false);
+    }
+  }
+
+  async function handleAtivar(item: string) {
+    setAtivando(item);
+    try {
+      await ativarGrupo(uid, item);
+    } finally {
+      setAtivando(null);
     }
   }
 
@@ -677,13 +724,23 @@ function ListaEditavel({
         {itens.map((item) => {
           const protegido = protegidos.includes(item);
           const observacao = observacoes[item];
+          const inativoDesde = inativos?.[item];
           return (
             <span
               key={item}
-              title={protegido ? "Forma de pagamento fixa do sistema" : undefined}
-              className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 py-1 pl-3 pr-1.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              title={protegido ? "Grupo fixo do sistema" : undefined}
+              className={`flex items-center gap-1.5 rounded-full border py-1 pl-3 pr-1.5 text-sm ${
+                inativoDesde
+                  ? "border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500"
+                  : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              }`}
             >
               {item}
+              {inativoDesde && (
+                <span className="rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  Inativo desde {formatarMesAno(inativoDesde)}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => abrirEdicaoObservacao(item)}
@@ -695,6 +752,25 @@ function ListaEditavel({
               >
                 <IconBalao className="h-3.5 w-3.5" />
               </button>
+              {inativos !== undefined &&
+                (inativoDesde ? (
+                  <button
+                    type="button"
+                    onClick={() => handleAtivar(item)}
+                    disabled={ativando === item}
+                    className="rounded-full px-1.5 py-0.5 text-[11px] font-medium text-emerald-600 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                  >
+                    {ativando === item ? "…" : "Ativar"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => abrirInativar(item)}
+                    className="rounded-full px-1.5 py-0.5 text-[11px] font-medium text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    Inativar
+                  </button>
+                ))}
               {protegido ? (
                 <span className="px-1.5 text-slate-300 dark:text-slate-600" aria-label="Item fixo, não pode ser removido">
                   🔒
@@ -756,6 +832,30 @@ function ListaEditavel({
           />
           <button onClick={handleSalvarObservacao} disabled={salvandoObservacao} className={CLASSE_BOTAO_PRIMARIO}>
             {salvandoObservacao ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal aberto={!!inativando} onFechar={() => setInativando(null)} titulo={`Inativar "${inativando ?? ""}"`}>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            A partir de qual mês &quot;{inativando}&quot; deixa de aparecer nos seletores e filtros do sistema?
+          </p>
+          <SeletorMesAno ym={mesInativar} onMudar={setMesInativar} />
+          {erroInativar && <p className="text-sm text-red-600 dark:text-red-400">{erroInativar}</p>}
+          <button
+            onClick={confirmarInativar}
+            disabled={processandoInativar}
+            className="w-full rounded-lg bg-amber-600 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            {processandoInativar ? "Verificando..." : "Inativar"}
+          </button>
+          <button
+            onClick={() => setInativando(null)}
+            disabled={processandoInativar}
+            className="text-center text-sm text-slate-500 dark:text-slate-400"
+          >
+            Cancelar
           </button>
         </div>
       </Modal>

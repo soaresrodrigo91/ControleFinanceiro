@@ -20,7 +20,7 @@ import {
 } from "@/lib/compartilhamento";
 import { assinarParcelasDoMes } from "@/lib/parcelas";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
-import { GRUPO_PROVISAO, adicionarItemLista } from "@/lib/config";
+import { GRUPO_PROVISAO, adicionarItemLista, gruposAtivos } from "@/lib/config";
 import { assinarPerfil } from "@/lib/perfil";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { formatarDataBR, formatarMoeda } from "@/lib/date";
@@ -796,7 +796,10 @@ function AbaRecebidos({
   const [excluindoSelecionadosOcorrencia, setExcluindoSelecionadosOcorrencia] = useState(false);
   const [erroExclusaoSelecionados, setErroExclusaoSelecionados] = useState("");
 
-  const gruposDisponiveis = useMemo(() => config.grupos.filter((g) => g !== GRUPO_PROVISAO), [config.grupos]);
+  const gruposDisponiveis = useMemo(
+    () => gruposAtivos(config).filter((g) => g !== GRUPO_PROVISAO),
+    [config]
+  );
   const grupoEscolhido = grupoEscolhidoManual ?? gruposDisponiveis[0] ?? "";
 
   useEffect(() => {
@@ -1107,7 +1110,7 @@ function AbaRecebidos({
             </div>
 
             <label className="text-sm text-slate-600 dark:text-slate-300">
-              Forma de pagamento
+              Grupo
               <select
                 value={grupoEscolhido}
                 onChange={(e) => setGrupoEscolhidoManual(e.target.value)}

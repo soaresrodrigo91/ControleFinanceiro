@@ -92,7 +92,9 @@ function FormularioEdicaoParcela({
     if (mostrarValorRestrito) campoValorRef.current?.focus();
   }, [mostrarValorRestrito]);
 
-  const gruposEditaveis = config.grupos.filter((g) => g !== GRUPO_FIXAS || g === dados.grupo);
+  const gruposEditaveis = config.grupos.filter(
+    (g) => (g !== GRUPO_FIXAS || g === dados.grupo) && (!config.gruposInativosDesde?.[g] || g === dados.grupo)
+  );
 
   const ym = parcela.vencimento.slice(0, 7);
 
@@ -168,7 +170,7 @@ function FormularioEdicaoParcela({
   function camposCompartilhadosAlterados(): string[] {
     const campos: string[] = [];
     if (dados.credor !== parcela.credor) campos.push("credor");
-    if (dados.grupo !== parcela.grupo) campos.push("forma de pagamento");
+    if (dados.grupo !== parcela.grupo) campos.push("grupo");
     if (dados.aplicacao !== parcela.aplicacao) campos.push("aplicação");
     if ((dados.observacao ?? "") !== (parcela.observacao ?? "")) campos.push("observação");
     return campos;
@@ -390,7 +392,7 @@ function FormularioEdicaoParcela({
         </div>
       )}
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Forma de pagamento</label>
+        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Grupo</label>
         <select
           value={dados.grupo}
           onChange={(e) => setDados({ ...dados, grupo: e.target.value })}

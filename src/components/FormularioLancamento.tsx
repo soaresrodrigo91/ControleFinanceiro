@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { hojeISO, somarMeses } from "@/lib/date";
+import { gruposAtivos } from "@/lib/config";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos";
 import CampoCredor from "@/components/CampoCredor";
 import CampoValorMonetario, { paraNumero } from "@/components/CampoValorMonetario";
@@ -67,7 +68,7 @@ export default function FormularioLancamento({
     }
   }
 
-  const gruposDisponiveis = config.grupos;
+  const gruposDisponiveis = gruposAtivos(config);
   const compDisponiveis = config.comp.filter((c) => c.ativo !== false);
   const dataCompraEfetiva = ocultarDataCompra ? inicioCobranca : dataCompra;
 
@@ -361,7 +362,7 @@ export default function FormularioLancamento({
 
           <div className="flex flex-col gap-4 md:border-l md:border-slate-200 md:pl-6 dark:md:border-slate-700">
             <div>
-              <label className="block text-sm font-medium mb-1">Forma de pagamento *</label>
+              <label className="block text-sm font-medium mb-1">Grupo *</label>
               <select
                 required
                 disabled={!!grupoFixo}

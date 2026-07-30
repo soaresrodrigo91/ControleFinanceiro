@@ -275,6 +275,13 @@ export function ativaNoMes(r: Recorrencia, ym: string): boolean {
   return true;
 }
 
+// Recorrência que ainda vai gerar (ou já gerou) parcela a partir de ym — inclusive quando ela só
+// começa depois de ym. Só é false quando ela já tinha encerrado antes de ym. Diferente de
+// ativaNoMes, que exige estar ativa exatamente naquele mês.
+export function afetaApartirDe(r: Recorrencia, ym: string): boolean {
+  return !(r.fim && r.fim.slice(0, 7) < ym);
+}
+
 export function valorNoMes(r: Recorrencia, ym: string): number {
   const fimDoMes = `${ym}-31`;
   let valor = r.valorAtual;

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { assinarParcelasDoMes, valorEfetivo } from "@/lib/parcelas";
-import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
+import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos } from "@/lib/config";
 import { alternarFiltroGrupo, assinarFiltrosDashboard } from "@/lib/perfil";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
 import { assinarRecebimentosDoMes, sincronizarReembolsosRecorrentes } from "@/lib/recebimentos";
@@ -163,26 +163,28 @@ function DashboardConteudo() {
     [carregando, estadoMes, recorrencias, ym]
   );
 
+  const listaGruposAtivos = useMemo(() => gruposAtivos(config), [config]);
+
   const filtrosEfetivos = useMemo(
     () =>
-      Object.fromEntries(config.grupos.map((g) => [g, gruposRevelados[g] ? filtros[g] : false])),
-    [config.grupos, filtros, gruposRevelados]
+      Object.fromEntries(listaGruposAtivos.map((g) => [g, gruposRevelados[g] ? filtros[g] : false])),
+    [listaGruposAtivos, filtros, gruposRevelados]
   );
 
   const todosGruposMarcados =
-    config.grupos.length > 0 && config.grupos.every((g) => filtrosEfetivos[g] !== false);
+    listaGruposAtivos.length > 0 && listaGruposAtivos.every((g) => filtrosEfetivos[g] !== false);
 
   function handleAlternarTodosGrupos(marcar: boolean) {
     if (!usuario) return;
     setGruposRevelados((prev) => {
       const novo = { ...prev };
-      config.grupos.forEach((g) => {
+      listaGruposAtivos.forEach((g) => {
         novo[g] = true;
       });
       sessionStorage.setItem(`gruposRevelados_${usuario.uid}`, JSON.stringify(novo));
       return novo;
     });
-    config.grupos.forEach((g) => alternarFiltroGrupo(usuario.uid, g, marcar));
+    listaGruposAtivos.forEach((g) => alternarFiltroGrupo(usuario.uid, g, marcar));
   }
 
   const parcelasVisiveis = useMemo(
@@ -197,9 +199,9 @@ function DashboardConteudo() {
       lista.push(p);
       mapa.set(p.grupo, lista);
     }
-    const ordem = config.grupos;
+    const ordem = listaGruposAtivos;
     return [...mapa.entries()].sort((a, b) => ordem.indexOf(a[0]) - ordem.indexOf(b[0]));
-  }, [parcelasVisiveis, config.grupos]);
+  }, [parcelasVisiveis, listaGruposAtivos]);
 
   const statusPorGrupo = useMemo(
     () => Object.fromEntries(porGrupo.map(([grupo, itens]) => [grupo, statusGrupo(itens)])),
@@ -325,7 +327,7 @@ function DashboardConteudo() {
           </div>
         </div>
 
-        {config.grupos.length > 0 && (
+        {listaGruposAtivos.length > 0 && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -334,7 +336,7 @@ function DashboardConteudo() {
             >
               {todosGruposMarcados ? "Desmarcar todos" : "Marcar todos"}
             </button>
-            {config.grupos.map((grupo) => {
+            {listaGruposAtivos.map((grupo) => {
               const visivel = filtrosEfetivos[grupo] !== false;
               return (
                 <label
@@ -367,7 +369,7 @@ function DashboardConteudo() {
       </div>
 
       {/* A partir daqui a área rola (inclusive a Janela de 10 meses) quando não há
-          espaço vertical suficiente — só o bloco acima (totais + formas de pagamento)
+          espaço vertical suficiente — só o bloco acima (totais + grupos)
           fica fixo. Assim o mini-dashboard sempre pode ser alcançado rolando a tela. */}
       <div ref={refAreaDashboard} className="scroll-sem-barra lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         <div className="mt-2 mb-2">
@@ -410,7 +412,7 @@ function DashboardConteudo() {
         ) : config.mostrarDashboardInicio ? (
           <DashboardFormaPagamento
             parcelas={parcelasVisiveis}
-            gruposConfig={config.grupos}
+            gruposConfig={listaGruposAtivos}
             aplicacoesConfig={config.aplicacoes}
             tipoGrafico={config.tipoGraficoDashboard ?? "pizza"}
             alturaDisponivel={alturaAreaDashboard}

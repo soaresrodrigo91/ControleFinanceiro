@@ -99,7 +99,7 @@ export default function DashboardFormaPagamento({
   if (parcelas.length === 0) {
     return (
       <p className="text-sm text-slate-500 dark:text-slate-400">
-        Nenhum lançamento das formas de pagamento marcadas neste mês.
+        Nenhum lançamento dos grupos marcados neste mês.
       </p>
     );
   }
@@ -110,7 +110,7 @@ export default function DashboardFormaPagamento({
     <div className="flex flex-col pt-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-start">
         <GraficoItem
-          titulo="Valor por forma de pagamento"
+          titulo="Valor por grupo"
           itens={valorPorGrupo}
           tipoGrafico={tipoGrafico}
           formatarValor={formatarMoeda}
@@ -119,7 +119,7 @@ export default function DashboardFormaPagamento({
           modoCompacto={modoCompacto}
         />
         <GraficoItem
-          titulo="Lançamentos por forma de pagamento"
+          titulo="Lançamentos por grupo"
           itens={qtdLancamentosPorGrupo}
           tipoGrafico={tipoGrafico}
           formatarValor={(v) => String(v)}

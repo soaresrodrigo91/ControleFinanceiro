@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMesAtual } from "@/contexts/MesAtualContext";
-import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
+import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos } from "@/lib/config";
 import { assinarTodasParcelas } from "@/lib/parcelas";
 import { assinarTodosRecebimentos } from "@/lib/recebimentos";
 import { formatarMoeda } from "@/lib/date";
@@ -182,8 +182,8 @@ export default function DashboardGeralPage() {
   const qtdLancamentos = tipoConta === "pagar" ? filtradas.length : recebimentosFiltrados.length;
 
   const porGrupo = useMemo(
-    () => agruparPorLista(filtradas, "grupo", config.grupos, paleta),
-    [filtradas, config.grupos, paleta]
+    () => agruparPorLista(filtradas, "grupo", gruposAtivos(config), paleta),
+    [filtradas, config, paleta]
   );
   const porAplicacao = useMemo(
     () => agruparPorLista(filtradas, "aplicacao", config.aplicacoes, paleta),
@@ -204,7 +204,7 @@ export default function DashboardGeralPage() {
 
   const graficoPrimario = tipoConta === "pagar" ? porGrupo : porOrigem;
   const graficoSecundario = tipoConta === "pagar" ? porAplicacao : porObservacao;
-  const tituloGraficoPrimario = tipoConta === "pagar" ? "Por forma de pagamento" : "Por origem";
+  const tituloGraficoPrimario = tipoConta === "pagar" ? "Por grupo" : "Por origem";
   const tituloGraficoSecundario = tipoConta === "pagar" ? "Por aplicação" : "Por observação";
 
   const porReembolso = useMemo(() => {
@@ -245,10 +245,10 @@ export default function DashboardGeralPage() {
           <div className="flex flex-wrap items-center gap-2">
             {tipoConta === "pagar" ? (
               <>
-                {config.grupos.length > 0 && (
+                {gruposAtivos(config).length > 0 && (
                   <FiltroMultiSelect
-                    rotulo="Forma de pagamento"
-                    opcoes={config.grupos}
+                    rotulo="Grupo"
+                    opcoes={gruposAtivos(config)}
                     filtro={filtroGrupos}
                     onAlternar={(item, visivel) => setFiltroGrupos((atual) => ({ ...atual, [item]: visivel }))}
                   />

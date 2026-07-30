@@ -25,6 +25,7 @@ export type ConfigListas = {
   sugestaoCredor: boolean;
   itensPorPagina: number;
   observacoesListas?: { grupos?: Record<string, string>; aplicacoes?: Record<string, string> };
+  gruposInativosDesde?: Record<string, string>;
   layoutMenu?: LayoutMenu;
   compartilharLancamentos: boolean;
   tipoGraficoDashboard?: "pizza" | "barra";
@@ -130,6 +131,7 @@ export type Renegociacao = {
   criadoEm: unknown;
   substituiRenegociacaoId?: string | null;
   recorrenciasAjustadas: { recorrenciaId: string; mesesExcluidosAntes: string[]; fimAntes: string | null }[];
+  excluirRecebimentos?: boolean;
 };
 
 export type Perfil = {

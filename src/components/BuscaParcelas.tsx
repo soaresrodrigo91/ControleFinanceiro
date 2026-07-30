@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { assinarParcelasDoMes, marcarPago, materializarPagamentoRecorrencia } from "@/lib/parcelas";
-import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
+import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos } from "@/lib/config";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
 import {
   assinarEnviados,
@@ -261,10 +261,10 @@ export default function BuscaParcelas({
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="flex flex-wrap items-end gap-3">
-            {config.grupos.length > 0 && (
+            {gruposAtivos(config).length > 0 && (
               <FiltroMultiSelect
-                rotulo="Forma de pagamento"
-                opcoes={config.grupos}
+                rotulo="Grupo"
+                opcoes={gruposAtivos(config)}
                 filtro={filtroGrupos}
                 onAlternar={(item, visivel) => setFiltroGrupos((atual) => ({ ...atual, [item]: visivel }))}
                 modoInclusao
@@ -325,7 +325,7 @@ export default function BuscaParcelas({
         <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
       ) : !filtroProvisao && !algumFormaMarcada ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          Selecione ao menos uma forma de pagamento para ver os lançamentos.
+          Selecione ao menos um grupo para ver os lançamentos.
         </p>
       ) : (
         <>
