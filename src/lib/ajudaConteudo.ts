@@ -171,6 +171,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Contas fixas ainda não pagas no mês aparecem na lista mesmo sem ter um registro \"real\" no banco de dados ainda; editar ou excluir cria esse registro quando necessário.",
       "Excluir uma conta fixa oferece três alcances: apenas este mês, deste mês em diante, ou a recorrência inteira (com aviso extra, porque é irreversível).",
       "Excluir uma conta com reembolso vinculado também remove o(s) recebimento(s) gerado(s) por ela.",
+      "Editar credor, forma de pagamento, aplicação ou observação de um lançamento parcelado pergunta se a alteração vale só para esta parcela ou para todas as parcelas do lançamento; para conta fixa, a mesma edição pergunta o alcance (apenas este mês, deste mês em diante, ou tudo, desde o início). Valor e vencimento continuam sempre específicos de cada parcela/mês, sem propagar.",
       "O filtro Valor aceita o valor exato do lançamento, já com máscara de R$ (separador de milhar e centavos automáticos).",
       "A coluna Aplicação aparece logo depois de Observação, mostrando a aplicação de cada lançamento sem precisar abrir para editar. A descrição abaixo do nome do credor mostra só a forma de pagamento (a aplicação já está na sua própria coluna, então não se repete ali).",
       "Lançamentos criados pelo app mobile mostram um ícone discreto de celular com a palavra \"Mobile\" ao lado da forma de pagamento, abaixo do nome do credor.",

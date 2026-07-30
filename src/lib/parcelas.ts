@@ -168,6 +168,18 @@ export async function atualizarParcelaProvisao(uid: string, parcela: Parcela, da
   });
 }
 
+export async function atualizarCamposTodasParcelas(
+  uid: string,
+  lancamentoId: string,
+  campos: { credor: string; grupo: string; aplicacao: string; observacao: string | null }
+) {
+  const q = query(collection(db, "usuarios", uid, "parcelas"), where("lancamentoId", "==", lancamentoId));
+  const snap = await getDocs(q);
+  const batch = writeBatch(db);
+  snap.docs.forEach((d) => batch.update(d.ref, { ...campos }));
+  await batch.commit();
+}
+
 export async function excluirParcela(uid: string, parcelaId: string, lancamentoId: string) {
   await deleteDoc(doc(db, "usuarios", uid, "parcelas", parcelaId));
   await excluirLancamentoRecebimento(uid, lancamentoId);

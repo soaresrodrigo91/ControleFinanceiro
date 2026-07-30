@@ -404,11 +404,15 @@ function ReceberConteudo() {
                 <div>
                   <label className="block truncate whitespace-nowrap text-sm font-medium mb-1">Parcelas *</label>
                   <input
-                    type="text"
-                    inputMode="numeric"
+                    type="number"
+                    min={1}
+                    step={1}
                     required
                     disabled={contaFixa}
                     value={contaFixa ? 1 : parcelaTotal}
+                    onKeyDown={(e) => {
+                      if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault();
+                    }}
                     onChange={(e) => setParcelaTotal(e.target.value.replace(/[^0-9]/g, ""))}
                     className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
                   />

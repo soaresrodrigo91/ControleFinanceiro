@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  atualizarCamposTodasParcelas,
   atualizarParcela,
   atualizarParcelaProvisao,
   buscarVencimentosPagos,
@@ -80,6 +81,7 @@ function FormularioEdicaoParcela({
   });
   const [salvando, setSalvando] = useState(false);
   const [confirmarEscopo, setConfirmarEscopo] = useState(false);
+  const [confirmarParcelaTodas, setConfirmarParcelaTodas] = useState(false);
   const [confirmarEncerrar, setConfirmarEncerrar] = useState(false);
   const [encerrando, setEncerrando] = useState(false);
   const campoValorRef = useRef<HTMLInputElement>(null);
@@ -163,9 +165,22 @@ function FormularioEdicaoParcela({
     }
   }
 
+  function camposCompartilhadosAlterados(): string[] {
+    const campos: string[] = [];
+    if (dados.credor !== parcela.credor) campos.push("credor");
+    if (dados.grupo !== parcela.grupo) campos.push("forma de pagamento");
+    if (dados.aplicacao !== parcela.aplicacao) campos.push("aplicação");
+    if ((dados.observacao ?? "") !== (parcela.observacao ?? "")) campos.push("observação");
+    return campos;
+  }
+
   function handleSalvar() {
     if (camposLimitados && parcela.recorrenciaId) {
       setConfirmarEscopo(true);
+      return;
+    }
+    if (!parcela.recorrenciaId && parcela.parcelaTotal > 1 && camposCompartilhadosAlterados().length > 0) {
+      setConfirmarParcelaTodas(true);
       return;
     }
     salvarDireto();
@@ -178,6 +193,28 @@ function FormularioEdicaoParcela({
         await atualizarParcelaProvisao(uid, parcela, dados);
       } else {
         await atualizarParcela(uid, parcela.id, dados);
+      }
+      onFechar();
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function salvarComParcelaTodas(todasParcelas: boolean) {
+    setSalvando(true);
+    try {
+      if (parcela.provisao) {
+        await atualizarParcelaProvisao(uid, parcela, dados);
+      } else {
+        await atualizarParcela(uid, parcela.id, dados);
+      }
+      if (todasParcelas) {
+        await atualizarCamposTodasParcelas(uid, parcela.lancamentoId, {
+          credor: dados.credor,
+          grupo: dados.grupo,
+          aplicacao: dados.aplicacao,
+          observacao: dados.observacao,
+        });
       }
       onFechar();
     } finally {
@@ -227,6 +264,42 @@ function FormularioEdicaoParcela({
         <button
           onClick={() => setConfirmarEncerrar(false)}
           disabled={encerrando}
+          className="text-center text-sm text-slate-500 dark:text-slate-400"
+        >
+          Cancelar
+        </button>
+      </div>
+    );
+  }
+
+  if (confirmarParcelaTodas) {
+    const campos = camposCompartilhadosAlterados();
+    const listaCampos =
+      campos.length <= 1
+        ? campos.join("")
+        : `${campos.slice(0, -1).join(", ")} e ${campos[campos.length - 1]}`;
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          {`"${parcela.credor}" tem ${parcela.parcelaTotal} parcelas. Deseja aplicar a alteração de ${listaCampos} a todas elas?`}
+        </p>
+        <button
+          onClick={() => salvarComParcelaTodas(false)}
+          disabled={salvando}
+          className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+        >
+          Apenas esta parcela
+        </button>
+        <button
+          onClick={() => salvarComParcelaTodas(true)}
+          disabled={salvando}
+          className={CLASSE_BOTAO_PRIMARIO}
+        >
+          {salvando ? "Salvando..." : `Todas as ${parcela.parcelaTotal} parcelas`}
+        </button>
+        <button
+          onClick={() => setConfirmarParcelaTodas(false)}
+          disabled={salvando}
           className="text-center text-sm text-slate-500 dark:text-slate-400"
         >
           Cancelar

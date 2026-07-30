@@ -287,11 +287,15 @@ export default function FormularioLancamento({
               <div>
                 <label className="block text-sm font-medium mb-1">Parcelas *</label>
                 <input
-                  type="text"
-                  inputMode="numeric"
+                  type="number"
+                  min={1}
+                  step={1}
                   required
                   disabled={contaFixa}
                   value={contaFixa ? 1 : parcelaTotal}
+                  onKeyDown={(e) => {
+                    if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault();
+                  }}
                   onChange={(e) => setParcelaTotal(e.target.value.replace(/[^0-9]/g, ""))}
                   className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-50`}
                 />
@@ -411,7 +415,7 @@ export default function FormularioLancamento({
 
             {erro && <p className="text-sm text-red-600 dark:text-red-400">{erro}</p>}
             {sucesso && (
-              <ToastSucesso mensagem={mensagemSucesso} onFechar={() => setSucesso(false)} />
+              <ToastSucesso mensagem={mensagemSucesso} duracaoMs={2000} onFechar={() => setSucesso(false)} />
             )}
 
             <div className="mt-auto flex items-center justify-end gap-3 pt-4">
