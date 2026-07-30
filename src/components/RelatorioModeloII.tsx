@@ -92,6 +92,7 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
   const parcelasFiltradas = useMemo(() => {
     return todasParcelas.filter((p) => {
       if (credorNormalizado && !p.credor.toLowerCase().includes(credorNormalizado)) return false;
+      if (config.gruposInativosDesde?.[p.grupo]) return false;
       if (filtroGrupos[p.grupo] === false) return false;
       if (filtroAplicacoes[p.aplicacao] === false) return false;
       if (filtroComp[p.comp ?? SEM_COMP] === false) return false;
@@ -101,7 +102,16 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
       if (fimValido && p.vencimento > fimValido) return false;
       return true;
     });
-  }, [todasParcelas, credorNormalizado, filtroGrupos, filtroAplicacoes, filtroComp, dataInicio, dataFim]);
+  }, [
+    todasParcelas,
+    credorNormalizado,
+    config.gruposInativosDesde,
+    filtroGrupos,
+    filtroAplicacoes,
+    filtroComp,
+    dataInicio,
+    dataFim,
+  ]);
 
   const total = parcelasFiltradas.reduce((s, p) => s + valorEfetivo(p), 0);
 

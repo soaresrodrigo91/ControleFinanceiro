@@ -523,6 +523,7 @@ function assinarMes() {
 function mudarMes(delta) {
   ym = somarMesesYM(ym, delta);
   atualizarLabelsMes();
+  limparFiltrosDeChip();
   assinarMes();
 }
 
@@ -530,7 +531,18 @@ function irParaMesEscolhido(novoYm) {
   if (!novoYm || novoYm === ym) return;
   ym = novoYm;
   atualizarLabelsMes();
+  limparFiltrosDeChip();
   assinarMes();
+}
+
+// Os chips de filtro (grupo em Lançamentos, origem em Recebimentos) são montados a partir dos
+// valores do próprio mês — se o mês novo tiver menos de 2 valores distintos, os chips somem da
+// tela, mas o filtro escolhido no mês anterior continuava aplicado silenciosamente, mostrando a
+// lista vazia (ou errada) sem nenhuma pista visual do motivo. Por isso é preciso zerar ao trocar
+// de mês, igual ao comportamento do site (que não tem esse problema por o filtro nunca sumir).
+function limparFiltrosDeChip() {
+  filtroGrupoPagar = null;
+  filtroOrigemReceber = null;
 }
 
 function atualizarLabelsMes() {
@@ -588,7 +600,11 @@ function renderInicio() {
   // linha "Provisão Líquido" da Janela de 10 meses do site contam também as contas fixas
   // (recorrências) ainda não materializadas no mês, não só os lançamentos reais já gravados.
   const parcelasMescladas = mesclarComRecorrencias(parcelasAtuais, recorrenciasPagarAtuais, ym);
-  const parcelasVisiveis = parcelasMescladas.filter((p) => filtrosDashboardAtuais[p.grupo] !== false);
+  // Grupo inativo não tem checkbox para desmarcar (nem no site, nem aqui) — precisa ficar
+  // excluído do dashboard mesmo sem uma entrada explícita "false" em filtrosDashboardAtuais.
+  const parcelasVisiveis = parcelasMescladas.filter(
+    (p) => !configListas.gruposInativosDesde[p.grupo] && filtrosDashboardAtuais[p.grupo] !== false
+  );
   const baseTotais = configListas.modoTotalizador === "visiveis" ? parcelasVisiveis : parcelasMescladas;
 
   const total = baseTotais.reduce((s, p) => s + p.valorParcela, 0);

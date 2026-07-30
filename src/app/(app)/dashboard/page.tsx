@@ -148,12 +148,13 @@ export default function DashboardGeralPage() {
   const filtradas = useMemo(() => {
     return parcelas.filter((p) => {
       if (p.vencimento.slice(0, 7) !== ym) return false;
+      if (config.gruposInativosDesde?.[p.grupo]) return false;
       if (filtroGrupos[p.grupo] === false) return false;
       if (filtroComp[p.comp ?? SEM_COMP] === false) return false;
       if (filtroAplicacoes[p.aplicacao] === false) return false;
       return true;
     });
-  }, [parcelas, ym, filtroGrupos, filtroComp, filtroAplicacoes]);
+  }, [parcelas, ym, config.gruposInativosDesde, filtroGrupos, filtroComp, filtroAplicacoes]);
 
   const recebimentosFiltrados = useMemo(() => {
     return recebimentos.filter((r) => {

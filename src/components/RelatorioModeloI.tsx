@@ -59,11 +59,12 @@ export default function RelatorioModeloI({ uid }: { uid: string }) {
     () =>
       todasParcelas.filter(
         (p) =>
+          !config.gruposInativosDesde?.[p.grupo] &&
           filtroGrupos[p.grupo] !== false &&
           filtroComp[p.comp ?? SEM_COMP] !== false &&
           filtroAplicacoes[p.aplicacao] !== false
       ),
-    [todasParcelas, filtroGrupos, filtroComp, filtroAplicacoes]
+    [todasParcelas, config.gruposInativosDesde, filtroGrupos, filtroComp, filtroAplicacoes]
   );
 
   const porGrupo = useMemo(() => agrupar(parcelas, (p) => p.grupo), [parcelas]);

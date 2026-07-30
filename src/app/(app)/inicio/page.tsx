@@ -167,8 +167,13 @@ function DashboardConteudo() {
 
   const filtrosEfetivos = useMemo(
     () =>
-      Object.fromEntries(listaGruposAtivos.map((g) => [g, gruposRevelados[g] ? filtros[g] : false])),
-    [listaGruposAtivos, filtros, gruposRevelados]
+      Object.fromEntries(
+        config.grupos.map((g) => [
+          g,
+          listaGruposAtivos.includes(g) ? (gruposRevelados[g] ? filtros[g] : false) : false,
+        ])
+      ),
+    [config.grupos, listaGruposAtivos, filtros, gruposRevelados]
   );
 
   const todosGruposMarcados =
