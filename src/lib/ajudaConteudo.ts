@@ -135,6 +135,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Marcar \"Conta fixa (recorrente)\" transforma o lançamento em uma recorrência mensal (sem número de parcelas), que se repete todo mês a partir da data de início até ser encerrada.",
       "Se não for fixa, o valor total é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira parcela.",
       "Uma chave discreta ao lado do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\": com a chave desligada (padrão), o valor digitado é o total e o sistema divide pelas parcelas; com a chave ligada, o valor digitado é o de cada parcela e o sistema multiplica pelo número de parcelas para obter o total. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
+      "Ao marcar \"Conta fixa (recorrente)\", a chave é travada em \"Valor da parcela\", já que uma conta fixa não tem \"total\" a dividir — o valor digitado é sempre o lançado em cada mês.",
       "O campo de valor tem máscara de R$: os dígitos digitados formam a parte inteira (ex.: 1, 10, 100... vira 1.000,00), e a vírgula abre a edição dos centavos.",
       "Se um reembolso (pessoa) for selecionado e ela tiver um modo configurado (100% ou 50%), o sistema já cria automaticamente o(s) recebimento(s) correspondente(s) em Contas a Receber.",
       "Em telas maiores, o formulário se organiza em duas colunas, separadas por uma linha divisória discreta (credor, datas, valor/parcelas, conta fixa/provisão e observação à esquerda; grupo, aplicação e reembolso à direita) para aproveitar melhor o espaço horizontal e exigir menos rolagem — em celular, os campos continuam empilhados em uma coluna só.",
@@ -290,6 +291,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     regras: [
       "Assim como em Contas a Pagar, marcar \"Conta fixa (recorrente)\" transforma o lançamento em uma recorrência mensal.",
       "Uma chave discreta acima do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\" (o rótulo do campo muda junto): com a chave desligada (padrão), o valor digitado é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira; com a chave ligada, o valor digitado é lançado integralmente em cada parcela/mês. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
+      "Ao marcar \"Conta fixa (recorrente)\", a chave é travada em \"Valor da parcela\", pelo mesmo motivo de Contas a Pagar.",
       "O campo de valor também tem máscara de R$, igual ao de Contas a Pagar.",
       "O botão \"Cancelar\" ao lado de \"Salvar\" limpa todos os campos do formulário, sem sair da tela — útil para recomeçar o preenchimento do zero.",
     ],
@@ -406,6 +408,30 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       { numero: 3, xPct: 85.3, yPct: 18.5, texto: "Navega entre os meses do relatório." },
       { numero: 4, xPct: 23.3, yPct: 22.7, texto: "Aviso de que o relatório traz só os lançamentos não pagos do mês." },
       { numero: 5, xPct: 23, yPct: 33.7, texto: "Totais calculados só com os lançamentos ainda não pagos do mês selecionado." },
+    ],
+  },
+  {
+    id: "relatorio-modelo-iv",
+    categoria: "Relatórios",
+    titulo: "Relatórios · Modelo IV",
+    resumo:
+      "Igual ao Modelo I, mas com um Top 10 dos lançamentos mais caros do mês logo abaixo dos totais. Recurso do plano Premium.",
+    regras: [
+      "Os filtros (Grupo, Aplicação, Reembolso), os totais por grupo/aplicação/reembolso e a lista completa de lançamentos na impressão/PDF seguem exatamente a mesma lógica do Modelo I — por padrão todos os itens de cada filtro vêm selecionados.",
+      "Logo abaixo dos quadrados de totais aparece o \"Top 10 · Lançamentos mais caros\": os até 10 lançamentos de maior valor dentro dos filtros e do mês selecionados, ordenados do mais caro para o mais barato — diferente da lista completa, este Top 10 aparece direto na tela, não só na impressão/PDF.",
+      "Cada linha do Top 10 mostra Credor, Observação, Aplicação, Parcela, Reembolso e Valor do lançamento.",
+      "As três primeiras posições exibem uma medalha (ouro, prata e bronze) centralizada entre o número de colocação e o nome do credor; da 4ª à 10ª posição esse espaço fica vazio.",
+      "\"Compartilhar\" gera um PDF e tenta abrir o menu nativo de compartilhamento do dispositivo (WhatsApp, e-mail, etc.); se o navegador não suportar, o PDF é baixado diretamente.",
+    ],
+    validacoes: [],
+    imagem: "/ajuda/relatorio-modelo-iv.png",
+    imagemAlt: "Relatório Modelo IV com Top 10 dos lançamentos mais caros do mês",
+    marcadores: [
+      { numero: 1, xPct: 19.1, yPct: 20, texto: "Filtros por grupo, aplicação e reembolso, iguais ao Modelo I." },
+      { numero: 2, xPct: 39.5, yPct: 20, texto: "Gera o PDF do relatório para imprimir ou compartilhar." },
+      { numero: 3, xPct: 84.8, yPct: 20, texto: "Navega entre os meses do relatório." },
+      { numero: 4, xPct: 16.3, yPct: 56.9, texto: "Top 10 dos lançamentos mais caros do mês, já considerando os filtros selecionados." },
+      { numero: 5, xPct: 14.6, yPct: 65.3, texto: "1º, 2º e 3º lugares aparecem com medalha de ouro, prata e bronze entre o número e o credor." },
     ],
   },
   {

@@ -421,7 +421,7 @@ export default function BuscaParcelas({
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.observacao || "—"}</td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.aplicacao}</td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
-                        {p.recorrenciaId ? "Fixa" : p.parcelaTotal > 1 ? `${p.parcelaNum}/${p.parcelaTotal}` : "—"}
+                        {p.recorrenciaId ? "Fixa" : `${p.parcelaNum}/${p.parcelaTotal}`}
                       </td>
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
                         {p.dataCompra ? formatarDataBR(p.dataCompra) : "—"}

@@ -381,9 +381,14 @@ function ReceberConteudo() {
                     type="button"
                     role="switch"
                     aria-checked={valorPorParcela}
-                    title="Alternar entre valor total e valor da parcela"
+                    disabled={contaFixa}
+                    title={
+                      contaFixa
+                        ? "Conta fixa sempre usa o valor da parcela"
+                        : "Alternar entre valor total e valor da parcela"
+                    }
                     onClick={() => setValorPorParcela((v) => !v)}
-                    className={`relative h-4 w-7 shrink-0 rounded-full transition-colors ${
+                    className={`relative h-4 w-7 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       valorPorParcela ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
                     }`}
                   >
@@ -434,7 +439,11 @@ function ReceberConteudo() {
               <input
                 type="checkbox"
                 checked={contaFixa}
-                onChange={(e) => setContaFixa(e.target.checked)}
+                onChange={(e) => {
+                  const marcado = e.target.checked;
+                  setContaFixa(marcado);
+                  if (marcado) setValorPorParcela(true);
+                }}
                 className="h-4 w-4 accent-indigo-600"
               />
               Conta fixa (recorrente)
