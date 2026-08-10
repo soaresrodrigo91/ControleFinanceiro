@@ -12,6 +12,7 @@ export default function CampoCredor({
   ativo,
   required,
   placeholder,
+  onSelecionarSugestao,
 }: {
   id?: string;
   label: string;
@@ -21,6 +22,9 @@ export default function CampoCredor({
   ativo: boolean;
   required?: boolean;
   placeholder?: string;
+  // Disparado só quando o usuário clica numa sugestão da lista (diferente de digitar) —
+  // usado, por exemplo, para já adicionar o credor escolhido a um filtro de múltiplos nomes.
+  onSelecionarSugestao?: (nome: string) => void;
 }) {
   const [aberto, setAberto] = useState(false);
 
@@ -62,6 +66,7 @@ export default function CampoCredor({
                 onClick={() => {
                   onChange(nome);
                   setAberto(false);
+                  onSelecionarSugestao?.(nome);
                 }}
                 className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 dark:text-slate-300 dark:hover:bg-indigo-950 dark:hover:text-indigo-300"
               >
