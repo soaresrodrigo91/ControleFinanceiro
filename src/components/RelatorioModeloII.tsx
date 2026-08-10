@@ -253,7 +253,7 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
             onChange={setCredor}
             opcoes={credoresConhecidos}
             ativo={config.sugestaoCredor}
-            placeholder="Nome e Enter..."
+            placeholder="Digite o nome"
             onSelecionarSugestao={adicionarCredorAoFiltro}
           />
         </div>
