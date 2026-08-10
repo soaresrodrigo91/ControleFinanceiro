@@ -213,6 +213,17 @@ function DashboardConteudo() {
     [porGrupo]
   );
 
+  const pendentePorGrupo = useMemo(
+    () =>
+      Object.fromEntries(
+        porGrupo.map(([grupo, itens]) => [
+          grupo,
+          itens.filter((p) => !p.pago).reduce((s, p) => s + valorEfetivo(p), 0),
+        ])
+      ),
+    [porGrupo]
+  );
+
   const totais = useMemo(() => {
     const base = config.modoTotalizador === "visiveis" ? parcelasVisiveis : parcelas;
     let total = 0;
@@ -402,6 +413,7 @@ function DashboardConteudo() {
                 recorrencias={recorrencias}
                 onSelecionarMes={irParaMes}
                 statusPorGrupo={statusPorGrupo}
+                pendentePorGrupo={pendentePorGrupo}
                 totaisVisiveis={totaisVisiveis}
                 mostrarSubtotalProvisao={config.mostrarSubtotalProvisaoInicio ?? false}
               />

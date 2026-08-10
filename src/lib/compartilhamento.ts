@@ -43,6 +43,7 @@ type ItemParaCompartilhar = {
   aplicacao: string;
   dataCompra: string | null;
   recorrenciaOrigemId: string | null;
+  credorReal: string;
 };
 
 async function itensParaCompartilharDeParcela(
@@ -72,6 +73,7 @@ async function itensParaCompartilharDeParcela(
         aplicacao: rec.aplicacao ?? p.aplicacao,
         dataCompra: null,
         recorrenciaOrigemId: rec.id,
+        credorReal: rec.credor,
       });
     };
 
@@ -111,6 +113,7 @@ async function itensParaCompartilharDeParcela(
     aplicacao: parc.aplicacao,
     dataCompra: parc.dataCompra,
     recorrenciaOrigemId: null,
+    credorReal: parc.credor,
   }));
 }
 
@@ -377,9 +380,11 @@ export async function compartilharSelecionados(
           parcela: item.parcela,
           compNome: p.comp,
           credorSugerido: nomeRemetente,
+          credorReal: item.credorReal,
           observacao: item.observacao,
           aplicacaoSugerida: item.aplicacao,
           valor,
+          valorReal: item.valorParcela,
           dataCompra: item.dataCompra,
           vencimento: item.vencimento,
           status: "pendente",
@@ -619,6 +624,13 @@ export async function lancarSelecionados(
     // já existente diferente, ou uma recém-criada a partir da sugestão.
     const aplicacao = aplicacaoPorGrupo.get(item.grupoOrigemId) ?? item.aplicacaoSugerida;
     const primeiro = pendentesDoGrupo[0];
+    // Fallback para itens pendentes criados antes de credorReal/valorReal existirem no
+    // documento (compartilhados e ainda não lançados no momento desta atualização).
+    const origemCompartilhado = {
+      deNome: primeiro.deNome,
+      credorReal: primeiro.credorReal ?? primeiro.credorSugerido,
+      valorReal: primeiro.valorReal ?? primeiro.valor,
+    };
 
     if (item.recorrenciaOrigemId) {
       await criarRecorrencia(uid, {
@@ -630,6 +642,7 @@ export async function lancarSelecionados(
         grupo: grupoEscolhido,
         aplicacao,
         inicio: primeiro.vencimento,
+        origemCompartilhado,
       });
     } else if (pendentesDoGrupo.length > 1) {
       const valorTotal = pendentesDoGrupo.reduce((s, i) => s + i.valor, 0);
@@ -643,6 +656,7 @@ export async function lancarSelecionados(
         comp: "",
         grupo: grupoEscolhido,
         aplicacao,
+        origemCompartilhado,
       });
     } else {
       await criarLancamento(uid, {
@@ -655,6 +669,7 @@ export async function lancarSelecionados(
         comp: "",
         grupo: grupoEscolhido,
         aplicacao,
+        origemCompartilhado,
       });
     }
 

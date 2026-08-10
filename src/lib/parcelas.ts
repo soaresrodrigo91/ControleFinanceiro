@@ -49,6 +49,7 @@ export async function criarLancamento(uid: string, dados: NovoLancamento) {
       pago: false,
       pagoEm: null,
       provisao: dados.provisao === true,
+      origemCompartilhado: dados.origemCompartilhado ?? null,
       criadoEm: serverTimestamp(),
     });
   });
@@ -222,6 +223,7 @@ export async function materializarPagamentoRecorrencia(
     pago: true,
     pagoEm: hojeISO(),
     provisao: recorrencia.provisao === true,
+    origemCompartilhado: recorrencia.origemCompartilhado ?? null,
     criadoEm: serverTimestamp(),
   });
 

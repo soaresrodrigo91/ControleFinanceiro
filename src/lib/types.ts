@@ -1,5 +1,15 @@
 export type StatusGrupo = "pago" | "parcial" | "pendente";
 
+// Guardado no lançamento/recorrência criado a partir de um item recebido em Lançamentos
+// Compartilhados: preserva o credor e o valor reais da compra no usuário que enviou, já que
+// o lançamento criado usa o nome de quem enviou como credor (credorSugerido) e o valor já
+// rateado pelo modo do reembolso — usado só para exibir em um tooltip na coluna Reembolso.
+export type OrigemCompartilhado = {
+  deNome: string;
+  credorReal: string;
+  valorReal: number;
+};
+
 export type ModoComp = "nenhum" | "total" | "metade";
 
 export type ItemComp = {
@@ -55,6 +65,7 @@ export type Parcela = {
   renegociacaoId?: string | null;
   renegociacaoNumero?: number | null;
   origemMobile?: boolean;
+  origemCompartilhado?: OrigemCompartilhado | null;
 };
 
 export type NovoLancamento = {
@@ -68,6 +79,7 @@ export type NovoLancamento = {
   grupo: string;
   aplicacao: string;
   provisao?: boolean;
+  origemCompartilhado?: OrigemCompartilhado | null;
 };
 
 export type HistoricoValor = { valor: number; desde: string };
@@ -88,6 +100,7 @@ export type Recorrencia = {
   mesesExcluidos?: string[];
   provisao?: boolean;
   origemMobile?: boolean;
+  origemCompartilhado?: OrigemCompartilhado | null;
 };
 
 export type Recebimento = {
@@ -181,9 +194,11 @@ export type LancamentoCompartilhado = {
   parcela: string;
   compNome: string;
   credorSugerido: string;
+  credorReal: string;
   observacao: string | null;
   aplicacaoSugerida: string;
   valor: number;
+  valorReal: number;
   dataCompra: string | null;
   vencimento: string;
   status: StatusCompartilhado;

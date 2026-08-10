@@ -208,6 +208,9 @@ export default function BuscaParcelas({
   ]);
 
   const total = parcelasFiltradas.reduce((s, p) => s + p.valorParcela, 0);
+  const quantidadePagas = parcelasFiltradas.filter((p) => p.pago).length;
+  const totalNaoPago = parcelasFiltradas.reduce((s, p) => (p.pago ? s : s + p.valorParcela), 0);
+  const mostrarTotalNaoPago = quantidadePagas > 0 && quantidadePagas < parcelasFiltradas.length;
 
   const parcelasOrdenadas = useMemo(
     () => ordenarParcelas(parcelasFiltradas, ordenacao),
@@ -329,10 +332,17 @@ export default function BuscaParcelas({
         </p>
       ) : (
         <>
-          <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
-            {parcelasFiltradas.length} resultado{parcelasFiltradas.length !== 1 && "s"} ·{" "}
-            <span className="font-medium text-slate-900 dark:text-slate-100">{formatarMoeda(total)}</span>
-          </p>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {parcelasFiltradas.length} resultado{parcelasFiltradas.length !== 1 && "s"} ·{" "}
+              <span className="font-medium text-slate-900 dark:text-slate-100">{formatarMoeda(total)}</span>
+            </p>
+            {mostrarTotalNaoPago && (
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                {formatarMoeda(totalNaoPago)} não pago
+              </p>
+            )}
+          </div>
           {parcelasFiltradas.length === 0 ? (
             <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum lançamento encontrado.</p>
           ) : (
@@ -426,7 +436,18 @@ export default function BuscaParcelas({
                       <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
                         {p.dataCompra ? formatarDataBR(p.dataCompra) : "—"}
                       </td>
-                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.comp ?? "—"}</td>
+                      <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                        {p.origemCompartilhado ? (
+                          <span
+                            className="cursor-help underline decoration-dotted"
+                            title={`Compartilhado por ${p.origemCompartilhado.deNome} · Credor real: ${p.origemCompartilhado.credorReal} · Valor real: ${formatarMoeda(p.origemCompartilhado.valorReal)}`}
+                          >
+                            {p.comp ?? "—"}
+                          </span>
+                        ) : (
+                          (p.comp ?? "—")
+                        )}
+                      </td>
                       <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
                         {formatarMoeda(p.valorParcela)}
                       </td>

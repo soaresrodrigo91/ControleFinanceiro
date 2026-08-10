@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { somarMesesYM } from "./date";
-import type { Parcela, Recebimento, Recorrencia } from "./types";
+import type { OrigemCompartilhado, Parcela, Recebimento, Recorrencia } from "./types";
 
 export async function criarRecorrencia(
   uid: string,
@@ -27,6 +27,7 @@ export async function criarRecorrencia(
     aplicacao?: string;
     inicio: string;
     provisao?: boolean;
+    origemCompartilhado?: OrigemCompartilhado | null;
   }
 ) {
   const [, , dia] = dados.inicio.split("-").map(Number);
@@ -43,6 +44,7 @@ export async function criarRecorrencia(
     fim: null,
     historicoValores: [{ valor: dados.valor, desde: dados.inicio }],
     provisao: dados.provisao === true,
+    origemCompartilhado: dados.origemCompartilhado ?? null,
   });
 }
 
@@ -328,6 +330,7 @@ export function mesclarComRecorrencias(
       virtual: true,
       provisao: r.provisao ?? false,
       origemMobile: r.origemMobile ?? false,
+      origemCompartilhado: r.origemCompartilhado ?? null,
     }));
   return [...parcelasReaisDoMes, ...virtuais].sort((a, b) =>
     a.vencimento.localeCompare(b.vencimento)

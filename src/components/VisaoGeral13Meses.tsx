@@ -19,6 +19,7 @@ export default function VisaoGeral13Meses({
   recorrencias,
   onSelecionarMes,
   statusPorGrupo,
+  pendentePorGrupo,
   totaisVisiveis,
   mostrarSubtotalProvisao,
 }: {
@@ -29,6 +30,7 @@ export default function VisaoGeral13Meses({
   recorrencias: Recorrencia[];
   onSelecionarMes: (ym: string) => void;
   statusPorGrupo?: Record<string, StatusGrupo>;
+  pendentePorGrupo?: Record<string, number>;
   totaisVisiveis: boolean;
   mostrarSubtotalProvisao: boolean;
 }) {
@@ -183,6 +185,7 @@ export default function VisaoGeral13Meses({
           {grupos.map((grupo) => {
             const porMes = totaisPorGrupoEMes.get(grupo);
             const status = statusPorGrupo?.[grupo];
+            const pendente = pendentePorGrupo?.[grupo] ?? 0;
             return (
               <tr key={grupo} className="border-b border-slate-100 last:border-0 dark:border-slate-700">
                 <td className="sticky left-0 z-10 w-40 bg-white px-2 py-2 md:static md:w-auto dark:bg-slate-800">
@@ -197,6 +200,11 @@ export default function VisaoGeral13Meses({
                     {status === "pago" && (
                       <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
                         Pago
+                      </span>
+                    )}
+                    {status === "parcial" && pendente > 0 && (
+                      <span className="shrink-0 text-[10px] font-semibold text-red-600 dark:text-red-400">
+                        {formatarMoeda(pendente)}
                       </span>
                     )}
                     {status === "parcial" && (
