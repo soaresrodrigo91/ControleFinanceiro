@@ -380,6 +380,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     regras: [
       "Os mesmos cálculos do Modelo I são aplicados ao intervalo de datas escolhido, em vez de um único mês fixo.",
       "Por padrão, o período já abre preenchido com o mês atual inteiro.",
+      "O campo de busca por credor filtra ao vivo, como antes, e agora também guarda vários nomes ao mesmo tempo: digite um nome (ex.: \"Lisley\") e clique em \"+ Guardar\" (ou tecle Enter) para fixá-lo como uma etiqueta abaixo do campo — o relatório passa a somar os lançamentos de todos os credores guardados, não só do último. Digite outro nome (ex.: \"Lisley Soares\") e guarde de novo: agora os lançamentos de \"Lisley\" e de \"Lisley Soares\" são somados juntos. Cada etiqueta tem um \"×\" para remover; a busca de um nome ainda não guardado continua valendo ao vivo, somada às etiquetas já guardadas.",
     ],
     validacoes: [
       "As datas devem estar no formato dd/mm/aaaa; sair do campo, clicar em Imprimir ou em Compartilhar sem uma data válida preenchida mostra mensagem de erro e bloqueia a ação.",
@@ -388,7 +389,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     imagem: "/ajuda/relatorio-modelo-ii.png",
     imagemAlt: "Relatório Modelo II com período customizável e busca por credor",
     marcadores: [
-      { numero: 1, xPct: 8.7, yPct: 24.7, texto: "Busca por nome de um credor específico." },
+      { numero: 1, xPct: 8.7, yPct: 24.7, texto: "Busca por nome de credor — \"+ Guardar\" (ou Enter) soma vários credores de uma vez." },
       { numero: 2, xPct: 69, yPct: 21.7, texto: "Data inicial e final do período do relatório." },
       { numero: 3, xPct: 5.5, yPct: 31, texto: "Gera o PDF do relatório para imprimir ou compartilhar." },
     ],

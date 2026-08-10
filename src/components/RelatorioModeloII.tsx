@@ -39,6 +39,7 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
   const [carregando, setCarregando] = useState(true);
 
   const [credor, setCredor] = useState("");
+  const [credoresGuardados, setCredoresGuardados] = useState<string[]>([]);
   const [filtroGrupos, setFiltroGrupos] = useState<Record<string, boolean>>({});
   const [filtroAplicacoes, setFiltroAplicacoes] = useState<Record<string, boolean>>({});
   const [filtroComp, setFiltroComp] = useState<Record<string, boolean>>({});
@@ -89,9 +90,31 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
 
   const credorNormalizado = credor.trim().toLowerCase();
 
+  // Termos que somam no filtro: os credores guardados (clicando em "+ Guardar" ou Enter no
+  // campo) mais o que está sendo digitado agora, mesmo antes de guardar — assim a lista já
+  // filtra ao vivo enquanto o usuário digita, sem esperar ele clicar em guardar.
+  const termosCredor = useMemo(() => {
+    const termos = credoresGuardados.map((c) => c.toLowerCase());
+    if (credorNormalizado && !termos.includes(credorNormalizado)) termos.push(credorNormalizado);
+    return termos;
+  }, [credoresGuardados, credorNormalizado]);
+
+  function guardarCredor() {
+    const termo = credor.trim();
+    if (!termo) return;
+    setCredoresGuardados((atual) =>
+      atual.some((c) => c.toLowerCase() === termo.toLowerCase()) ? atual : [...atual, termo]
+    );
+    setCredor("");
+  }
+
+  function removerCredorGuardado(nome: string) {
+    setCredoresGuardados((atual) => atual.filter((c) => c !== nome));
+  }
+
   const parcelasFiltradas = useMemo(() => {
     return todasParcelas.filter((p) => {
-      if (credorNormalizado && !p.credor.toLowerCase().includes(credorNormalizado)) return false;
+      if (termosCredor.length > 0 && !termosCredor.some((t) => p.credor.toLowerCase().includes(t))) return false;
       if (config.gruposInativosDesde?.[p.grupo]) return false;
       if (filtroGrupos[p.grupo] === false) return false;
       if (filtroAplicacoes[p.aplicacao] === false) return false;
@@ -104,7 +127,7 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
     });
   }, [
     todasParcelas,
-    credorNormalizado,
+    termosCredor,
     config.gruposInativosDesde,
     filtroGrupos,
     filtroAplicacoes,
@@ -214,16 +237,57 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
   return (
     <>
       <div className="mb-2 flex flex-wrap items-end gap-2 print:hidden">
-        <div className="w-40">
-          <CampoCredor
-            id="relatorio2-credor"
-            label="Credor"
-            value={credor}
-            onChange={setCredor}
-            opcoes={credoresConhecidos}
-            ativo={config.sugestaoCredor}
-            placeholder="Buscar por nome..."
-          />
+        <div className="w-56">
+          <div
+            className="flex items-end gap-1"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                guardarCredor();
+              }
+            }}
+          >
+            <div className="w-40">
+              <CampoCredor
+                id="relatorio2-credor"
+                label="Credor"
+                value={credor}
+                onChange={setCredor}
+                opcoes={credoresConhecidos}
+                ativo={config.sugestaoCredor}
+                placeholder="Buscar por nome..."
+              />
+            </div>
+            <button
+              type="button"
+              onClick={guardarCredor}
+              disabled={!credor.trim()}
+              title="Guardar este credor no filtro (soma com os já guardados)"
+              className="h-[42px] shrink-0 rounded-lg border border-slate-300 px-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              + Guardar
+            </button>
+          </div>
+          {credoresGuardados.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {credoresGuardados.map((nome) => (
+                <span
+                  key={nome}
+                  className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
+                >
+                  {nome}
+                  <button
+                    type="button"
+                    onClick={() => removerCredorGuardado(nome)}
+                    aria-label={`Remover ${nome} do filtro de credor`}
+                    className="text-indigo-400 hover:text-indigo-700 dark:text-indigo-500 dark:hover:text-indigo-300"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {gruposAtivos(config).length > 0 && (
           <FiltroMultiSelect
