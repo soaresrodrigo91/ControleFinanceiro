@@ -764,16 +764,6 @@ function AbaEnviados({
   );
 }
 
-// Um lançamento compartilhado pode virar várias parcelas (mesmo grupoOrigemId); o processo
-// de lançamento sequencial trata cada lançamento de origem como um passo, não cada parcela.
-type GrupoParaLancar = {
-  grupoOrigemId: string;
-  credorSugerido: string;
-  aplicacaoSugerida: string;
-  valorTotal: number;
-  vencimentoMin: string;
-};
-
 function AbaRecebidos({
   uid,
   config,
@@ -791,20 +781,17 @@ function AbaRecebidos({
   const [recebidos, setRecebidos] = useState<LancamentoCompartilhado[]>([]);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const [paginaAtual, setPaginaAtual] = useState(1);
-  // Snapshot do que estava selecionado quando "Lançar" foi clicado — fixo durante todo o
-  // processo (não recalculado a partir dos recebidos ao vivo), pra não embaralhar o índice
-  // atual quando um item já lançado some da lista de pendentes no meio do processo.
-  const [lancamentoEmAndamento, setLancamentoEmAndamento] = useState<{
-    itens: LancamentoCompartilhado[];
-    grupos: GrupoParaLancar[];
-    indice: number;
-  } | null>(null);
-  const [grupoEscolhidoManual, setGrupoEscolhidoManual] = useState<string | null>(null);
-  const [aplicacaoEscolhidaManual, setAplicacaoEscolhidaManual] = useState<string | null>(null);
+  // Grupo/Aplicação escolhidos inline na tabela, por lançamento de origem (grupoOrigemId) —
+  // um lançamento parcelado do remetente pode virar várias linhas (uma por parcela), mas
+  // todas compartilham a mesma escolha, já que viram um único lançamento em Contas a Pagar.
+  // Só guarda o que o usuário alterou explicitamente; o valor efetivo (usado pra pintar a
+  // célula e habilitar o Lançar) é calculado por grupoValor/aplicacaoValor, com a aplicação
+  // caindo de volta pra sugestão de quem enviou quando ela já existe na lista do usuário.
+  const [escolhas, setEscolhas] = useState<Record<string, { grupo?: string; aplicacao?: string }>>({});
   const [aplicacoesExtras, setAplicacoesExtras] = useState<string[]>([]);
-  const [criandoAplicacao, setCriandoAplicacao] = useState(false);
-  const [lancandoAtual, setLancandoAtual] = useState(false);
-  const [erroLancamentoAtual, setErroLancamentoAtual] = useState("");
+  const [criandoAplicacaoPara, setCriandoAplicacaoPara] = useState<string | null>(null);
+  const [lancando, setLancando] = useState(false);
+  const [erroLancamento, setErroLancamento] = useState("");
   const [excluindo, setExcluindo] = useState<LancamentoCompartilhado | null>(null);
   const [excluindoOcorrencia, setExcluindoOcorrencia] = useState(false);
   const [erroExclusao, setErroExclusao] = useState("");
@@ -816,7 +803,6 @@ function AbaRecebidos({
     () => gruposAtivos(config).filter((g) => g !== GRUPO_PROVISAO),
     [config]
   );
-  const grupoEscolhido = grupoEscolhidoManual ?? gruposDisponiveis[0] ?? "";
 
   useEffect(() => {
     return assinarRecebidos(uid, setRecebidos);
@@ -882,97 +868,77 @@ function AbaRecebidos({
     [config.aplicacoes, aplicacoesExtras]
   );
 
-  function agruparPorLancamentoOrigem(itens: LancamentoCompartilhado[]): GrupoParaLancar[] {
-    const porGrupo = new Map<string, GrupoParaLancar>();
-    for (const item of itens) {
-      const atual = porGrupo.get(item.grupoOrigemId);
-      if (!atual) {
-        porGrupo.set(item.grupoOrigemId, {
-          grupoOrigemId: item.grupoOrigemId,
-          credorSugerido: item.credorSugerido,
-          aplicacaoSugerida: item.aplicacaoSugerida,
-          valorTotal: item.valor,
-          vencimentoMin: item.vencimento,
-        });
-      } else {
-        atual.valorTotal += item.valor;
-        if (item.vencimento < atual.vencimentoMin) atual.vencimentoMin = item.vencimento;
-      }
-    }
-    return [...porGrupo.values()].sort((a, b) => a.vencimentoMin.localeCompare(b.vencimentoMin));
+  // Valor efetivo da célula Grupo — vazio (vermelho) até o usuário escolher, já que não existe
+  // sugestão de grupo vinda de quem enviou.
+  function grupoValor(grupoOrigemId: string): string {
+    return escolhas[grupoOrigemId]?.grupo ?? "";
   }
 
-  // Abre o processo de lançamento sequencial: cada lançamento de origem selecionado (mesmo
-  // que tenha várias parcelas) vira um passo, lançado individualmente ao confirmar — se o
-  // usuário cancelar no meio, os passos já confirmados continuam lançados (já gravados no
-  // Firestore quando confirmados) e os restantes seguem intactos como pendência.
-  function iniciarLancamento() {
-    if (itensSelecionados.length === 0) return;
-    setLancamentoEmAndamento({ itens: itensSelecionados, grupos: agruparPorLancamentoOrigem(itensSelecionados), indice: 0 });
-    setGrupoEscolhidoManual(null);
-    setAplicacaoEscolhidaManual(null);
-    setAplicacoesExtras([]);
-    setErroLancamentoAtual("");
+  // Valor efetivo da célula Aplicação — cai pra sugestão de quem enviou automaticamente
+  // (e já fica verde) quando essa aplicação já existe na lista do usuário; senão fica vazio
+  // (vermelho) até o usuário escolher uma existente ou criar a sugerida.
+  function aplicacaoValor(item: LancamentoCompartilhado): string {
+    const escolha = escolhas[item.grupoOrigemId]?.aplicacao;
+    if (escolha !== undefined) return escolha;
+    return opcoesAplicacoes.includes(item.aplicacaoSugerida) ? item.aplicacaoSugerida : "";
   }
 
-  const grupoAtual = lancamentoEmAndamento ? lancamentoEmAndamento.grupos[lancamentoEmAndamento.indice] : null;
-  const aplicacaoSugeridaAtualExiste = grupoAtual ? opcoesAplicacoes.includes(grupoAtual.aplicacaoSugerida) : false;
-  const aplicacaoEscolhidaAtual =
-    aplicacaoEscolhidaManual ?? (grupoAtual && aplicacaoSugeridaAtualExiste ? grupoAtual.aplicacaoSugerida : opcoesAplicacoes[0] ?? "");
+  function definirGrupo(grupoOrigemId: string, grupo: string) {
+    setEscolhas((atual) => ({ ...atual, [grupoOrigemId]: { ...atual[grupoOrigemId], grupo } }));
+  }
 
-  async function handleCriarAplicacaoAtual() {
-    if (!grupoAtual) return;
-    setCriandoAplicacao(true);
+  function definirAplicacao(grupoOrigemId: string, aplicacao: string) {
+    setEscolhas((atual) => ({ ...atual, [grupoOrigemId]: { ...atual[grupoOrigemId], aplicacao } }));
+  }
+
+  async function criarAplicacaoSugerida(item: LancamentoCompartilhado) {
+    setCriandoAplicacaoPara(item.grupoOrigemId);
     try {
-      await adicionarItemLista(uid, "aplicacoes", grupoAtual.aplicacaoSugerida);
+      await adicionarItemLista(uid, "aplicacoes", item.aplicacaoSugerida);
       setAplicacoesExtras((atual) =>
-        atual.includes(grupoAtual.aplicacaoSugerida) ? atual : [...atual, grupoAtual.aplicacaoSugerida]
+        atual.includes(item.aplicacaoSugerida) ? atual : [...atual, item.aplicacaoSugerida]
       );
-      setAplicacaoEscolhidaManual(grupoAtual.aplicacaoSugerida);
+      definirAplicacao(item.grupoOrigemId, item.aplicacaoSugerida);
     } finally {
-      setCriandoAplicacao(false);
+      setCriandoAplicacaoPara(null);
     }
   }
 
-  function cancelarLancamento() {
-    setLancamentoEmAndamento(null);
-    setAplicacaoEscolhidaManual(null);
-    setErroLancamentoAtual("");
-  }
+  // Um lançamento de origem selecionado (mesmo que tenha virado várias parcelas/linhas) só
+  // conta como pronto quando Grupo e Aplicação já foram escolhidos — usado pra travar o Lançar.
+  const gruposOrigemSelecionados = useMemo(
+    () => [...new Map(itensSelecionados.map((r) => [r.grupoOrigemId, r])).values()],
+    [itensSelecionados]
+  );
+  const prontosParaLancar =
+    itensSelecionados.length > 0 &&
+    gruposOrigemSelecionados.every((item) => grupoValor(item.grupoOrigemId) !== "" && aplicacaoValor(item) !== "");
 
-  async function handleLancarAtual() {
-    if (!lancamentoEmAndamento || !grupoAtual) return;
-    if (!grupoEscolhido || !aplicacaoEscolhidaAtual) return;
-    setErroLancamentoAtual("");
-    setLancandoAtual(true);
+  // Lança tudo de uma vez: como lancarSelecionados aplica um único grupo a todos os itens de
+  // uma chamada, agrupa por grupo escolhido (grupos diferentes = chamadas separadas), mas a
+  // aplicação continua indo por lançamento de origem dentro de cada chamada.
+  async function handleLancarSelecionados() {
+    if (!prontosParaLancar) return;
+    setErroLancamento("");
+    setLancando(true);
     try {
-      const itensDoGrupo = lancamentoEmAndamento.itens.filter((it) => it.grupoOrigemId === grupoAtual.grupoOrigemId);
-      await lancarSelecionados(
-        uid,
-        itensDoGrupo,
-        grupoEscolhido,
-        new Map([[grupoAtual.grupoOrigemId, aplicacaoEscolhidaAtual]])
-      );
-
-      const idsLancados = new Set(itensDoGrupo.map((it) => it.id));
-      setSelecionados((atual) => {
-        const novo = new Set(atual);
-        idsLancados.forEach((id) => novo.delete(id));
-        return novo;
-      });
-
-      const proximoIndice = lancamentoEmAndamento.indice + 1;
-      if (proximoIndice >= lancamentoEmAndamento.grupos.length) {
-        setLancamentoEmAndamento(null);
-        setAplicacaoEscolhidaManual(null);
-      } else {
-        setLancamentoEmAndamento({ ...lancamentoEmAndamento, indice: proximoIndice });
-        setAplicacaoEscolhidaManual(null);
+      const itensPorGrupoEscolhido = new Map<string, LancamentoCompartilhado[]>();
+      for (const item of itensSelecionados) {
+        const grupo = grupoValor(item.grupoOrigemId);
+        const lista = itensPorGrupoEscolhido.get(grupo) ?? [];
+        lista.push(item);
+        itensPorGrupoEscolhido.set(grupo, lista);
       }
+      for (const [grupo, itens] of itensPorGrupoEscolhido) {
+        const aplicacaoPorGrupo = new Map(itens.map((item) => [item.grupoOrigemId, aplicacaoValor(item)]));
+        await lancarSelecionados(uid, itens, grupo, aplicacaoPorGrupo);
+      }
+      setSelecionados(new Set());
+      setEscolhas({});
     } catch {
-      setErroLancamentoAtual("Não foi possível lançar este item. Tente novamente.");
+      setErroLancamento("Não foi possível lançar. Tente novamente.");
     } finally {
-      setLancandoAtual(false);
+      setLancando(false);
     }
   }
 
@@ -1025,14 +991,21 @@ function AbaRecebidos({
             Excluir {itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}
           </button>
           <button
-            onClick={iniciarLancamento}
-            disabled={itensSelecionados.length === 0}
+            onClick={handleLancarSelecionados}
+            disabled={!prontosParaLancar || lancando}
+            title={
+              itensSelecionados.length > 0 && !prontosParaLancar
+                ? "Escolha o Grupo e a Aplicação de todos os selecionados para lançar"
+                : undefined
+            }
             className="inline-flex h-[42px] min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Lançar {itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}
+            {lancando ? "Lançando..." : `Lançar ${itensSelecionados.length > 0 ? `(${itensSelecionados.length})` : ""}`}
           </button>
         </div>
       </div>
+
+      {erroLancamento && <p className="mb-2 text-sm text-red-600 dark:text-red-400">{erroLancamento}</p>}
 
       {recebidosVisiveis.length === 0 ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum lançamento recebido neste mês.</p>
@@ -1058,6 +1031,7 @@ function AbaRecebidos({
                   </th>
                   <th className="py-2 pr-2">Credor</th>
                   <th className="py-2 pr-2">Observação</th>
+                  <th className="py-2 pr-2">Grupo</th>
                   <th className="py-2 pr-2">Aplicação</th>
                   <th className="py-2 pr-2">Parcela</th>
                   <th className="py-2 pr-2">Reembolso</th>
@@ -1081,7 +1055,56 @@ function AbaRecebidos({
                     </td>
                     <td className="py-2.5 pr-2 font-medium text-slate-900 dark:text-slate-100">{r.deNome}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.observacao || "—"}</td>
-                    <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.aplicacaoSugerida}</td>
+                    <td className="py-2.5 pr-2">
+                      <select
+                        value={grupoValor(r.grupoOrigemId)}
+                        onChange={(e) => definirGrupo(r.grupoOrigemId, e.target.value)}
+                        aria-label={`Grupo para lançar ${r.deNome}`}
+                        className={`w-full min-w-[9rem] rounded-md border px-2 py-1 text-xs ${
+                          grupoValor(r.grupoOrigemId)
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                        }`}
+                      >
+                        <option value="">Selecione…</option>
+                        {gruposDisponiveis.map((g) => (
+                          <option key={g} value={g}>
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2.5 pr-2">
+                      <select
+                        value={aplicacaoValor(r)}
+                        onChange={(e) => definirAplicacao(r.grupoOrigemId, e.target.value)}
+                        aria-label={`Aplicação para lançar ${r.deNome}`}
+                        className={`w-full min-w-[9rem] rounded-md border px-2 py-1 text-xs ${
+                          aplicacaoValor(r)
+                            ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                        }`}
+                      >
+                        <option value="">Selecione…</option>
+                        {opcoesAplicacoes.map((a) => (
+                          <option key={a} value={a}>
+                            {a}
+                          </option>
+                        ))}
+                      </select>
+                      {!aplicacaoValor(r) && r.aplicacaoSugerida && !opcoesAplicacoes.includes(r.aplicacaoSugerida) && (
+                        <button
+                          type="button"
+                          onClick={() => criarAplicacaoSugerida(r)}
+                          disabled={criandoAplicacaoPara === r.grupoOrigemId}
+                          className="mt-0.5 block text-[11px] font-medium text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400"
+                        >
+                          {criandoAplicacaoPara === r.grupoOrigemId
+                            ? "Criando..."
+                            : `Criar "${r.aplicacaoSugerida}" (sugestão)`}
+                        </button>
+                      )}
+                    </td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.parcela ?? "—"}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
                       {r.compNome ? (
@@ -1132,83 +1155,6 @@ function AbaRecebidos({
           />
         </>
       )}
-
-      <Modal aberto={!!lancamentoEmAndamento} onFechar={cancelarLancamento} titulo="Lançar em Contas a Pagar">
-        {lancamentoEmAndamento && grupoAtual && (
-          <div className="flex flex-col gap-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Lançamento {lancamentoEmAndamento.indice + 1} de {lancamentoEmAndamento.grupos.length}
-            </p>
-            <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900">
-              <span className="font-medium text-slate-900 dark:text-slate-100">{grupoAtual.credorSugerido}</span>
-              <span className="text-slate-500 dark:text-slate-400">{formatarMoeda(grupoAtual.valorTotal)}</span>
-            </div>
-
-            <label className="text-sm text-slate-600 dark:text-slate-300">
-              Grupo
-              <select
-                value={grupoEscolhido}
-                onChange={(e) => setGrupoEscolhidoManual(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              >
-                {gruposDisponiveis.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm text-slate-600 dark:text-slate-300">
-              Aplicação
-              <select
-                value={aplicacaoEscolhidaAtual}
-                onChange={(e) => setAplicacaoEscolhidaManual(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-              >
-                {opcoesAplicacoes.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {!aplicacaoSugeridaAtualExiste && (
-              <button
-                type="button"
-                onClick={handleCriarAplicacaoAtual}
-                disabled={criandoAplicacao}
-                className="self-start text-xs font-medium text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400"
-              >
-                {criandoAplicacao
-                  ? "Criando..."
-                  : `Criar aplicação "${grupoAtual.aplicacaoSugerida}" (usada por quem enviou) e usar aqui`}
-              </button>
-            )}
-
-            {erroLancamentoAtual && <p className="text-sm text-red-600 dark:text-red-400">{erroLancamentoAtual}</p>}
-
-            <button
-              onClick={handleLancarAtual}
-              disabled={lancandoAtual || !grupoEscolhido || !aplicacaoEscolhidaAtual}
-              className={CLASSE_BOTAO_PRIMARIO}
-            >
-              {lancandoAtual
-                ? "Lançando..."
-                : lancamentoEmAndamento.indice + 1 < lancamentoEmAndamento.grupos.length
-                  ? "Lançar e ir para o próximo"
-                  : "Lançar"}
-            </button>
-            <button
-              onClick={cancelarLancamento}
-              disabled={lancandoAtual}
-              className="text-center text-sm text-slate-500 disabled:opacity-50 dark:text-slate-400"
-            >
-              {lancamentoEmAndamento.indice > 0 ? "Parar por aqui" : "Cancelar"}
-            </button>
-          </div>
-        )}
-      </Modal>
 
       <Modal aberto={!!excluindo} onFechar={() => setExcluindo(null)} titulo="Excluir lançamento recebido">
         <div className="flex flex-col gap-2">
