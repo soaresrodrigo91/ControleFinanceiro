@@ -41,8 +41,7 @@ import type {
 
 function parcelaDaParcela(p: Parcela): string {
   if (p.recorrenciaId) return "Fixa";
-  if (p.parcelaTotal > 1) return `${p.parcelaNum}/${p.parcelaTotal}`;
-  return "—";
+  return `${p.parcelaNum}/${p.parcelaTotal}`;
 }
 
 // Para conta fixa não existe "data da compra" — o dado relevante é o vencimento daquela
@@ -1059,7 +1058,18 @@ function AbaRecebidos({
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.observacao || "—"}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.aplicacaoSugerida}</td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.parcela ?? "—"}</td>
-                    <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{r.compNome ?? "—"}</td>
+                    <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
+                      {r.compNome ? (
+                        <span
+                          className="cursor-help underline decoration-dotted"
+                          title={`Credor real: ${r.credorReal ?? r.credorSugerido} · Valor real: ${formatarMoeda(r.valorReal ?? r.valor)}`}
+                        >
+                          {r.compNome}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
                       {dataExibicaoEnviado(r) ? formatarDataBR(dataExibicaoEnviado(r)!) : "—"}
                     </td>

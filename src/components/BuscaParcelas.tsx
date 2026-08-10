@@ -440,7 +440,7 @@ export default function BuscaParcelas({
                         {p.origemCompartilhado ? (
                           <span
                             className="cursor-help underline decoration-dotted"
-                            title={`Compartilhado por ${p.origemCompartilhado.deNome} · Credor real: ${p.origemCompartilhado.credorReal} · Valor real: ${formatarMoeda(p.origemCompartilhado.valorReal)}`}
+                            title={`Credor real: ${p.origemCompartilhado.credorReal} · Valor real: ${formatarMoeda(p.origemCompartilhado.valorReal)}`}
                           >
                             {p.comp ?? "—"}
                           </span>

@@ -106,7 +106,7 @@ async function itensParaCompartilharDeParcela(
   return candidatas.map((parc) => ({
     chave: parc.id,
     grupoOrigemId: parc.lancamentoId,
-    parcela: parc.parcelaTotal > 1 ? `${parc.parcelaNum}/${parc.parcelaTotal}` : "—",
+    parcela: `${parc.parcelaNum}/${parc.parcelaTotal}`,
     vencimento: parc.vencimento,
     valorParcela: parc.valorParcela,
     observacao: parc.observacao,
