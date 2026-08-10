@@ -302,6 +302,19 @@ function AbaEnviados({
 
   const idDaLinha = useCallback((l: LinhaEnvio) => (l.status === "enviado" ? l.item.id : l.parcela.id), []);
 
+  const totalValorReembolso = useMemo(
+    () =>
+      linhas.reduce(
+        (s, l) =>
+          s +
+          (l.status === "enviado"
+            ? l.item.valor
+            : calcularValorReembolso(l.parcela.valorParcela, l.parcela.comp, config)),
+        0
+      ),
+    [linhas, config]
+  );
+
   const idsVisiveis = useMemo(() => paginadas.map(idDaLinha), [paginadas, idDaLinha]);
   const idsTodasAsLinhas = useMemo(() => linhas.map(idDaLinha), [linhas, idDaLinha]);
   const todosSelecionadosNaPagina = idsVisiveis.length > 0 && idsVisiveis.every((id) => selecionados.has(id));
@@ -446,6 +459,10 @@ function AbaEnviados({
         </p>
       ) : (
         <>
+          <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+            {totalItens} resultado{totalItens !== 1 && "s"} ·{" "}
+            <span className="font-medium text-slate-900 dark:text-slate-100">{formatarMoeda(totalValorReembolso)}</span>
+          </p>
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <table className="w-full text-sm">
               <thead>
@@ -826,6 +843,10 @@ function AbaRecebidos({
     () => paginar(recebidosVisiveis, config.itensPorPagina, paginaAtual),
     [recebidosVisiveis, config.itensPorPagina, paginaAtual]
   );
+  const totalValorRecebidos = useMemo(
+    () => recebidosVisiveis.reduce((s, r) => s + r.valor, 0),
+    [recebidosVisiveis]
+  );
 
   const todosSelecionadosNaPagina = paginados.length > 0 && paginados.every((r) => selecionados.has(r.id));
   const todosSelecionadosTodasAsPaginas =
@@ -1017,6 +1038,10 @@ function AbaRecebidos({
         <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum lançamento recebido neste mês.</p>
       ) : (
         <>
+          <p className="mb-2 text-sm text-slate-500 dark:text-slate-400">
+            {recebidosVisiveis.length} resultado{recebidosVisiveis.length !== 1 && "s"} ·{" "}
+            <span className="font-medium text-slate-900 dark:text-slate-100">{formatarMoeda(totalValorRecebidos)}</span>
+          </p>
           <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <table className="w-full text-sm">
               <thead>
