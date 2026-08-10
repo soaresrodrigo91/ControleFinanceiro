@@ -92,7 +92,9 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
 
   // Termos que somam no filtro: os credores já adicionados (Enter ou clique numa sugestão)
   // mais o que está sendo digitado agora, mesmo antes de adicionar — assim a lista já filtra
-  // ao vivo enquanto o usuário digita, sem esperar ele confirmar o nome.
+  // ao vivo enquanto o usuário digita, sem esperar ele confirmar o nome. A comparação é pelo
+  // nome exato do credor (não por "contém"), pra não misturar credores diferentes que só têm
+  // um nome parecido (ex.: buscar "Ana" não deve trazer "Ana Paula").
   const termosCredor = useMemo(() => {
     const termos = credoresFiltro.map((c) => c.toLowerCase());
     if (credorNormalizado && !termos.includes(credorNormalizado)) termos.push(credorNormalizado);
@@ -114,7 +116,7 @@ export default function RelatorioModeloII({ uid }: { uid: string }) {
 
   const parcelasFiltradas = useMemo(() => {
     return todasParcelas.filter((p) => {
-      if (termosCredor.length > 0 && !termosCredor.some((t) => p.credor.toLowerCase().includes(t))) return false;
+      if (termosCredor.length > 0 && !termosCredor.includes(p.credor.toLowerCase())) return false;
       if (config.gruposInativosDesde?.[p.grupo]) return false;
       if (filtroGrupos[p.grupo] === false) return false;
       if (filtroAplicacoes[p.aplicacao] === false) return false;
