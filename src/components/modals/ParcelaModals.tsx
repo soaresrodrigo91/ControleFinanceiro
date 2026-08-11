@@ -20,7 +20,11 @@ import {
   excluirRecorrenciaDesteMesEmDiante,
 } from "@/lib/recorrencias";
 import { sincronizarValorReembolso, sincronizarValorReembolsoRecorrencia } from "@/lib/recebimentos";
-import { notificarAtualizacaoRecorrencia, sincronizarValorCompartilhadoRecorrenciaMes } from "@/lib/compartilhamento";
+import {
+  notificarAtualizacaoRecorrencia,
+  sincronizarValorCompartilhadoParcela,
+  sincronizarValorCompartilhadoRecorrenciaMes,
+} from "@/lib/compartilhamento";
 import { formatarNumeroRenegociacao } from "@/lib/renegociacao";
 import { GRUPO_FIXAS } from "@/lib/config";
 import { formatarMesAno } from "@/lib/date";
@@ -193,6 +197,9 @@ function FormularioEdicaoParcela({
     try {
       if (parcela.provisao) {
         await atualizarParcelaProvisao(uid, parcela, dados);
+        if (parcela.comp) {
+          await sincronizarValorCompartilhadoParcela(uid, parcela.id, parcela.comp, dados.valorParcela, config);
+        }
       } else {
         await atualizarParcela(uid, parcela.id, dados);
       }
@@ -207,6 +214,9 @@ function FormularioEdicaoParcela({
     try {
       if (parcela.provisao) {
         await atualizarParcelaProvisao(uid, parcela, dados);
+        if (parcela.comp) {
+          await sincronizarValorCompartilhadoParcela(uid, parcela.id, parcela.comp, dados.valorParcela, config);
+        }
       } else {
         await atualizarParcela(uid, parcela.id, dados);
       }

@@ -183,6 +183,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Lançamentos com o selo \"Renegociação\" vieram de uma renegociação e não podem ser editados ou excluídos por aqui — veja a aba Renegociação.",
       "Lançamentos com reembolso configurado têm um botão extra (avião de papel) depois do de excluir — só aparece com \"Compartilhar Lançamentos\" ativo em Configurações. Ele NÃO envia nada diretamente: só restaura a pendência de envio em Lançamentos Compartilhados caso ela tenha sido removida de lá (veja \"Excluir pendência\" nessa outra tela); por isso fica inativo sempre que já existe uma pendência ativa, o lançamento já foi enviado, ou o reembolso não tem e-mail vinculado — nesses casos não há nada para restaurar. Quando ativo, ao clicar pergunta o alcance: apenas este mês, este mês e os futuros, ou todos desde o início.",
       "Os botões de editar, excluir e reenviar mostram uma descrição ao passar o mouse por cima, explicando o que cada um faz.",
+      "Editar o valor de uma Provisão com reembolso configurado atualiza automaticamente o valor já compartilhado em Lançamentos Compartilhados, desde que quem recebeu ainda não tenha lançado o item (status \"pendente\"); se já tiver lançado, a cópia dela é independente e não muda mais.",
     ],
     validacoes: [
       "Tentar excluir uma conta já marcada como paga é bloqueado, com mensagem explicando que é preciso desmarcar o pagamento antes.",

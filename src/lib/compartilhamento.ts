@@ -511,6 +511,34 @@ export async function sincronizarValorCompartilhadoRecorrenciaMes(
   await Promise.all(snap.docs.map((d) => updateDoc(d.ref, { valor: novoValorReembolso })));
 }
 
+// Equivalente a sincronizarValorCompartilhadoRecorrenciaMes, mas para lançamentos avulsos (sem
+// recorrência) — ex.: parcela do tipo "Provisão", que permite editar o valor depois de já ter
+// sido enviada. Sem isso, o valor exibido para quem recebeu ficava "congelado" no snapshot
+// criado no momento do envio, mesmo após a correção do valor original.
+export async function sincronizarValorCompartilhadoParcela(
+  uid: string,
+  parcelaId: string,
+  compNome: string,
+  novoValorParcela: number,
+  config: ConfigListas
+) {
+  const itemComp = config.comp.find((c) => c.nome === compNome);
+  if (!itemComp || itemComp.modo === "nenhum") return;
+  const novoValorReembolso = calcularValorReembolso(novoValorParcela, compNome, config);
+
+  const snap = await getDocs(
+    query(
+      collection(db, "lancamentosCompartilhados"),
+      where("deUid", "==", uid),
+      where("lancamentoOrigemId", "==", parcelaId),
+      where("status", "==", "pendente")
+    )
+  );
+  await Promise.all(
+    snap.docs.map((d) => updateDoc(d.ref, { valor: novoValorReembolso, valorReal: novoValorParcela }))
+  );
+}
+
 export type EscopoExclusaoRecebido = "mes" | "futuros" | "tudo";
 
 // Marca como "excluido" em vez de apagar: se apagássemos o documento, quem enviou (deUid)
