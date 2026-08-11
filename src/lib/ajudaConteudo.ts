@@ -328,6 +328,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "O checkbox do cabeçalho marca/desmarca como recebido na página atual; a setinha ao lado abre um menu só com \"Todas as páginas\" — pede confirmação antes de aplicar.",
       "Recebimentos com o selo \"Renegociação\" vieram de uma renegociação em Contas a Pagar e não podem ser editados ou excluídos por aqui.",
       "Recebimentos criados pelo app mobile mostram um ícone discreto de celular com a palavra \"Mobile\" abaixo da origem, junto do grupo (quando houver).",
+      "O checkbox \"Somente pendentes\" só fica disponível depois de marcar pelo menos uma origem no filtro — sem origem selecionada, ele aparece desativado.",
     ],
     validacoes: [
       "Tentar editar ou excluir um recebimento de reembolso é bloqueado, com mensagem explicativa e botão \"Entendi\".",

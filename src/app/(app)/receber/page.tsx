@@ -196,6 +196,10 @@ function ReceberConteudo() {
   const algumFiltroMarcado = Object.values(filtroOrigem).some(Boolean);
   const algumReembolsoMarcado = Object.values(filtroReembolso).some(Boolean);
 
+  useEffect(() => {
+    if (!algumFiltroMarcado) setFiltroApenasPendentes(false);
+  }, [algumFiltroMarcado]);
+
   const valorFiltroNum = filtroValor ? paraNumero(filtroValor) : null;
   const valorFiltroAtivo = valorFiltroNum !== null && !Number.isNaN(valorFiltroNum);
 
@@ -538,11 +542,17 @@ function ReceberConteudo() {
                 )}
               </>
             )}
-            <label className="flex h-[42px] cursor-pointer items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600">
+            <label
+              className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600 ${
+                algumFiltroMarcado ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+              }`}
+              title={algumFiltroMarcado ? undefined : "Selecione ao menos uma origem para usar este filtro"}
+            >
               <input
                 type="checkbox"
                 checked={filtroApenasPendentes}
                 onChange={(e) => setFiltroApenasPendentes(e.target.checked)}
+                disabled={!algumFiltroMarcado}
                 className="h-4 w-4 accent-red-500"
               />
               Somente pendentes
