@@ -47,7 +47,7 @@ export const CONFIG_PADRAO: ConfigListas = {
   aplicacoes: [
     "Alimentação",
     "Moradia",
-    "Transporte",
+    "Carro e Transporte",
     "Saúde",
     "Lazer",
     "Assinaturas",
@@ -217,10 +217,22 @@ export async function removerItemLista(uid: string, campo: CampoLista, item: str
   const atual = dados?.[campo] ?? [];
   const observacoesCampo = { ...(dados?.observacoesListas?.[campo] ?? {}) };
   delete observacoesCampo[item];
-  await updateDoc(ref, {
+  const update: Record<string, unknown> = {
     [campo]: atual.filter((v) => v !== item),
     observacoesListas: { ...dados?.observacoesListas, [campo]: observacoesCampo },
-  });
+  };
+  if (campo === "grupos" && dados?.grupoFavorito === item) {
+    update.grupoFavorito = null;
+  }
+  await updateDoc(ref, update);
+}
+
+// Só um grupo pode ser favorito por vez: define-lo aqui automaticamente troca o anterior
+// (passar o mesmo grupo já favorito, ou null, remove o favorito). O grupo favorito é
+// pré-selecionado no formulário de novo lançamento (ver FormularioLancamento.tsx), mas o
+// usuário continua podendo escolher outro grupo na hora.
+export async function atualizarGrupoFavorito(uid: string, grupo: string | null) {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { grupoFavorito: grupo });
 }
 
 export async function atualizarObservacaoItem(

@@ -8,6 +8,7 @@ import {
   alternarAtivoComp,
   ativarGrupo,
   assinarConfigListas,
+  atualizarGrupoFavorito,
   atualizarItensPorPagina,
   atualizarLayoutMenu,
   atualizarModoComp,
@@ -31,7 +32,7 @@ import SeletorMesAno from "@/components/SeletorMesAno";
 import { Tab, Tabs } from "@/components/Tabs";
 import CompartilharLancamentosCard from "@/components/config/CompartilharLancamentosCard";
 import { mensagemErroAuth } from "@/lib/authErrors";
-import { IconBalao, IconCadeado, IconOlho, IconOlhoFechado } from "@/components/action-icons";
+import { IconBalao, IconCadeado, IconEstrela, IconOlho, IconOlhoFechado } from "@/components/action-icons";
 import Modal from "@/components/Modal";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePlano } from "@/contexts/PlanoContext";
@@ -39,7 +40,7 @@ import type { ConfigListas, ModoComp } from "@/lib/types";
 
 const SECOES: { campo: CampoLista; titulo: string; ajuda: string }[] = [
   { campo: "grupos", titulo: "Grupos", ajuda: "Ex.: Fixas, Cartão de Crédito, Provisões" },
-  { campo: "aplicacoes", titulo: "Aplicações", ajuda: "Ex.: Alimentação, Moradia, Transporte" },
+  { campo: "aplicacoes", titulo: "Aplicações", ajuda: "Ex.: Alimentação, Moradia, Carro e Transporte" },
 ];
 
 const ROTULOS_MODO: Record<ModoComp, string> = {
@@ -299,30 +300,23 @@ export default function ConfiguracoesPage() {
                 Tema
                 {!temaLiberado && <span className="text-amber-500" title="Recurso Premium">★</span>}
               </h2>
-              <div className="flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Modo escuro</span>
                 <button
                   type="button"
-                  onClick={() => tema === "dark" && alternarTema()}
-                  className={`flex-1 px-2.5 py-1.5 text-xs font-medium ${
-                    tema === "light"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  Claro
-                </button>
-                <button
-                  type="button"
+                  role="switch"
+                  aria-checked={tema === "dark"}
                   disabled={!temaLiberado}
-                  onClick={() => temaLiberado && tema === "light" && alternarTema()}
+                  onClick={() => temaLiberado && alternarTema()}
                   title={temaLiberado ? undefined : "Disponível no plano Premium"}
-                  className={`flex-1 px-2.5 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
-                    tema === "dark"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    tema === "dark" ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
                   }`}
                 >
-                  Escuro
+                  <span
+                    className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
+                    style={{ transform: tema === "dark" ? "translateX(16px)" : "translateX(0)" }}
+                  />
                 </button>
               </div>
               {!temaLiberado && (
@@ -345,6 +339,12 @@ export default function ConfiguracoesPage() {
                 observacoes={config.observacoesListas?.[secao.campo] ?? {}}
                 protegidos={[]}
                 inativos={secao.campo === "grupos" ? (config.gruposInativosDesde ?? {}) : undefined}
+                favorito={secao.campo === "grupos" ? (config.grupoFavorito ?? null) : undefined}
+                aoAlternarFavorito={
+                  secao.campo === "grupos"
+                    ? (item) => atualizarGrupoFavorito(usuario.uid, config.grupoFavorito === item ? null : item)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -605,6 +605,8 @@ function ListaEditavel({
   observacoes,
   protegidos = [],
   inativos,
+  favorito,
+  aoAlternarFavorito,
 }: {
   uid: string;
   campo: CampoLista;
@@ -614,6 +616,8 @@ function ListaEditavel({
   observacoes: Record<string, string>;
   protegidos?: string[];
   inativos?: Record<string, string>;
+  favorito?: string | null;
+  aoAlternarFavorito?: (item: string) => void;
 }) {
   const [novoItem, setNovoItem] = useState("");
   const [novaObservacao, setNovaObservacao] = useState("");
@@ -627,6 +631,22 @@ function ListaEditavel({
   const [mesInativar, setMesInativar] = useState(mesAtualYM());
   const [erroInativar, setErroInativar] = useState("");
   const [processandoInativar, setProcessandoInativar] = useState(false);
+  const [avisoFavorito, setAvisoFavorito] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!avisoFavorito) return;
+    const id = setTimeout(() => setAvisoFavorito(null), 4000);
+    return () => clearTimeout(id);
+  }, [avisoFavorito]);
+
+  function handleAlternarFavorito(item: string) {
+    if (!aoAlternarFavorito) return;
+    const vaiFavoritar = favorito !== item;
+    aoAlternarFavorito(item);
+    setAvisoFavorito(
+      vaiFavoritar ? `A partir de agora, "${item}" será apresentado por padrão na hora do lançamento.` : null
+    );
+  }
 
   async function handleAdicionar(e: FormEvent) {
     e.preventDefault();
@@ -741,6 +761,23 @@ function ListaEditavel({
                   Inativo desde {formatarMesAno(inativoDesde)}
                 </span>
               )}
+              {aoAlternarFavorito && !inativoDesde && (
+                <button
+                  type="button"
+                  onClick={() => handleAlternarFavorito(item)}
+                  title={
+                    favorito === item
+                      ? "Remover como grupo padrão ao lançar"
+                      : "Definir como grupo padrão ao lançar"
+                  }
+                  aria-label={`Marcar ${item} como grupo favorito`}
+                  className={`rounded-full p-1 hover:bg-slate-200 dark:hover:bg-slate-700 ${
+                    favorito === item ? "text-amber-500" : "text-slate-400 dark:text-slate-500"
+                  }`}
+                >
+                  <IconEstrela className="h-3.5 w-3.5" preenchida={favorito === item} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => abrirEdicaoObservacao(item)}
@@ -791,6 +828,7 @@ function ListaEditavel({
       </div>
 
       {erro && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{erro}</p>}
+      {avisoFavorito && <p className="mb-3 text-sm text-emerald-600 dark:text-emerald-400">{avisoFavorito}</p>}
 
       <form onSubmit={handleAdicionar} className="flex flex-col gap-2">
         <div className="flex gap-2">

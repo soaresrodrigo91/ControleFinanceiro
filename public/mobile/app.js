@@ -439,7 +439,7 @@ async function limparTodasNotificacoes() {
 // ainda), o site usa esses valores-semente — o mobile precisa fazer o mesmo,
 // senão os campos ficam com o <select> vazio (parecendo que "sumiram").
 const GRUPOS_PADRAO = ["Fixas", "Cartão de Crédito", "Provisões", "Outros"];
-const APLICACOES_PADRAO = ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Assinaturas", "Parcelamentos", "Outros"];
+const APLICACOES_PADRAO = ["Alimentação", "Moradia", "Carro e Transporte", "Saúde", "Lazer", "Assinaturas", "Parcelamentos", "Outros"];
 
 async function carregarConfig() {
   try {
@@ -451,6 +451,7 @@ async function carregarConfig() {
       comp: d.comp ?? [],
       modoTotalizador: d.modoTotalizador ?? "todos",
       gruposInativosDesde: d.gruposInativosDesde ?? {},
+      grupoFavorito: d.grupoFavorito ?? null,
     };
   } catch {
     configListas = {
@@ -459,6 +460,7 @@ async function carregarConfig() {
       comp: [],
       modoTotalizador: "todos",
       gruposInativosDesde: {},
+      grupoFavorito: null,
     };
   }
   renderInicio();
@@ -466,6 +468,11 @@ async function carregarConfig() {
   // não é possível criar lançamento novo com um grupo inativo pelo app mobile.
   const gruposAtivosMobile = configListas.grupos.filter((g) => !configListas.gruposInativosDesde[g]);
   $("#fp-grupo").innerHTML = gruposAtivosMobile.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join("");
+  // Grupo favorito (marcado com ⭐ em Configurações → Grupos, só editável pelo site) já vem
+  // pré-selecionado aqui, mas o usuário ainda pode trocar antes de salvar.
+  if (configListas.grupoFavorito && gruposAtivosMobile.includes(configListas.grupoFavorito)) {
+    $("#fp-grupo").value = configListas.grupoFavorito;
+  }
   $("#fp-aplicacao").innerHTML = configListas.aplicacoes.map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
 
   const compDisponiveis = configListas.comp.filter((c) => c.ativo !== false);
@@ -1122,6 +1129,7 @@ function limparFormularioPagar() {
   $("#fp-legenda-conta-fixa").classList.add("hidden");
   $("#fp-legenda-provisao").classList.add("hidden");
   $("#fp-comp").value = "";
+  if (configListas.grupoFavorito) $("#fp-grupo").value = configListas.grupoFavorito;
   mostrarMsg("#msg-pagar", "", "");
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { hojeISO, somarMeses } from "@/lib/date";
 import { gruposAtivos } from "@/lib/config";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos";
@@ -71,6 +71,17 @@ export default function FormularioLancamento({
   const gruposDisponiveis = gruposAtivos(config);
   const compDisponiveis = config.comp.filter((c) => c.ativo !== false);
   const dataCompraEfetiva = ocultarDataCompra ? inicioCobranca : dataCompra;
+
+  // Pré-seleciona o grupo favorito (Configurações → Grupos → ⭐) assim que ele estiver
+  // disponível, mas só enquanto o campo estiver vazio — não sobrepõe uma escolha manual do
+  // usuário nem o grupo fixo de fluxos como renegociação.
+  useEffect(() => {
+    if (grupoFixo || grupo) return;
+    if (config.grupoFavorito && gruposDisponiveis.includes(config.grupoFavorito)) {
+      setGrupo(config.grupoFavorito);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config.grupoFavorito, grupoFixo, grupo]);
 
   function calcularValorTotal(): number {
     const digitado = paraNumero(valorTotal);

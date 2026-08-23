@@ -36,6 +36,7 @@ export type ConfigListas = {
   itensPorPagina: number;
   observacoesListas?: { grupos?: Record<string, string>; aplicacoes?: Record<string, string> };
   gruposInativosDesde?: Record<string, string>;
+  grupoFavorito?: string | null;
   layoutMenu?: LayoutMenu;
   compartilharLancamentos: boolean;
   tipoGraficoDashboard?: "pizza" | "barra";

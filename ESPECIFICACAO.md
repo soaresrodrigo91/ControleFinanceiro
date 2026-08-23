@@ -96,7 +96,7 @@ modoTotalizador: "todos" | "visiveis"   // Configuração 6 da planilha
 
 **Seed no primeiro login** com valores padrão genéricos definidos em código, ex.:
 `grupos: ["Fixas", "Cartão de Crédito", "Provisões", "Outros"]`,
-`aplicacoes: ["Alimentação", "Moradia", "Transporte", "Saúde", "Lazer", "Assinaturas", "Parcelamentos", "Outros"]`, `comp: []`.
+`aplicacoes: ["Alimentação", "Moradia", "Carro e Transporte", "Saúde", "Lazer", "Assinaturas", "Parcelamentos", "Outros"]`, `comp: []`.
 Cada usuário adiciona/remove itens livremente (item em uso em algum lançamento não pode ser removido — validar). O grupo **"Provisões"** tem comportamento especial (ver 4.1-2) e, se renomeado/removido, o comportamento acompanha um flag `ehProvisao: true` por grupo em vez do nome fixo.
 
 ### 3.5 `usuarios/{uid}` (campos do perfil)

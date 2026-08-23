@@ -134,6 +134,25 @@ export function IconSetaDireita(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function IconEstrela({
+  preenchida,
+  ...props
+}: SVGProps<SVGSVGElement> & { preenchida?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinejoin="round"
+      strokeLinecap="round"
+      fill={preenchida ? "currentColor" : "none"}
+      {...props}
+    >
+      <path d="M12 3.5l2.5 5.4 5.9.6-4.4 4 1.3 5.9L12 16.9l-5.3 2.5 1.3-5.9-4.4-4 5.9-.6L12 3.5Z" />
+    </svg>
+  );
+}
+
 export function IconCelular(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>

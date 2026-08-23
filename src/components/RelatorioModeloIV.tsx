@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { assinarParcelasDoMes, valorEfetivo } from "@/lib/parcelas";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
-import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos } from "@/lib/config";
+import { assinarConfigListas, CONFIG_PADRAO, GRUPO_PROVISAO, gruposAtivos } from "@/lib/config";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { formatarDataBR, formatarMesAno, formatarMoeda } from "@/lib/date";
 import { CLASSE_CARD } from "@/lib/estilos";
@@ -21,11 +21,20 @@ const GRID_COLS_RESUMO: Record<number, string> = {
 
 const MEDALHAS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
+// Grupos de contas recorrentes/fixas — o Top 10 existe para destacar gastos avulsos
+// incomuns, então não faz sentido essas contas (que se repetem todo mês) nem provisões
+// (que não são gasto real) aparecerem no ranking.
+const GRUPOS_EXCLUIDOS_TOP10 = ["fixas", "fixa", "mensal", "mensais"];
+
+function elegivelParaTop10(p: Parcela): boolean {
+  return p.grupo !== GRUPO_PROVISAO && !GRUPOS_EXCLUIDOS_TOP10.includes(p.grupo.trim().toLowerCase());
+}
+
 function textoParcela(p: Parcela): string {
   return p.recorrenciaId ? "Fixa" : `${p.parcelaNum}/${p.parcelaTotal}`;
 }
 
-export default function RelatorioModeloIV({ uid }: { uid: string }) {
+export default function RelatorioModeloIV({ uid, stickyTop = 0 }: { uid: string; stickyTop?: number }) {
   const { ym, definirYm: setYm } = useMesAtual();
   const [parcelasReais, setParcelasReais] = useState<Parcela[]>([]);
   const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([]);
@@ -79,7 +88,11 @@ export default function RelatorioModeloIV({ uid }: { uid: string }) {
   const total = parcelas.reduce((s, p) => s + valorEfetivo(p), 0);
 
   const top10 = useMemo(
-    () => [...parcelas].sort((a, b) => valorEfetivo(b) - valorEfetivo(a)).slice(0, 10),
+    () =>
+      parcelas
+        .filter(elegivelParaTop10)
+        .sort((a, b) => valorEfetivo(b) - valorEfetivo(a))
+        .slice(0, 10),
     [parcelas]
   );
 
@@ -128,63 +141,63 @@ export default function RelatorioModeloIV({ uid }: { uid: string }) {
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <div className="flex flex-wrap gap-2">
-          {gruposAtivos(config).length > 0 && (
+      {/* A caixa de filtros fica sticky dentro deste wrapper — ela gruda no topo enquanto os
+          quadrados de resumo (abaixo) ainda estão passando por trás dela e "solta" assim que o
+          wrapper termina, deixando o Top 10 rolar normalmente por cima. */}
+      <div>
+        <div
+          className="sticky z-30 mb-6 flex flex-wrap items-center justify-between gap-2 bg-background pb-2 print:hidden"
+          style={{ top: stickyTop }}
+        >
+          <div className="flex flex-wrap gap-2">
+            {gruposAtivos(config).length > 0 && (
+              <FiltroMultiSelect
+                rotulo="Grupo"
+                opcoes={gruposAtivos(config)}
+                filtro={filtroGrupos}
+                onAlternar={(item, visivel) =>
+                  setFiltroGrupos((atual) => ({ ...atual, [item]: visivel }))
+                }
+              />
+            )}
+            {config.aplicacoes.length > 0 && (
+              <FiltroMultiSelect
+                rotulo="Aplicação"
+                opcoes={config.aplicacoes}
+                filtro={filtroAplicacoes}
+                onAlternar={(item, visivel) =>
+                  setFiltroAplicacoes((atual) => ({ ...atual, [item]: visivel }))
+                }
+              />
+            )}
             <FiltroMultiSelect
-              rotulo="Grupo"
-              opcoes={gruposAtivos(config)}
-              filtro={filtroGrupos}
+              rotulo="Reembolso"
+              opcoes={[...config.comp.map((c) => c.nome), SEM_COMP]}
+              filtro={filtroComp}
               onAlternar={(item, visivel) =>
-                setFiltroGrupos((atual) => ({ ...atual, [item]: visivel }))
+                setFiltroComp((atual) => ({ ...atual, [item]: visivel }))
               }
             />
-          )}
-          {config.aplicacoes.length > 0 && (
-            <FiltroMultiSelect
-              rotulo="Aplicação"
-              opcoes={config.aplicacoes}
-              filtro={filtroAplicacoes}
-              onAlternar={(item, visivel) =>
-                setFiltroAplicacoes((atual) => ({ ...atual, [item]: visivel }))
-              }
-            />
-          )}
-          <FiltroMultiSelect
-            rotulo="Reembolso"
-            opcoes={[...config.comp.map((c) => c.nome), SEM_COMP]}
-            filtro={filtroComp}
-            onAlternar={(item, visivel) =>
-              setFiltroComp((atual) => ({ ...atual, [item]: visivel }))
-            }
-          />
-          <button
-            onClick={() => window.print()}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Imprimir
-          </button>
-          <button
-            onClick={handleCompartilhar}
-            disabled={compartilhando}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {compartilhando ? "Gerando..." : "Compartilhar"}
-          </button>
+            <button
+              onClick={() => window.print()}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              Imprimir
+            </button>
+            <button
+              onClick={handleCompartilhar}
+              disabled={compartilhando}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {compartilhando ? "Gerando..." : "Compartilhar"}
+            </button>
+          </div>
+
+          <SeletorMesAno ym={ym} onMudar={handleMudarMes} />
         </div>
 
-        <SeletorMesAno ym={ym} onMudar={handleMudarMes} />
-      </div>
-
-      <h1 className="mb-4 hidden text-lg font-semibold text-slate-900 print:block">
-        Relatório Modelo IV · {formatarMesAno(ym)}
-      </h1>
-
-      {carregando ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
-      ) : (
-        <>
-          {(config.resumosRelatorio.formaPagamento ||
+        {!carregando &&
+          (config.resumosRelatorio.formaPagamento ||
             config.resumosRelatorio.aplicacao ||
             config.resumosRelatorio.compartilhamento) && (
             <div className={`mb-6 grid grid-cols-1 gap-4 ${GRID_COLS_RESUMO[qtdResumosVisiveis]}`}>
@@ -203,7 +216,16 @@ export default function RelatorioModeloIV({ uid }: { uid: string }) {
               )}
             </div>
           )}
+      </div>
 
+      <h1 className="mb-4 hidden text-lg font-semibold text-slate-900 print:block">
+        Relatório Modelo IV · {formatarMesAno(ym)}
+      </h1>
+
+      {carregando ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
+      ) : (
+        <>
           <div className={`mb-6 ${CLASSE_CARD}`}>
             <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
               Top 10 · Lançamentos mais caros
