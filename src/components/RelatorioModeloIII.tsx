@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { assinarParcelasDoMes, valorEfetivo } from "@/lib/parcelas";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
-import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos } from "@/lib/config";
+import { assinarConfigListas, CONFIG_PADRAO, GRUPO_PROVISAO, gruposAtivos } from "@/lib/config";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { formatarDataBR, formatarMesAno, formatarMoeda } from "@/lib/date";
 import { CLASSE_CARD } from "@/lib/estilos";
@@ -19,13 +19,29 @@ const GRID_COLS_RESUMO: Record<number, string> = {
   3: "md:grid-cols-3",
 };
 
-export default function RelatorioModeloIII({ uid }: { uid: string }) {
+const MEDALHAS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+
+// Grupos de contas recorrentes/fixas — o Top 10 existe para destacar gastos avulsos
+// incomuns, então não faz sentido essas contas (que se repetem todo mês) nem provisões
+// (que não são gasto real) aparecerem no ranking.
+const GRUPOS_EXCLUIDOS_TOP10 = ["fixas", "fixa", "mensal", "mensais"];
+
+function elegivelParaTop10(p: Parcela): boolean {
+  return p.grupo !== GRUPO_PROVISAO && !GRUPOS_EXCLUIDOS_TOP10.includes(p.grupo.trim().toLowerCase());
+}
+
+function textoParcela(p: Parcela): string {
+  return p.recorrenciaId ? "Fixa" : `${p.parcelaNum}/${p.parcelaTotal}`;
+}
+
+export default function RelatorioModeloIII({ uid, stickyTop = 0 }: { uid: string; stickyTop?: number }) {
   const { ym, definirYm: setYm } = useMesAtual();
   const [parcelasReais, setParcelasReais] = useState<Parcela[]>([]);
   const [recorrencias, setRecorrencias] = useState<Recorrencia[]>([]);
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
   const [filtroGrupos, setFiltroGrupos] = useState<Record<string, boolean>>({});
   const [filtroComp, setFiltroComp] = useState<Record<string, boolean>>({});
+  const [filtroAplicacoes, setFiltroAplicacoes] = useState<Record<string, boolean>>({});
   const [carregando, setCarregando] = useState(true);
   const [compartilhando, setCompartilhando] = useState(false);
 
@@ -58,18 +74,27 @@ export default function RelatorioModeloIII({ uid }: { uid: string }) {
     () =>
       todasParcelas.filter(
         (p) =>
-          !p.pago &&
           !config.gruposInativosDesde?.[p.grupo] &&
           filtroGrupos[p.grupo] !== false &&
-          filtroComp[p.comp ?? SEM_COMP] !== false
+          filtroComp[p.comp ?? SEM_COMP] !== false &&
+          filtroAplicacoes[p.aplicacao] !== false
       ),
-    [todasParcelas, config.gruposInativosDesde, filtroGrupos, filtroComp]
+    [todasParcelas, config.gruposInativosDesde, filtroGrupos, filtroComp, filtroAplicacoes]
   );
 
   const porGrupo = useMemo(() => agrupar(parcelas, (p) => p.grupo), [parcelas]);
   const porAplicacao = useMemo(() => agrupar(parcelas, (p) => p.aplicacao), [parcelas]);
   const porComp = useMemo(() => agrupar(parcelas, (p) => p.comp), [parcelas]);
   const total = parcelas.reduce((s, p) => s + valorEfetivo(p), 0);
+
+  const top10 = useMemo(
+    () =>
+      parcelas
+        .filter(elegivelParaTop10)
+        .sort((a, b) => valorEfetivo(b) - valorEfetivo(a))
+        .slice(0, 10),
+    [parcelas]
+  );
 
   const qtdResumosVisiveis = [
     config.resumosRelatorio.formaPagamento,
@@ -97,14 +122,14 @@ export default function RelatorioModeloIII({ uid }: { uid: string }) {
       const lancamentos: LancamentoPdf[] = parcelas.map((p) => ({
         credor: p.credor,
         observacao: p.observacao ?? "",
-        parcela: p.recorrenciaId ? "Fixa" : p.parcelaTotal > 1 ? `${p.parcelaNum}/${p.parcelaTotal}` : "—",
+        parcela: textoParcela(p),
         data: p.dataCompra ? formatarDataBR(p.dataCompra) : "—",
         reembolso: p.comp ?? "",
         valor: p.valorParcela,
       }));
-      const titulo = `Relatório · Lançamentos não pagos · ${formatarMesAno(ym)}`;
+      const titulo = `Relatório Modelo III · ${formatarMesAno(ym)}`;
       const blob = gerarPdfRelatorio(titulo, resumos, lancamentos, total);
-      await compartilharPdf(blob, `relatorio-nao-pagos-${ym}.pdf`, titulo);
+      await compartilharPdf(blob, `relatorio-modelo-iii-${ym}.pdf`, titulo);
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
         console.error(err);
@@ -116,57 +141,63 @@ export default function RelatorioModeloIII({ uid }: { uid: string }) {
 
   return (
     <>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 print:hidden">
-        <div className="flex flex-wrap gap-2">
-          {gruposAtivos(config).length > 0 && (
+      {/* A caixa de filtros fica sticky dentro deste wrapper — ela gruda no topo enquanto os
+          quadrados de resumo (abaixo) ainda estão passando por trás dela e "solta" assim que o
+          wrapper termina, deixando o Top 10 rolar normalmente por cima. */}
+      <div>
+        <div
+          className="sticky z-30 mb-6 flex flex-wrap items-center justify-between gap-2 bg-background pb-2 print:hidden"
+          style={{ top: stickyTop }}
+        >
+          <div className="flex flex-wrap gap-2">
+            {gruposAtivos(config).length > 0 && (
+              <FiltroMultiSelect
+                rotulo="Grupo"
+                opcoes={gruposAtivos(config)}
+                filtro={filtroGrupos}
+                onAlternar={(item, visivel) =>
+                  setFiltroGrupos((atual) => ({ ...atual, [item]: visivel }))
+                }
+              />
+            )}
+            {config.aplicacoes.length > 0 && (
+              <FiltroMultiSelect
+                rotulo="Aplicação"
+                opcoes={config.aplicacoes}
+                filtro={filtroAplicacoes}
+                onAlternar={(item, visivel) =>
+                  setFiltroAplicacoes((atual) => ({ ...atual, [item]: visivel }))
+                }
+              />
+            )}
             <FiltroMultiSelect
-              rotulo="Grupo"
-              opcoes={gruposAtivos(config)}
-              filtro={filtroGrupos}
+              rotulo="Reembolso"
+              opcoes={[...config.comp.map((c) => c.nome), SEM_COMP]}
+              filtro={filtroComp}
               onAlternar={(item, visivel) =>
-                setFiltroGrupos((atual) => ({ ...atual, [item]: visivel }))
+                setFiltroComp((atual) => ({ ...atual, [item]: visivel }))
               }
             />
-          )}
-          <FiltroMultiSelect
-            rotulo="Reembolso"
-            opcoes={[...config.comp.map((c) => c.nome), SEM_COMP]}
-            filtro={filtroComp}
-            onAlternar={(item, visivel) =>
-              setFiltroComp((atual) => ({ ...atual, [item]: visivel }))
-            }
-          />
-          <button
-            onClick={() => window.print()}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            Imprimir
-          </button>
-          <button
-            onClick={handleCompartilhar}
-            disabled={compartilhando}
-            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {compartilhando ? "Gerando..." : "Compartilhar"}
-          </button>
+            <button
+              onClick={() => window.print()}
+              className="h-[42px] shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-200 dark:hover:bg-indigo-900"
+            >
+              Imprimir
+            </button>
+            <button
+              onClick={handleCompartilhar}
+              disabled={compartilhando}
+              className="h-[42px] shrink-0 rounded-lg border border-indigo-200 bg-indigo-50 px-3 text-sm font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-200 dark:hover:bg-indigo-900"
+            >
+              {compartilhando ? "Gerando..." : "Compartilhar"}
+            </button>
+          </div>
+
+          <SeletorMesAno ym={ym} onMudar={handleMudarMes} />
         </div>
 
-        <SeletorMesAno ym={ym} onMudar={handleMudarMes} />
-      </div>
-
-      <p className="mb-4 text-sm text-red-800 dark:text-red-400">
-        Este relatório traz apenas os lançamentos ainda não pagos no mês selecionado.
-      </p>
-
-      <h1 className="mb-4 hidden text-lg font-semibold text-slate-900 print:block">
-        Relatório · Lançamentos não pagos · {formatarMesAno(ym)}
-      </h1>
-
-      {carregando ? (
-        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
-      ) : (
-        <>
-          {(config.resumosRelatorio.formaPagamento ||
+        {!carregando &&
+          (config.resumosRelatorio.formaPagamento ||
             config.resumosRelatorio.aplicacao ||
             config.resumosRelatorio.compartilhamento) && (
             <div className={`mb-6 grid grid-cols-1 gap-4 ${GRID_COLS_RESUMO[qtdResumosVisiveis]}`}>
@@ -185,14 +216,71 @@ export default function RelatorioModeloIII({ uid }: { uid: string }) {
               )}
             </div>
           )}
+      </div>
+
+      <h1 className="mb-4 hidden text-lg font-semibold text-slate-900 print:block">
+        Relatório Modelo III · {formatarMesAno(ym)}
+      </h1>
+
+      {carregando ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
+      ) : (
+        <>
+          <div className={`mb-6 ${CLASSE_CARD}`}>
+            <h2 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Top 10 · Lançamentos mais caros
+            </h2>
+            {top10.length === 0 ? (
+              <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      <th className="py-2 pr-2"></th>
+                      <th className="w-14 py-2 text-center"></th>
+                      <th className="py-2 pr-2">Credor</th>
+                      <th className="py-2 pr-2">Observação</th>
+                      <th className="py-2 pr-2">Aplicação</th>
+                      <th className="py-2 pr-2">Parcela</th>
+                      <th className="py-2 pr-2">Reembolso</th>
+                      <th className="py-2 pr-2 text-right">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {top10.map((p, i) => {
+                      const posicao = i + 1;
+                      const medalha = MEDALHAS[posicao];
+                      return (
+                        <tr key={p.id}>
+                          <td className="py-2.5 pr-2 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">
+                            {posicao}°
+                          </td>
+                          <td className="w-14 py-2.5 text-center">{medalha ?? ""}</td>
+                          <td className="py-2.5 pr-2 font-medium text-slate-900 dark:text-slate-100">{p.credor}</td>
+                          <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.observacao || "—"}</td>
+                          <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.aplicacao}</td>
+                          <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{textoParcela(p)}</td>
+                          <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.comp ?? "—"}</td>
+                          <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
+                            {formatarMoeda(p.valorParcela)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           <div className={`hidden print:block ${CLASSE_CARD}`}>
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Lançamentos não pagos</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Todos os lançamentos</h2>
               <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatarMoeda(total)}</span>
             </div>
             {parcelas.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum lançamento não pago neste mês.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum lançamento neste mês.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -216,9 +304,7 @@ export default function RelatorioModeloIII({ uid }: { uid: string }) {
                           </p>
                         </td>
                         <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{p.observacao || "—"}</td>
-                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
-                          {p.recorrenciaId ? "Fixa" : p.parcelaTotal > 1 ? `${p.parcelaNum}/${p.parcelaTotal}` : "—"}
-                        </td>
+                        <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">{textoParcela(p)}</td>
                         <td className="py-2.5 pr-2 text-slate-600 dark:text-slate-400">
                           {p.dataCompra ? formatarDataBR(p.dataCompra) : "—"}
                         </td>

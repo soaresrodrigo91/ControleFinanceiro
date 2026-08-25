@@ -7,9 +7,8 @@ import { useAlturaSticky } from "@/lib/useAlturaSticky";
 import RelatorioModeloI from "@/components/RelatorioModeloI";
 import RelatorioModeloII from "@/components/RelatorioModeloII";
 import RelatorioModeloIII from "@/components/RelatorioModeloIII";
-import RelatorioModeloIV from "@/components/RelatorioModeloIV";
 
-type Aba = "modeloI" | "modeloII" | "modeloIII" | "modeloIV";
+type Aba = "modeloI" | "modeloII" | "modeloIII";
 
 export default function RelatoriosPage() {
   const { usuario } = useAuth();
@@ -31,16 +30,12 @@ export default function RelatoriosPage() {
           <Tab ativo={aba === "modeloIII"} onClick={() => setAba("modeloIII")}>
             Modelo III
           </Tab>
-          <Tab ativo={aba === "modeloIV"} onClick={() => setAba("modeloIV")}>
-            Modelo IV
-          </Tab>
         </Tabs>
       </div>
 
       {aba === "modeloI" && <RelatorioModeloI uid={usuario.uid} />}
       {aba === "modeloII" && <RelatorioModeloII uid={usuario.uid} />}
-      {aba === "modeloIII" && <RelatorioModeloIII uid={usuario.uid} />}
-      {aba === "modeloIV" && <RelatorioModeloIV uid={usuario.uid} stickyTop={tabsAltura} />}
+      {aba === "modeloIII" && <RelatorioModeloIII uid={usuario.uid} stickyTop={tabsAltura} />}
     </div>
   );
 }

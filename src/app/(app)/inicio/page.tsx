@@ -392,7 +392,7 @@ function DashboardConteudo() {
           espaço vertical suficiente — só o bloco acima (totais + grupos)
           fica fixo. Assim o mini-dashboard sempre pode ser alcançado rolando a tela. */}
       <div ref={refAreaDashboard} className="scroll-sem-barra lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-        <div className="mt-2 mb-2">
+        <div className="mt-1 mb-2">
           <div className="mb-1 flex justify-end">
             <button
               onClick={handleToggle12Meses}

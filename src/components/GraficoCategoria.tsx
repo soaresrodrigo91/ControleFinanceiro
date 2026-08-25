@@ -106,6 +106,7 @@ export function GraficoPizza({
 
 export function GraficoItem({
   titulo,
+  subtitulo,
   itens,
   tipoGrafico,
   formatarValor,
@@ -114,6 +115,7 @@ export function GraficoItem({
   modoCompacto = false,
 }: {
   titulo: string;
+  subtitulo?: string;
   itens: ItemGrafico[];
   tipoGrafico: "barra" | "pizza";
   formatarValor: (v: number) => string;
@@ -127,7 +129,12 @@ export function GraficoItem({
 
   return (
     <div className={`${CLASSE_CARD} flex flex-col`}>
-      <p className="mb-2 shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100">{titulo}</p>
+      <div className="mb-2 shrink-0">
+        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{titulo}</p>
+        <p className={`text-xs ${subtitulo ? "text-slate-500 dark:text-slate-400" : "invisible"}`}>
+          {subtitulo || " "}
+        </p>
+      </div>
       {itens.length === 0 ? (
         <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados para o mês.</p>
       ) : modoCompacto ? (

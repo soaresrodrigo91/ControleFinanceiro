@@ -15,7 +15,7 @@ export default function CampoCredor({
   onSelecionarSugestao,
 }: {
   id?: string;
-  label: string;
+  label?: string;
   value: string;
   onChange: (valor: string) => void;
   opcoes: string[];
@@ -39,9 +39,11 @@ export default function CampoCredor({
 
   return (
     <div className="relative">
-      <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor={id}>
-        {label}
-      </label>
+      {label && (
+        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor={id}>
+          {label}
+        </label>
+      )}
       <input
         id={id}
         type="text"
@@ -55,6 +57,7 @@ export default function CampoCredor({
         onBlur={() => setTimeout(() => setAberto(false), 150)}
         autoComplete="off"
         placeholder={placeholder}
+        aria-label={label ?? placeholder}
         className={CLASSE_INPUT}
       />
       {aberto && sugestoes.length > 0 && (
