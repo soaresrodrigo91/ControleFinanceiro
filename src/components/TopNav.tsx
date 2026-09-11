@@ -41,7 +41,7 @@ export default function TopNav() {
         <div className="ml-auto flex items-center gap-2">
           {usuario && <NotificacoesSino uid={usuario.uid} />}
           {usuario && <PerfilMenu uid={usuario.uid} />}
-          <BotaoSair className="rounded-lg px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" />
+          <BotaoSair className="rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950" />
         </div>
       </div>
     </header>

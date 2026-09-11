@@ -8,6 +8,7 @@ import { usePlano } from "@/contexts/PlanoContext";
 import { mensagemErroAuth } from "@/lib/authErrors";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_INPUT } from "@/lib/estilos";
 import AuthHeader from "@/components/AuthHeader";
+import CampoSenha from "@/components/CampoSenha";
 import ImagemFundoTela from "@/components/ImagemFundoTela";
 import ForcarTemaClaro from "@/components/ForcarTemaClaro";
 
@@ -99,9 +100,8 @@ export default function CadastroPage() {
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300" htmlFor="senha">
               Senha
             </label>
-            <input
+            <CampoSenha
               id="senha"
-              type="password"
               required
               minLength={6}
               autoComplete="new-password"
