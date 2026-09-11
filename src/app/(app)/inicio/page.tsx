@@ -50,7 +50,6 @@ function DashboardConteudo() {
 
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
   const [filtros, setFiltros] = useState<Record<string, boolean>>({});
-  const [gruposRevelados, setGruposRevelados] = useState<Record<string, boolean>>({});
   const [totaisVisiveis, setTotaisVisiveis] = useState(false);
   const [mostrar12Meses, setMostrar12Meses] = useState(true);
   const loginProcessadoRef = useRef<string | null>(null);
@@ -106,19 +105,14 @@ function DashboardConteudo() {
     loginProcessadoRef.current = usuario.uid;
     queueMicrotask(() => {
       const chaveNovoLogin = `authNovoLogin_${usuario.uid}`;
-      const chaveRevelados = `gruposRevelados_${usuario.uid}`;
       const ehNovoLogin = sessionStorage.getItem(chaveNovoLogin) === "true";
 
       if (ehNovoLogin) {
         sessionStorage.removeItem(chaveNovoLogin);
         sessionStorage.setItem(`totaisVisiveis_${usuario.uid}`, "false");
-        sessionStorage.setItem(chaveRevelados, "{}");
         setTotaisVisiveis(false);
-        setGruposRevelados({});
       } else {
         setTotaisVisiveis(sessionStorage.getItem(`totaisVisiveis_${usuario.uid}`) === "true");
-        const salvos = sessionStorage.getItem(chaveRevelados);
-        setGruposRevelados(salvos ? JSON.parse(salvos) : {});
       }
     });
   }, [usuario]);
@@ -168,12 +162,9 @@ function DashboardConteudo() {
   const filtrosEfetivos = useMemo(
     () =>
       Object.fromEntries(
-        config.grupos.map((g) => [
-          g,
-          listaGruposAtivos.includes(g) ? (gruposRevelados[g] ? filtros[g] : false) : false,
-        ])
+        config.grupos.map((g) => [g, listaGruposAtivos.includes(g) ? filtros[g] : false])
       ),
-    [config.grupos, listaGruposAtivos, filtros, gruposRevelados]
+    [config.grupos, listaGruposAtivos, filtros]
   );
 
   const todosGruposMarcados =
@@ -181,14 +172,6 @@ function DashboardConteudo() {
 
   function handleAlternarTodosGrupos(marcar: boolean) {
     if (!usuario) return;
-    setGruposRevelados((prev) => {
-      const novo = { ...prev };
-      listaGruposAtivos.forEach((g) => {
-        novo[g] = true;
-      });
-      sessionStorage.setItem(`gruposRevelados_${usuario.uid}`, JSON.stringify(novo));
-      return novo;
-    });
     listaGruposAtivos.forEach((g) => alternarFiltroGrupo(usuario.uid, g, marcar));
   }
 
@@ -370,14 +353,7 @@ function DashboardConteudo() {
                   <input
                     type="checkbox"
                     checked={visivel}
-                    onChange={(e) => {
-                      setGruposRevelados((prev) => {
-                        const novo = { ...prev, [grupo]: true };
-                        sessionStorage.setItem(`gruposRevelados_${usuario.uid}`, JSON.stringify(novo));
-                        return novo;
-                      });
-                      alternarFiltroGrupo(usuario.uid, grupo, e.target.checked);
-                    }}
+                    onChange={(e) => alternarFiltroGrupo(usuario.uid, grupo, e.target.checked)}
                     className="h-3.5 w-3.5 accent-indigo-600"
                   />
                   {grupo}

@@ -138,10 +138,10 @@ export async function atualizarRecorrenciaParcelaDesteMesEmDiante(
       batch.update(d.ref, {
         credor: dados.credor,
         observacao: dados.observacao,
-        valorParcela: dados.valorParcela,
-        valorTotal: dados.valorParcela,
         grupo: dados.grupo,
         aplicacao: dados.aplicacao,
+        // Parcela já paga: valor não é alterado retroativamente.
+        ...(p.pago ? {} : { valorParcela: dados.valorParcela, valorTotal: dados.valorParcela }),
       });
     }
   });
@@ -172,13 +172,14 @@ export async function atualizarRecorrenciaParcelaTudo(
   );
   const snapParcelas = await getDocs(q);
   snapParcelas.docs.forEach((d) => {
+    const p = d.data() as Parcela;
     batch.update(d.ref, {
       credor: dados.credor,
       observacao: dados.observacao,
-      valorParcela: dados.valorParcela,
-      valorTotal: dados.valorParcela,
       grupo: dados.grupo,
       aplicacao: dados.aplicacao,
+      // Parcela já paga: valor não é alterado retroativamente.
+      ...(p.pago ? {} : { valorParcela: dados.valorParcela, valorTotal: dados.valorParcela }),
     });
   });
   await batch.commit();

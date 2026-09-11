@@ -90,11 +90,9 @@ function FormularioEdicaoParcela({
   const [encerrando, setEncerrando] = useState(false);
   const campoValorRef = useRef<HTMLInputElement>(null);
 
-  const mostrarValorRestrito = parcela.provisao || !!parcela.recorrenciaId;
-
   useEffect(() => {
-    if (mostrarValorRestrito) campoValorRef.current?.focus();
-  }, [mostrarValorRestrito]);
+    if (camposLimitados && !parcela.pago) campoValorRef.current?.focus();
+  }, [camposLimitados, parcela.pago]);
 
   const gruposEditaveis = config.grupos.filter(
     (g) => (g !== GRUPO_FIXAS || g === dados.grupo) && (!config.gruposInativosDesde?.[g] || g === dados.grupo)
@@ -365,7 +363,7 @@ function FormularioEdicaoParcela({
           className={CLASSE_INPUT}
         />
       </div>
-      {mostrarValorRestrito && (
+      <div className={!camposLimitados ? "grid grid-cols-2 gap-3" : undefined}>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Valor (R$)</label>
           <input
@@ -373,23 +371,17 @@ function FormularioEdicaoParcela({
             type="number"
             step="0.01"
             value={dados.valorParcela}
+            disabled={parcela.pago}
             onChange={(e) => setDados({ ...dados, valorParcela: Number(e.target.value) })}
-            className={CLASSE_INPUT}
+            className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-60`}
           />
+          {parcela.pago && (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Lançamento já pago — não é possível alterar o valor.
+            </p>
+          )}
         </div>
-      )}
-      {!camposLimitados && (
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Valor (R$)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={dados.valorParcela}
-              onChange={(e) => setDados({ ...dados, valorParcela: Number(e.target.value) })}
-              className={CLASSE_INPUT}
-            />
-          </div>
+        {!camposLimitados && (
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Vencimento</label>
             <input
@@ -399,8 +391,8 @@ function FormularioEdicaoParcela({
               className={CLASSE_INPUT}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Grupo</label>
         <select
