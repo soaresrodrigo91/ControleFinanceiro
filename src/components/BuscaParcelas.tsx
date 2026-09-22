@@ -25,6 +25,7 @@ import Paginacao from "@/components/Paginacao";
 import ColunaOrdenavel from "@/components/ColunaOrdenavel";
 import Modal from "@/components/Modal";
 import { CLASSE_BOTAO_PRIMARIO } from "@/lib/estilos";
+import { corDoGrupo } from "@/lib/coresGrupos";
 import { paginar, totalDePaginas } from "@/lib/paginacao";
 import { ordenarParcelas, proximaOrdenacao, type OrdenacaoParcelas } from "@/lib/ordenacaoParcelas";
 import type { ConfigListas, LancamentoCompartilhado, Parcela, Recorrencia, VinculoCompartilhamento } from "@/lib/types";
@@ -443,7 +444,7 @@ export default function BuscaParcelas({
                           </span>
                         )}
                         <p className="flex items-center gap-1 truncate text-xs font-normal text-slate-500 dark:text-slate-400">
-                          {p.grupo}
+                          <span className={corDoGrupo(config.coresGrupos?.[p.grupo])?.classeTexto}>{p.grupo}</span>
                           {p.origemMobile && (
                             <span className="inline-flex items-center gap-0.5" title="Lançado pelo app mobile">
                               <span aria-hidden>·</span>

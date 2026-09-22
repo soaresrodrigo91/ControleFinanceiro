@@ -26,6 +26,8 @@ export type ResumosRelatorio = {
 
 export type LayoutMenu = "horizontal" | "vertical";
 
+export type CorGrupo = "roxo" | "vermelho" | "amarelo" | "laranja" | "verde" | "azul";
+
 export type ConfigListas = {
   aplicacoes: string[];
   grupos: string[];
@@ -37,6 +39,7 @@ export type ConfigListas = {
   observacoesListas?: { grupos?: Record<string, string>; aplicacoes?: Record<string, string> };
   gruposInativosDesde?: Record<string, string>;
   grupoFavorito?: string | null;
+  coresGrupos?: Record<string, CorGrupo>;
   layoutMenu?: LayoutMenu;
   compartilharLancamentos: boolean;
   tipoGraficoDashboard?: "pizza" | "barra";

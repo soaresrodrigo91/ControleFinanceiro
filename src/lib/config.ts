@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { afetaApartirDe } from "./recorrencias";
-import type { ConfigListas, LayoutMenu, ModoComp, Parcela, Recorrencia } from "./types";
+import type { ConfigListas, CorGrupo, LayoutMenu, ModoComp, Parcela, Recorrencia } from "./types";
 
 export type CampoLista = "grupos" | "aplicacoes";
 
@@ -224,6 +224,11 @@ export async function removerItemLista(uid: string, campo: CampoLista, item: str
   if (campo === "grupos" && dados?.grupoFavorito === item) {
     update.grupoFavorito = null;
   }
+  if (campo === "grupos" && dados?.coresGrupos?.[item]) {
+    const cores = { ...dados.coresGrupos };
+    delete cores[item];
+    update.coresGrupos = cores;
+  }
   await updateDoc(ref, update);
 }
 
@@ -233,6 +238,17 @@ export async function removerItemLista(uid: string, campo: CampoLista, item: str
 // usuário continua podendo escolher outro grupo na hora.
 export async function atualizarGrupoFavorito(uid: string, grupo: string | null) {
   await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { grupoFavorito: grupo });
+}
+
+// Cor do grupo usada só na lista de Contas a Pagar → Lançamentos (ver coresGrupos.ts);
+// null remove a cor e o grupo volta ao estilo padrão.
+export async function atualizarCorGrupo(uid: string, grupo: string, cor: CorGrupo | null) {
+  const ref = doc(db, "usuarios", uid, "config", "listas");
+  const snap = await getDoc(ref);
+  const atual = { ...((snap.data() as ConfigListas | undefined)?.coresGrupos ?? {}) };
+  if (cor) atual[grupo] = cor;
+  else delete atual[grupo];
+  await updateDoc(ref, { coresGrupos: atual });
 }
 
 export async function atualizarObservacaoItem(

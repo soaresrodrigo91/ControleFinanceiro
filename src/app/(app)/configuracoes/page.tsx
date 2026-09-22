@@ -8,6 +8,7 @@ import {
   alternarAtivoComp,
   ativarGrupo,
   assinarConfigListas,
+  atualizarCorGrupo,
   atualizarGrupoFavorito,
   atualizarItensPorPagina,
   atualizarLayoutMenu,
@@ -34,9 +35,10 @@ import CompartilharLancamentosCard from "@/components/config/CompartilharLancame
 import { mensagemErroAuth } from "@/lib/authErrors";
 import { IconBalao, IconCadeado, IconEstrela, IconOlho, IconOlhoFechado } from "@/components/action-icons";
 import Modal from "@/components/Modal";
+import { CORES_GRUPO, corDoGrupo } from "@/lib/coresGrupos";
 import { useTheme } from "@/contexts/ThemeContext";
 import { usePlano } from "@/contexts/PlanoContext";
-import type { ConfigListas, ModoComp } from "@/lib/types";
+import type { ConfigListas, CorGrupo, ModoComp } from "@/lib/types";
 
 const SECOES: { campo: CampoLista; titulo: string; ajuda: string }[] = [
   { campo: "grupos", titulo: "Grupos", ajuda: "Ex.: Fixas, Cartão de Crédito, Provisões" },
@@ -345,6 +347,7 @@ export default function ConfiguracoesPage() {
                     ? (item) => atualizarGrupoFavorito(usuario.uid, config.grupoFavorito === item ? null : item)
                     : undefined
                 }
+                cores={secao.campo === "grupos" ? (config.coresGrupos ?? {}) : undefined}
               />
             ))}
           </div>
@@ -607,6 +610,7 @@ function ListaEditavel({
   inativos,
   favorito,
   aoAlternarFavorito,
+  cores,
 }: {
   uid: string;
   campo: CampoLista;
@@ -618,6 +622,7 @@ function ListaEditavel({
   inativos?: Record<string, string>;
   favorito?: string | null;
   aoAlternarFavorito?: (item: string) => void;
+  cores?: Record<string, CorGrupo>;
 }) {
   const [novoItem, setNovoItem] = useState("");
   const [novaObservacao, setNovaObservacao] = useState("");
@@ -632,6 +637,14 @@ function ListaEditavel({
   const [erroInativar, setErroInativar] = useState("");
   const [processandoInativar, setProcessandoInativar] = useState(false);
   const [avisoFavorito, setAvisoFavorito] = useState<string | null>(null);
+  const [escolhendoCorDe, setEscolhendoCorDe] = useState<string | null>(null);
+
+  async function handleEscolherCor(cor: CorGrupo | null) {
+    if (!escolhendoCorDe) return;
+    const grupo = escolhendoCorDe;
+    setEscolhendoCorDe(null);
+    await atualizarCorGrupo(uid, grupo, cor);
+  }
 
   useEffect(() => {
     if (!avisoFavorito) return;
@@ -778,6 +791,21 @@ function ListaEditavel({
                   <IconEstrela className="h-3.5 w-3.5" preenchida={favorito === item} />
                 </button>
               )}
+              {cores !== undefined && !inativoDesde && (
+                <button
+                  type="button"
+                  onClick={() => setEscolhendoCorDe(item)}
+                  title={`Cor do grupo na lista de lançamentos: ${corDoGrupo(cores[item])?.rotulo ?? "padrão"}`}
+                  aria-label={`Escolher cor de ${item}`}
+                  className="rounded-full p-1 hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  <span
+                    className={`block h-3 w-3 rounded-full ${
+                      corDoGrupo(cores[item])?.classeAmostra ?? "border border-slate-400 bg-slate-900 dark:bg-slate-100"
+                    }`}
+                  />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => abrirEdicaoObservacao(item)}
@@ -871,6 +899,50 @@ function ListaEditavel({
           <button onClick={handleSalvarObservacao} disabled={salvandoObservacao} className={CLASSE_BOTAO_PRIMARIO}>
             {salvandoObservacao ? "Salvando..." : "Salvar"}
           </button>
+        </div>
+      </Modal>
+
+      <Modal
+        aberto={!!escolhendoCorDe}
+        onFechar={() => setEscolhendoCorDe(null)}
+        titulo={`Cor de "${escolhendoCorDe ?? ""}"`}
+      >
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            A cor aparece no nome do grupo na lista de Contas a Pagar → Lançamentos.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {CORES_GRUPO.map((c) => {
+              const selecionada = escolhendoCorDe !== null && cores?.[escolhendoCorDe] === c.valor;
+              return (
+                <button
+                  key={c.valor}
+                  type="button"
+                  onClick={() => handleEscolherCor(c.valor)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
+                    selecionada
+                      ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950"
+                      : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  <span className={`h-3.5 w-3.5 rounded-full ${c.classeAmostra}`} />
+                  <span className={c.classeTexto}>{c.rotulo}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => handleEscolherCor(null)}
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm ${
+                escolhendoCorDe !== null && !cores?.[escolhendoCorDe]
+                  ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950"
+                  : "border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
+              }`}
+            >
+              <span className="h-3.5 w-3.5 rounded-full border border-slate-400 bg-slate-900 dark:bg-slate-100" />
+              Sem cor (padrão)
+            </button>
+          </div>
         </div>
       </Modal>
 

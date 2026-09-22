@@ -37,6 +37,9 @@ function LancarConteudo() {
   const modoCompartilhadosInicial = searchParams.get("modo") === "enviados" ? "enviados" : "recebidos";
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
   const [parcelasExistentes, setParcelasExistentes] = useState<Parcela[]>([]);
+  // Grupo escolhido no Novo lançamento: mantido enquanto o usuário estiver nesta tela (mesmo
+  // trocando de aba); ao sair e voltar, volta a valer o grupo favorito.
+  const [grupoLembrado, setGrupoLembrado] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!usuario) return;
@@ -122,6 +125,8 @@ function LancarConteudo() {
           config={config}
           parcelasExistentes={parcelasExistentes}
           observacaoObrigatoria
+          grupoLembrado={grupoLembrado}
+          onGrupoEscolhido={setGrupoLembrado}
           textoBotaoSalvar="Salvar"
           onSalvar={handleSalvarNovoLancamento}
         />

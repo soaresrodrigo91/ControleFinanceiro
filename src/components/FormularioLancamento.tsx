@@ -14,6 +14,8 @@ export default function FormularioLancamento({
   config,
   parcelasExistentes,
   grupoFixo,
+  grupoLembrado,
+  onGrupoEscolhido,
   desabilitarContaFixaEProvisao,
   ocultarDataCompra,
   pularVerificacaoDuplicata,
@@ -26,6 +28,8 @@ export default function FormularioLancamento({
   config: ConfigListas;
   parcelasExistentes: Parcela[];
   grupoFixo?: string;
+  grupoLembrado?: string;
+  onGrupoEscolhido?: (grupo: string) => void;
   desabilitarContaFixaEProvisao?: boolean;
   ocultarDataCompra?: boolean;
   pularVerificacaoDuplicata?: boolean;
@@ -44,7 +48,10 @@ export default function FormularioLancamento({
   const [valorPorParcela, setValorPorParcela] = useState(false);
   const [parcelaTotal, setParcelaTotal] = useState("1");
   const [comp, setComp] = useState("");
-  const [grupo, setGrupo] = useState(grupoFixo ?? "");
+  const [grupo, setGrupo] = useState(grupoFixo ?? grupoLembrado ?? "");
+  // Último grupo escolhido manualmente: vira o padrão dos próximos lançamentos (no lugar do
+  // favorito) até o usuário sair da tela — a página guarda esse valor via grupoLembrado.
+  const [grupoEscolhido, setGrupoEscolhido] = useState(grupoLembrado ?? "");
   const [aplicacao, setAplicacao] = useState("");
   const [contaFixa, setContaFixa] = useState(false);
   const [provisao, setProvisao] = useState(false);
@@ -74,7 +81,8 @@ export default function FormularioLancamento({
 
   // Pré-seleciona o grupo favorito (Configurações → Grupos → ⭐) assim que ele estiver
   // disponível, mas só enquanto o campo estiver vazio — não sobrepõe uma escolha manual do
-  // usuário nem o grupo fixo de fluxos como renegociação.
+  // usuário (que passa a ser o padrão até sair da tela) nem o grupo fixo de fluxos como
+  // renegociação.
   useEffect(() => {
     if (grupoFixo || grupo) return;
     if (config.grupoFavorito && gruposDisponiveis.includes(config.grupoFavorito)) {
@@ -166,7 +174,7 @@ export default function FormularioLancamento({
       setValorPorParcela(false);
       setParcelaTotal("1");
       setComp("");
-      if (!grupoFixo) setGrupo("");
+      if (!grupoFixo) setGrupo(grupoEscolhido);
       setAplicacao("");
       setContaFixa(false);
       setProvisao(false);
@@ -190,7 +198,7 @@ export default function FormularioLancamento({
     setValorPorParcela(false);
     setParcelaTotal("1");
     setComp("");
-    if (!grupoFixo) setGrupo("");
+    if (!grupoFixo) setGrupo(grupoEscolhido);
     setAplicacao("");
     setContaFixa(false);
     setProvisao(false);
@@ -387,7 +395,11 @@ export default function FormularioLancamento({
                 required
                 disabled={!!grupoFixo}
                 value={grupo}
-                onChange={(e) => setGrupo(e.target.value)}
+                onChange={(e) => {
+                  setGrupo(e.target.value);
+                  setGrupoEscolhido(e.target.value);
+                  onGrupoEscolhido?.(e.target.value);
+                }}
                 className={`${CLASSE_INPUT} h-[42px] disabled:cursor-not-allowed disabled:opacity-70`}
               >
                 <option value="" disabled>
