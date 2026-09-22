@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { hojeISO, somarMeses } from "@/lib/date";
 import { gruposAtivos } from "@/lib/config";
+import { corDoGrupo } from "@/lib/coresGrupos";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos";
 import CampoCredor from "@/components/CampoCredor";
 import CampoValorMonetario, { paraNumero } from "@/components/CampoValorMonetario";
@@ -400,13 +401,22 @@ export default function FormularioLancamento({
                   setGrupoEscolhido(e.target.value);
                   onGrupoEscolhido?.(e.target.value);
                 }}
-                className={`${CLASSE_INPUT} h-[42px] disabled:cursor-not-allowed disabled:opacity-70`}
+                className={`${CLASSE_INPUT} h-[42px] disabled:cursor-not-allowed disabled:opacity-70 ${
+                  grupoFixo ? "" : (corDoGrupo(config.coresGrupos?.[grupo])?.classeCampo ?? "")
+                }`}
               >
-                <option value="" disabled>
+                <option value="" disabled className="text-slate-900 dark:text-slate-100">
                   Selecione...
                 </option>
                 {gruposDisponiveis.map((g) => (
-                  <option key={g} value={g}>
+                  <option
+                    key={g}
+                    value={g}
+                    className={
+                      (grupoFixo ? undefined : corDoGrupo(config.coresGrupos?.[g])?.classeTexto) ??
+                      "text-slate-900 dark:text-slate-100"
+                    }
+                  >
                     {g}
                   </option>
                 ))}

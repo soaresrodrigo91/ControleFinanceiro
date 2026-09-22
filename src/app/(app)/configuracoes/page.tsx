@@ -795,7 +795,7 @@ function ListaEditavel({
                 <button
                   type="button"
                   onClick={() => setEscolhendoCorDe(item)}
-                  title={`Cor do grupo na lista de lançamentos: ${corDoGrupo(cores[item])?.rotulo ?? "padrão"}`}
+                  title={`Cor do grupo no Novo lançamento: ${corDoGrupo(cores[item])?.rotulo ?? "padrão"}`}
                   aria-label={`Escolher cor de ${item}`}
                   className="rounded-full p-1 hover:bg-slate-200 dark:hover:bg-slate-700"
                 >
@@ -909,7 +909,7 @@ function ListaEditavel({
       >
         <div className="flex flex-col gap-3">
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            A cor aparece no nome do grupo na lista de Contas a Pagar → Lançamentos.
+            A cor aparece no campo Grupo da tela de Novo lançamento.
           </p>
           <div className="flex flex-wrap gap-2">
             {CORES_GRUPO.map((c) => {
