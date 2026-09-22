@@ -168,13 +168,14 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo:
       "Lista, busca, filtra, edita e exclui os lançamentos já feitos, mês a mês.",
     regras: [
-      "É preciso marcar ao menos uma opção em Grupo para a lista aparecer — evita mostrar tudo de uma vez sem querer. Os filtros Aplicação, Reembolso, Provisão e Valor ficam sempre visíveis, mas só ficam ativos depois de marcar algum grupo (Aplicação e Reembolso desativam de novo se \"Provisão\" for marcado, já que provisão não usa esses filtros). Se todos os grupos forem desmarcados, \"Provisão\" também é desmarcado automaticamente, para não ficar um filtro marcado sem nenhum grupo selecionado.",
+      "É preciso marcar ao menos uma opção em Grupo para a lista aparecer — evita mostrar tudo de uma vez sem querer. Os filtros Aplicação, Reembolso, Provisão, Credor e Valor ficam sempre visíveis, mas só ficam ativos depois de marcar algum grupo (Aplicação e Reembolso desativam de novo se \"Provisão\" for marcado, já que provisão não usa esses filtros). Se todos os grupos forem desmarcados, \"Provisão\" também é desmarcado automaticamente, para não ficar um filtro marcado sem nenhum grupo selecionado.",
       "Os filtros de múltipla escolha (Grupo, Aplicação, Reembolso) mostram um rodapé fixo com o total de opções da lista, mesmo quando é preciso rolar para ver todas — assim fica claro que não falta nada, só está rolável.",
       "Contas fixas ainda não pagas no mês aparecem na lista mesmo sem ter um registro \"real\" no banco de dados ainda; editar ou excluir cria esse registro quando necessário.",
       "Excluir uma conta fixa oferece três alcances: apenas este mês, deste mês em diante, ou a recorrência inteira (com aviso extra, porque é irreversível).",
       "Excluir uma conta com reembolso vinculado também remove o(s) recebimento(s) gerado(s) por ela.",
       "Editar credor, grupo, aplicação ou observação de um lançamento parcelado pergunta se a alteração vale só para esta parcela ou para todas as parcelas do lançamento; para conta fixa, a mesma edição pergunta o alcance (apenas este mês, deste mês em diante, ou tudo, desde o início). Valor e vencimento continuam sempre específicos de cada parcela/mês, sem propagar.",
       "O filtro Valor aceita o valor exato do lançamento, já com máscara de R$ (separador de milhar e centavos automáticos).",
+      "O filtro Credor busca por parte do nome do credor, sem diferenciar maiúsculas/minúsculas nem acentos (ex.: \"mercado\" encontra \"Supermercado São João\"). Vale também quando \"Provisão\" está marcado.",
       "A coluna Aplicação aparece logo depois de Observação, mostrando a aplicação de cada lançamento sem precisar abrir para editar. A descrição abaixo do nome do credor mostra só o grupo (a aplicação já está na sua própria coluna, então não se repete ali).",
       "Lançamentos criados pelo app mobile mostram um ícone discreto de celular com a palavra \"Mobile\" ao lado do grupo, abaixo do nome do credor.",
       "Ao lado da quantidade de resultados e do total filtrado, aparece um total à parte, em vermelho, com a soma do que ainda não foi pago — só quando a lista tem pelo menos um lançamento pago e pelo menos um não pago; se todos estiverem pagos ou nenhum estiver pago, esse total extra não aparece (já que, nesses casos, ele seria igual a zero ou igual ao total geral).",
@@ -191,7 +192,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     imagem: "/ajuda/lancar-lista.png",
     imagemAlt: "Lista de lançamentos de Contas a Pagar com filtros",
     marcadores: [
-      { numero: 1, xPct: 10, yPct: 22.8, texto: "Filtros por grupo, aplicação, reembolso, provisão e valor." },
+      { numero: 1, xPct: 10, yPct: 22.8, texto: "Filtros por grupo, aplicação, reembolso, provisão, credor e valor." },
       { numero: 2, xPct: 84.4, yPct: 22.8, texto: "Navega entre os meses." },
       { numero: 3, xPct: 12, yPct: 30.3, texto: "Quantidade de resultados e soma dos valores filtrados." },
       {

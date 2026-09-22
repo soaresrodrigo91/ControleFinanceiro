@@ -37,6 +37,10 @@ function passaFiltroInclusivo(filtro: Record<string, boolean>, valor: string): b
   return filtro[valor] === true;
 }
 
+function normalizarBusca(texto: string): string {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
 export default function BuscaParcelas({
   uid,
   stickyTop = 0,
@@ -67,6 +71,7 @@ export default function BuscaParcelas({
   const [filtroComp, setFiltroComp] = useState<Record<string, boolean>>({});
   const [filtroProvisao, setFiltroProvisao] = useState(false);
   const [filtroValor, setFiltroValor] = useState("");
+  const [filtroCredor, setFiltroCredor] = useState("");
 
   const [ordenacao, setOrdenacao] = useState<OrdenacaoParcelas>(null);
 
@@ -178,6 +183,7 @@ export default function BuscaParcelas({
 
   const valorFiltroNum = filtroValor ? paraNumero(filtroValor) : null;
   const valorFiltroAtivo = valorFiltroNum !== null && !Number.isNaN(valorFiltroNum);
+  const credorBusca = normalizarBusca(filtroCredor);
 
   const parcelasFiltradas = useMemo(() => {
     if (filtroProvisao) {
@@ -185,6 +191,7 @@ export default function BuscaParcelas({
         if (!p.provisao) return false;
         if (!passaFiltroInclusivo(filtroGrupos, p.grupo)) return false;
         if (valorFiltroAtivo && Math.abs(p.valorParcela - (valorFiltroNum as number)) >= 0.005) return false;
+        if (credorBusca && !normalizarBusca(p.credor).includes(credorBusca)) return false;
         return true;
       });
     }
@@ -194,6 +201,7 @@ export default function BuscaParcelas({
       if (!passaFiltroInclusivo(filtroAplicacoes, p.aplicacao)) return false;
       if (!passaFiltroInclusivo(filtroComp, p.comp ?? SEM_COMP)) return false;
       if (valorFiltroAtivo && Math.abs(p.valorParcela - (valorFiltroNum as number)) >= 0.005) return false;
+      if (credorBusca && !normalizarBusca(p.credor).includes(credorBusca)) return false;
       return true;
     });
   }, [
@@ -205,6 +213,7 @@ export default function BuscaParcelas({
     filtroProvisao,
     valorFiltroNum,
     valorFiltroAtivo,
+    credorBusca,
   ]);
 
   const total = parcelasFiltradas.reduce((s, p) => s + p.valorParcela, 0);
@@ -222,7 +231,7 @@ export default function BuscaParcelas({
   }
 
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const chavePaginacao = `${ym}|${JSON.stringify(filtroGrupos)}|${JSON.stringify(filtroAplicacoes)}|${JSON.stringify(filtroComp)}|${filtroProvisao}|${filtroValor}`;
+  const chavePaginacao = `${ym}|${JSON.stringify(filtroGrupos)}|${JSON.stringify(filtroAplicacoes)}|${JSON.stringify(filtroComp)}|${filtroProvisao}|${filtroValor}|${credorBusca}`;
   const [chavePaginacaoAnterior, setChavePaginacaoAnterior] = useState(chavePaginacao);
   if (chavePaginacao !== chavePaginacaoAnterior) {
     setChavePaginacaoAnterior(chavePaginacao);
@@ -305,6 +314,22 @@ export default function BuscaParcelas({
               />
               Provisão
             </label>
+            <div
+              className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600 ${
+                algumFormaMarcada ? "" : "opacity-50"
+              }`}
+            >
+              <span className="text-slate-500 dark:text-slate-400">Credor</span>
+              <input
+                type="text"
+                value={filtroCredor}
+                onChange={(e) => setFiltroCredor(e.target.value)}
+                disabled={!algumFormaMarcada}
+                placeholder="Buscar"
+                aria-label="Filtrar por credor"
+                className="w-28 border-none bg-transparent p-0 text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
             <div
               className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600 ${
                 algumFormaMarcada ? "" : "opacity-50"
