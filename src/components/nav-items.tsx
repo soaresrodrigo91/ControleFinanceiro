@@ -38,6 +38,15 @@ function IconRelatorios(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+function IconPlanoFinanceiro(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5H12Z" strokeLinejoin="round" />
+      <path d="M15 3.9A8.5 8.5 0 0 1 20.1 9H15Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function IconAnalytics(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} {...props}>
@@ -91,6 +100,7 @@ export const NAV_ITEMS = [
   { href: "/lancar", rotulo: "Contas a Pagar", Icone: IconLancar, premium: false },
   { href: "/receber", rotulo: "Contas a Receber", Icone: IconReceber, premium: false },
   { href: "/relatorios", rotulo: "Relatórios", Icone: IconRelatorios, premium: true },
+  { href: "/plano-financeiro", rotulo: "Plano Financeiro", Icone: IconPlanoFinanceiro, premium: false },
   { href: "/dashboard", rotulo: "Dashboard", Icone: IconAnalytics, premium: true },
   { href: "/plano", rotulo: "Plano", Icone: IconPlano, premium: false },
   { href: "/configuracoes", rotulo: "Configurações", Icone: IconConfiguracoes, premium: false },

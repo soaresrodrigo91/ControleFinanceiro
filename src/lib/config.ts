@@ -224,6 +224,11 @@ export async function removerItemLista(uid: string, campo: CampoLista, item: str
   if (campo === "grupos" && dados?.grupoFavorito === item) {
     update.grupoFavorito = null;
   }
+  if (campo === "aplicacoes" && dados?.planoFinanceiro?.distribuicao?.[item] !== undefined) {
+    const distribuicao = { ...dados.planoFinanceiro.distribuicao };
+    delete distribuicao[item];
+    update.planoFinanceiro = { ...dados.planoFinanceiro, distribuicao };
+  }
   if (campo === "grupos" && dados?.coresGrupos?.[item]) {
     const cores = { ...dados.coresGrupos };
     delete cores[item];

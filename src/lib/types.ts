@@ -28,6 +28,16 @@ export type LayoutMenu = "horizontal" | "vertical";
 
 export type CorGrupo = "roxo" | "vermelho" | "amarelo" | "laranja" | "verde" | "azul";
 
+export type ModoPlanoFinanceiro = "percentual" | "valor";
+
+// Distribuição do valor a receber entre as Aplicações (tela Plano Financeiro). Em
+// "percentual" cada número é o % do valor a receber do mês; em "valor", um valor fixo em R$.
+// Aplicação ausente em `distribuicao` vale 0.
+export type PlanoFinanceiro = {
+  modo: ModoPlanoFinanceiro;
+  distribuicao: Record<string, number>;
+};
+
 export type ConfigListas = {
   aplicacoes: string[];
   grupos: string[];
@@ -45,6 +55,7 @@ export type ConfigListas = {
   tipoGraficoDashboard?: "pizza" | "barra";
   mostrarDashboardInicio?: boolean;
   mostrarSubtotalProvisaoInicio?: boolean;
+  planoFinanceiro?: PlanoFinanceiro;
 };
 
 export type Parcela = {

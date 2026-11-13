@@ -5,7 +5,8 @@ import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
 import { gruposAtivos } from "@/lib/config";
 import { assinarRecebimentosDoIntervalo } from "@/lib/recebimentos";
-import { assinarRecorrencias, ativaNoMes, mesclarComRecorrencias, valorNoMes } from "@/lib/recorrencias";
+import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
+import { calcularAReceberPorMes } from "@/lib/planoFinanceiro";
 import { formatarMesAnoAbreviado, formatarMoeda, somarMesesYM } from "@/lib/date";
 import type { ConfigListas, Parcela, Recebimento, Recorrencia, StatusGrupo } from "@/lib/types";
 
@@ -73,42 +74,10 @@ export default function VisaoGeral13Meses({
     return mapa;
   }, [parcelas, recorrencias, meses]);
 
-  const aReceberPorMes = useMemo(() => {
-    const modoPorNomeComp = Object.fromEntries((config.comp ?? []).map((c) => [c.nome, c.modo]));
-    const mapa = new Map<string, number>();
-    for (const mes of meses) {
-      const reaisDoMes = recebimentos.filter((r) => r.recebimento.slice(0, 7) === mes);
-      let total = reaisDoMes.reduce((s, r) => s + r.valor, 0);
-
-      // Recorrências "receber" (contas fixas a receber) ainda não materializadas neste mês.
-      const idsJaMaterializados = new Set(
-        reaisDoMes.filter((r) => r.recorrenciaId).map((r) => r.recorrenciaId)
-      );
-      for (const rec of recorrenciasReceber) {
-        if (ativaNoMes(rec, mes) && !idsJaMaterializados.has(rec.id)) {
-          total += valorNoMes(rec, mes);
-        }
-      }
-
-      // Reembolsos de recorrências "pagar" com reembolso configurado, ainda não materializados
-      // neste mês (o materializado só acontece quando o usuário abre aquele mês específico —
-      // aqui calculamos a projeção sem depender disso).
-      const lancamentosComReembolsoJaMaterializados = new Set(
-        reaisDoMes.filter((r) => r.origemComp).map((r) => r.lancamentoId)
-      );
-      for (const rec of recorrencias) {
-        if (!rec.comp || !ativaNoMes(rec, mes)) continue;
-        if (lancamentosComReembolsoJaMaterializados.has(rec.id)) continue;
-        const modo = modoPorNomeComp[rec.comp];
-        if (!modo || modo === "nenhum") continue;
-        const valor = valorNoMes(rec, mes);
-        total += modo === "metade" ? valor / 2 : valor;
-      }
-
-      mapa.set(mes, total);
-    }
-    return mapa;
-  }, [recebimentos, recorrenciasReceber, recorrencias, config.comp, meses]);
+  const aReceberPorMes = useMemo(
+    () => calcularAReceberPorMes(meses, recebimentos, recorrenciasReceber, recorrencias, config.comp ?? []),
+    [recebimentos, recorrenciasReceber, recorrencias, config.comp, meses]
+  );
 
   const subtotalGastosPorMes = useMemo(() => {
     const mapa = new Map<string, number>();
