@@ -9,7 +9,7 @@ import { assinarRecebimentosDoIntervalo } from "@/lib/recebimentos";
 import { assinarRecorrencias } from "@/lib/recorrencias";
 import {
   arredondar2,
-  calcularAReceberPorMes,
+  calcularAReceberProprioPorMes,
   calcularGastosPorAplicacaoEMes,
   limiteNoMes,
   planoFinanceiroDaConfig,
@@ -149,13 +149,13 @@ export default function PlanoFinanceiroPage() {
   );
 
   const aReceberPorMes = useMemo(
-    () => calcularAReceberPorMes(meses, recebimentos, recorrenciasReceber, recorrenciasPagar, config.comp ?? []),
-    [meses, recebimentos, recorrenciasReceber, recorrenciasPagar, config.comp]
+    () => calcularAReceberProprioPorMes(meses, recebimentos, recorrenciasReceber),
+    [meses, recebimentos, recorrenciasReceber]
   );
 
   const gastosPorAplicacao = useMemo(
-    () => calcularGastosPorAplicacaoEMes(meses, parcelas, recorrenciasPagar),
-    [meses, parcelas, recorrenciasPagar]
+    () => calcularGastosPorAplicacaoEMes(meses, parcelas, recorrenciasPagar, config.comp ?? []),
+    [meses, parcelas, recorrenciasPagar, config.comp]
   );
 
   const aReceberMesAtual = aReceberPorMes.get(ym) ?? 0;
@@ -283,7 +283,7 @@ export default function PlanoFinanceiroPage() {
             {aplicacoes.length} {aplicacoes.length === 1 ? "Aplicação" : "Aplicações"} · {qtdComValor} com limite
           </span>
           <span className="text-sm text-slate-500 dark:text-slate-400">
-            A receber em {formatarMesAno(ym)}:{" "}
+            A receber em {formatarMesAno(ym)} (sem reembolsos):{" "}
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatarMoeda(aReceberMesAtual)}</span>
           </span>
           <span className="text-sm text-slate-500 dark:text-slate-400">
@@ -506,57 +506,18 @@ export default function PlanoFinanceiroPage() {
                 );
               })}
 
-              {linhas.length > 0 && (
-                <>
-                <tr className="border-t border-slate-200 dark:border-slate-700">
-                  <td className="sticky left-0 z-10 bg-white px-2 py-2 font-semibold text-slate-900 md:static dark:bg-slate-800 dark:text-slate-100">
-                    Total
-                  </td>
-                  {meses.map((mes, indice) => {
-                    const gasto = linhas.reduce((s, a) => s + (gastosPorAplicacao.get(a)?.get(mes) ?? 0), 0);
-                    const limite = linhas.reduce((s, a) => s + limiteDe(a, mes), 0);
-                    return (
-                      <CelulaAplicacao
-                        key={mes}
-                        className={`${classeColunaMes(indice, mes)} font-semibold`}
-                        gasto={gasto}
-                        limite={limite}
-                      />
-                    );
-                  })}
-                </tr>
-                <tr>
-                  <td className="sticky left-0 z-10 bg-white px-2 py-2 md:static dark:bg-slate-800">
-                    <span className="block text-xs font-medium text-slate-500 dark:text-slate-400">Não distribuído</span>
-                  </td>
-                  {meses.map((mes, indice) => {
-                    const sobra = (aReceberPorMes.get(mes) ?? 0) - linhas.reduce((s, a) => s + limiteDe(a, mes), 0);
-                    return (
-                      <td
-                        key={mes}
-                        className={`${classeColunaMes(indice, mes)} text-xs ${
-                          sobra < -0.004 ? "text-red-500 dark:text-red-400" : "text-slate-500 dark:text-slate-400"
-                        }`}
-                        title={sobra < -0.004 ? "O plano deste mês passa do valor a receber" : undefined}
-                      >
-                        {formatarMoeda(sobra)}
-                      </td>
-                    );
-                  })}
-                </tr>
-                </>
-              )}
             </tbody>
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-slate-100 px-2 py-1.5 text-[11px] text-slate-400 dark:border-slate-700 dark:text-slate-500">
           <span>
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Verde</span>: ainda pode gastar
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Verde</span>: gasto dentro do limite
           </span>
           <span>
-            <span className="font-semibold text-red-500 dark:text-red-400">Vermelho</span>: valor que estourou o limite
+            <span className="font-semibold text-red-500 dark:text-red-400">Vermelho</span>: gasto acima do limite
           </span>
-          <span>Abaixo: gasto / limite</span>
+          <span>Abaixo: quanto sobrou (+) ou estourou (−) do limite</span>
+          <span>Só a sua parte — reembolsos descontados</span>
           <span className="md:hidden">Arraste para o lado para ver o mês anterior/seguinte</span>
         </div>
       </div>
@@ -564,8 +525,8 @@ export default function PlanoFinanceiroPage() {
   );
 }
 
-// Célula de uma Aplicação num mês: em destaque o saldo (limite − gasto) — verde enquanto
-// ainda há folga, vermelho com o valor que passou quando estoura — e, embaixo, gasto / limite.
+// Célula de uma Aplicação num mês: em destaque o que foi gasto — verde dentro do limite,
+// vermelho quando passa dele — e, embaixo, quanto sobrou ou estourou do limite.
 function CelulaAplicacao({ gasto, limite, className }: { gasto: number; limite: number; className: string }) {
   if (gasto === 0 && limite === 0) {
     return <td className={`${className} text-slate-400 dark:text-slate-500`}>—</td>;
@@ -586,10 +547,15 @@ function CelulaAplicacao({ gasto, limite, className }: { gasto: number; limite: 
           estourou ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
         }`}
       >
-        {formatarMoeda(saldo)}
+        {formatarMoeda(gasto)}
       </span>
-      <span className="block text-[10px] leading-tight text-slate-400 dark:text-slate-500">
-        {formatarMoeda(gasto)} / {formatarMoeda(limite)}
+      <span
+        className={`block text-center text-[10px] leading-tight ${
+          estourou ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+        }`}
+      >
+        {estourou ? "−" : "+"}
+        {formatarMoeda(Math.abs(saldo))}
       </span>
     </td>
   );

@@ -69,18 +69,50 @@ export function calcularAReceberPorMes(
   return mapa;
 }
 
-// Gasto por Aplicação em cada mês (parcelas reais + recorrências a pagar projetadas).
+// Valor a receber que é de fato do usuário em cada mês (usado no Plano Financeiro):
+// recebimentos lançados + recorrências a receber ainda não materializadas, SEM os reembolsos
+// (recebimentos gerados por lançamentos com reembolso e reembolsos previstos de recorrências),
+// já que esse dinheiro só devolve o que foi pago por outra pessoa.
+export function calcularAReceberProprioPorMes(
+  meses: string[],
+  recebimentos: Recebimento[],
+  recorrenciasReceber: Recorrencia[]
+): Map<string, number> {
+  return calcularAReceberPorMes(
+    meses,
+    recebimentos.filter((r) => !r.origemComp),
+    recorrenciasReceber,
+    [],
+    []
+  );
+}
+
+// Parte do lançamento que é do próprio usuário, conforme o modo do reembolso: "total" (100%)
+// não é dele, "metade" (50%) só metade é dele, sem reembolso (ou "nenhum") é todo dele.
+export function valorProprio(p: Parcela, modoPorNomeComp: Record<string, ItemComp["modo"]>): number {
+  const modo = p.comp ? modoPorNomeComp[p.comp] : undefined;
+  if (modo === "total") return 0;
+  if (modo === "metade") return valorEfetivo(p) / 2;
+  return valorEfetivo(p);
+}
+
+// Gasto próprio por Aplicação em cada mês (parcelas reais + recorrências a pagar projetadas),
+// já descontada a parte que será reembolsada (ver valorProprio).
 export function calcularGastosPorAplicacaoEMes(
   meses: string[],
   parcelas: Parcela[],
-  recorrenciasPagar: Recorrencia[]
+  recorrenciasPagar: Recorrencia[],
+  comp: ItemComp[]
 ): Map<string, Map<string, number>> {
+  const modoPorNomeComp = Object.fromEntries(comp.map((c) => [c.nome, c.modo]));
   const mapa = new Map<string, Map<string, number>>();
   for (const mes of meses) {
     const parcelasReaisDoMes = parcelas.filter((p) => p.vencimento.slice(0, 7) === mes);
     for (const p of mesclarComRecorrencias(parcelasReaisDoMes, recorrenciasPagar, mes)) {
+      const valor = valorProprio(p, modoPorNomeComp);
+      if (valor <= 0) continue;
       const porMes = mapa.get(p.aplicacao) ?? new Map<string, number>();
-      porMes.set(mes, (porMes.get(mes) ?? 0) + valorEfetivo(p));
+      porMes.set(mes, (porMes.get(mes) ?? 0) + valor);
       mapa.set(p.aplicacao, porMes);
     }
   }
