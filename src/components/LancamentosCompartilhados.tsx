@@ -39,6 +39,9 @@ import type {
   VinculoCompartilhamento,
 } from "@/lib/types";
 
+// Grupo sugerido por padrão ao lançar em Contas a Pagar um lançamento recebido.
+const GRUPO_PADRAO_RECEBIDOS = "Outros";
+
 function parcelaDaParcela(p: Parcela): string {
   if (p.recorrenciaId) return "Fixa";
   return `${p.parcelaNum}/${p.parcelaTotal}`;
@@ -868,10 +871,13 @@ function AbaRecebidos({
     [config.aplicacoes, aplicacoesExtras]
   );
 
-  // Valor efetivo da célula Grupo — vazio (vermelho) até o usuário escolher, já que não existe
-  // sugestão de grupo vinda de quem enviou.
+  // Valor efetivo da célula Grupo — como quem enviou não sugere grupo, cai por padrão em
+  // "Outros" (quando esse grupo existe e está ativo para o usuário); o usuário pode trocar
+  // na própria célula. Sem "Outros" disponível, fica vazio (vermelho) até ele escolher.
   function grupoValor(grupoOrigemId: string): string {
-    return escolhas[grupoOrigemId]?.grupo ?? "";
+    const escolha = escolhas[grupoOrigemId]?.grupo;
+    if (escolha !== undefined) return escolha;
+    return gruposDisponiveis.includes(GRUPO_PADRAO_RECEBIDOS) ? GRUPO_PADRAO_RECEBIDOS : "";
   }
 
   // Valor efetivo da célula Aplicação — cai pra sugestão de quem enviou automaticamente
