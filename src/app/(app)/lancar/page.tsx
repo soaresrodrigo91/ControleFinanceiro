@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMesAtual } from "@/contexts/MesAtualContext";
 import { assinarConfigListas, CONFIG_PADRAO } from "@/lib/config";
 import { assinarTodasParcelas, criarLancamento } from "@/lib/parcelas";
 import { criarRecorrencia } from "@/lib/recorrencias";
@@ -34,12 +35,23 @@ function LancarConteudo() {
     abaUrl === "buscar" ? "buscar" : abaUrl === "compartilhados" ? "compartilhados" : "novo"
   );
   const grupoInicial = searchParams.get("grupo") ?? undefined;
+  const aplicacaoInicial = searchParams.get("aplicacao") ?? undefined;
+  const todosGruposInicial = searchParams.get("todosGrupos") === "1";
+  const mesUrl = searchParams.get("mes");
+  const { definirYm } = useMesAtual();
   const modoCompartilhadosInicial = searchParams.get("modo") === "enviados" ? "enviados" : "recebidos";
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
   const [parcelasExistentes, setParcelasExistentes] = useState<Parcela[]>([]);
   // Grupo escolhido no Novo lançamento: mantido enquanto o usuário estiver nesta tela (mesmo
   // trocando de aba); ao sair e voltar, volta a valer o grupo favorito.
   const [grupoLembrado, setGrupoLembrado] = useState<string | undefined>(undefined);
+
+  // Mês vindo na URL (ex.: link do Plano Financeiro): passa a ser o mês selecionado desta aba.
+  useEffect(() => {
+    if (!usuario || !mesUrl || !/^\d{4}-\d{2}$/.test(mesUrl)) return;
+    definirYm(mesUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usuario, mesUrl]);
 
   useEffect(() => {
     if (!usuario) return;
@@ -99,7 +111,13 @@ function LancarConteudo() {
 
       {aba === "buscar" ? (
         usuario && (
-          <BuscaParcelas uid={usuario.uid} stickyTop={tabsAltura} grupoInicial={grupoInicial} />
+          <BuscaParcelas
+            uid={usuario.uid}
+            stickyTop={tabsAltura}
+            grupoInicial={grupoInicial}
+            aplicacaoInicial={aplicacaoInicial}
+            todosGruposInicial={todosGruposInicial}
+          />
         )
       ) : aba === "compartilhados" && config.compartilharLancamentos ? (
         usuario && (

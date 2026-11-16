@@ -56,6 +56,18 @@ function formatarPercentual(valor: number): string {
   return `${arredondar2(valor).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
 }
 
+// Aplicação de reserva (nome começando com "Reserva"): é dinheiro que o usuário deposita para
+// si mesmo, não um gasto — por isso a lógica de cor é invertida: fica verde ao depositar a meta
+// configurada (ou mais) e vermelho enquanto o depositado estiver abaixo dela.
+function ehReserva(aplicacao: string): boolean {
+  return aplicacao
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .startsWith("reserva");
+}
+
 function rascunhoDoPlano(plano: PlanoFinanceiro, aplicacoes: string[]): Rascunho {
   return {
     modo: plano.modo,
@@ -125,6 +137,12 @@ export default function PlanoFinanceiroPage() {
 
   const planoSalvo = planoFinanceiroDaConfig(config);
   const aplicacoes = config.aplicacoes;
+  // Na Distribuição do valor a receber, as Aplicações aparecem sempre em ordem alfabética —
+  // inclusive as recém-criadas, que entram no lugar certo da lista.
+  const aplicacoesEmOrdemAlfabetica = useMemo(
+    () => [...aplicacoes].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" })),
+    [aplicacoes]
+  );
   const configAberta = configAbertaSalva ?? (configCarregada && Object.keys(planoSalvo.distribuicao).length === 0);
 
   function alternarConfigAberta() {
@@ -165,18 +183,30 @@ export default function PlanoFinanceiroPage() {
   const limiteDistribuicao = modo === "percentual" ? 100 : arredondar2(aReceberMesAtual);
   const excedeu = totalDistribuido > limiteDistribuicao;
   const restante = arredondar2(limiteDistribuicao - totalDistribuido);
+  // Verde: ainda há saldo a distribuir; vermelho: excedeu; cor normal: distribuído por completo.
+  const corSaldo = excedeu
+    ? "text-red-600 dark:text-red-400"
+    : restante > 0
+      ? "text-emerald-600 dark:text-emerald-400"
+      : "text-slate-900 dark:text-slate-100";
 
   const formatarNoModo = (valor: number) => (modo === "percentual" ? formatarPercentual(valor) : formatarMoeda(valor));
 
   // Linhas da tabela: só as Aplicações com algum lançamento em Contas a Pagar dentro da
-  // Janela de 10 meses — primeiro as cadastradas, na ordem da lista, depois as que não estão
+  // Janela de 10 meses — primeiro as cadastradas, em ordem alfabética, depois as que não estão
   // mais na lista (ex.: removidas), que ficam com limite 0.
+  // A reserva aparece também sem nenhum depósito, desde que tenha meta configurada — é
+  // justamente quando nada foi depositado que ela precisa ficar vermelha.
   const linhas = useMemo(() => {
-    const temGasto = (a: string) => [...(gastosPorAplicacao.get(a)?.values() ?? [])].some((v) => v > 0);
-    const cadastradas = aplicacoes.filter(temGasto);
-    const extras = [...gastosPorAplicacao.keys()].filter((a) => !aplicacoes.includes(a) && temGasto(a)).sort();
+    const temGasto = (a: string) =>
+      [...(gastosPorAplicacao.get(a)?.values() ?? [])].some((v) => v > 0) ||
+      (ehReserva(a) && (distribuicaoEfetiva[a] ?? 0) > 0);
+    const cadastradas = aplicacoesEmOrdemAlfabetica.filter(temGasto);
+    const extras = [...gastosPorAplicacao.keys()]
+      .filter((a) => !aplicacoes.includes(a) && temGasto(a))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }));
     return [...cadastradas, ...extras];
-  }, [aplicacoes, gastosPorAplicacao]);
+  }, [aplicacoes, aplicacoesEmOrdemAlfabetica, gastosPorAplicacao, distribuicaoEfetiva]);
 
   function limiteDe(aplicacao: string, mes: string): number {
     return limiteNoMes(modo, distribuicaoEfetiva[aplicacao] ?? 0, aReceberPorMes.get(mes) ?? 0);
@@ -288,7 +318,7 @@ export default function PlanoFinanceiroPage() {
           </span>
           <span className="text-sm text-slate-500 dark:text-slate-400">
             Distribuído:{" "}
-            <span className={`font-semibold ${excedeu ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-slate-100"}`}>
+            <span className={`font-semibold ${corSaldo}`}>
               {formatarNoModo(totalDistribuido)}
             </span>{" "}
             de {formatarNoModo(limiteDistribuicao)}
@@ -335,7 +365,7 @@ export default function PlanoFinanceiroPage() {
               // auto-fill: a quantidade de colunas acompanha a largura da tela (1 no celular, várias
               // em monitores largos) e a lista rola dentro do quadro quando há muitas Aplicações.
               <div className="grid max-h-[50vh] grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-x-3 gap-y-2 overflow-y-auto pr-1">
-                {aplicacoes.map((aplicacao) => {
+                {aplicacoesEmOrdemAlfabetica.map((aplicacao) => {
                   const valorNum = distribuicaoEfetiva[aplicacao] ?? 0;
                   const equivalente =
                     modo === "percentual"
@@ -390,12 +420,15 @@ export default function PlanoFinanceiroPage() {
               <div className="text-sm">
                 <p className="text-slate-600 dark:text-slate-300">
                   Distribuído:{" "}
-                  <span className={`font-semibold ${excedeu ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-slate-100"}`}>
+                  <span className={`font-semibold ${corSaldo}`}>
                     {formatarNoModo(totalDistribuido)}
                   </span>{" "}
                   de {formatarNoModo(limiteDistribuicao)}
                   {!excedeu && (
-                    <span className="text-slate-500 dark:text-slate-400"> · Falta distribuir {formatarNoModo(restante)}</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      {" "}
+                      · Falta distribuir <span className={`font-semibold ${corSaldo}`}>{formatarNoModo(restante)}</span>
+                    </span>
                   )}
                 </p>
                 {excedeu && (
@@ -484,14 +517,24 @@ export default function PlanoFinanceiroPage() {
               {linhas.map((aplicacao) => {
                 const configurado = distribuicaoEfetiva[aplicacao] ?? 0;
                 const foraDaLista = !aplicacoes.includes(aplicacao);
+                // Tem lançamento na janela (senão nem viraria linha) mas nenhum limite/meta
+                // configurado: nome em laranja para chamar atenção.
+                const semLimite = configurado <= 0;
                 return (
                   <tr key={aplicacao} className="border-b border-slate-100 dark:border-slate-700">
                     <td className="sticky left-0 z-10 bg-white px-2 py-2 md:static dark:bg-slate-800">
-                      <span className="block break-words font-semibold leading-tight text-slate-900 dark:text-slate-100">
+                      <span
+                        className={`block break-words font-semibold leading-tight ${
+                          semLimite ? "text-orange-500 dark:text-orange-400" : "text-slate-900 dark:text-slate-100"
+                        }`}
+                        title={semLimite ? "Tem lançamentos, mas não tem limite configurado no plano" : undefined}
+                      >
                         {aplicacao}
                       </span>
                       <span className="text-[11px] text-slate-400 dark:text-slate-500">
-                        {foraDaLista ? "fora da lista de Aplicações" : `Limite: ${formatarNoModo(configurado)}`}
+                        {foraDaLista
+                          ? "fora da lista de Aplicações"
+                          : `${ehReserva(aplicacao) ? "Meta" : "Limite"}: ${formatarNoModo(configurado)}`}
                       </span>
                     </td>
                     {meses.map((mes, indice) => (
@@ -500,6 +543,8 @@ export default function PlanoFinanceiroPage() {
                         className={classeColunaMes(indice, mes)}
                         gasto={gastosPorAplicacao.get(aplicacao)?.get(mes) ?? 0}
                         limite={limiteDe(aplicacao, mes)}
+                        reserva={ehReserva(aplicacao)}
+                        href={`/lancar?aba=buscar&mes=${mes}&todosGrupos=1&aplicacao=${encodeURIComponent(aplicacao)}`}
                       />
                     ))}
                   </tr>
@@ -517,7 +562,16 @@ export default function PlanoFinanceiroPage() {
             <span className="font-semibold text-red-500 dark:text-red-400">Vermelho</span>: gasto acima do limite
           </span>
           <span>Abaixo: quanto sobrou (+) ou estourou (−) do limite</span>
+          <span>
+            Nome em <span className="font-semibold text-orange-500 dark:text-orange-400">laranja</span>: tem lançamentos,
+            mas está sem limite configurado
+          </span>
+          <span>
+            Reserva: <span className="font-semibold text-emerald-600 dark:text-emerald-400">verde</span> ao depositar a
+            meta ou mais, <span className="font-semibold text-red-500 dark:text-red-400">vermelho</span> abaixo dela
+          </span>
           <span>Só a sua parte — reembolsos descontados</span>
+          <span>Clique no valor gasto para ver os lançamentos</span>
           <span className="md:hidden">Arraste para o lado para ver o mês anterior/seguinte</span>
         </div>
       </div>
@@ -526,29 +580,59 @@ export default function PlanoFinanceiroPage() {
 }
 
 // Célula de uma Aplicação num mês: em destaque o que foi gasto — verde dentro do limite,
-// vermelho quando passa dele — e, embaixo, quanto sobrou ou estourou do limite.
-function CelulaAplicacao({ gasto, limite, className }: { gasto: number; limite: number; className: string }) {
+// vermelho quando passa dele — e, embaixo, quanto sobrou ou estourou do limite. Clicar no
+// valor gasto abre, numa nova aba, os Lançamentos de Contas a Pagar daquele mês filtrados
+// pela Aplicação (com todos os grupos marcados).
+function CelulaAplicacao({
+  gasto,
+  limite,
+  className,
+  href,
+  reserva = false,
+}: {
+  gasto: number;
+  limite: number;
+  className: string;
+  href: string;
+  // Reserva: "gasto" é o depositado e "limite" é a meta; ruim é ficar abaixo da meta.
+  reserva?: boolean;
+}) {
   if (gasto === 0 && limite === 0) {
     return <td className={`${className} text-slate-400 dark:text-slate-500`}>—</td>;
   }
   const saldo = arredondar2(limite - gasto);
-  const estourou = saldo < 0;
+  // Para a reserva, ficar abaixo da meta é o ruim (vermelho); atingir ou passar é o bom (verde).
+  const estourou = reserva ? saldo > 0 : saldo < 0;
+  const titulo = reserva
+    ? estourou
+      ? `Faltam ${formatarMoeda(saldo)} para a meta — depositado ${formatarMoeda(gasto)} de uma meta de ${formatarMoeda(limite)}`
+      : `Meta atingida${saldo < 0 ? ` com ${formatarMoeda(-saldo)} a mais` : ""} — depositado ${formatarMoeda(gasto)} de uma meta de ${formatarMoeda(limite)}`
+    : estourou
+      ? `Estourou ${formatarMoeda(-saldo)} — gasto ${formatarMoeda(gasto)} de um limite de ${formatarMoeda(limite)}`
+      : `Ainda pode gastar ${formatarMoeda(saldo)} — gasto ${formatarMoeda(gasto)} de um limite de ${formatarMoeda(limite)}`;
   return (
-    <td
-      className={className}
-      title={
-        estourou
-          ? `Estourou ${formatarMoeda(-saldo)} — gasto ${formatarMoeda(gasto)} de um limite de ${formatarMoeda(limite)}`
-          : `Ainda pode gastar ${formatarMoeda(saldo)} — gasto ${formatarMoeda(gasto)} de um limite de ${formatarMoeda(limite)}`
-      }
-    >
-      <span
-        className={`block font-semibold ${
-          estourou ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
-        }`}
-      >
-        {formatarMoeda(gasto)}
-      </span>
+    <td className={className} title={titulo}>
+      {gasto > 0 ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Ver os lançamentos desta Aplicação neste mês (abre em nova aba)"
+          className={`block font-semibold underline-offset-2 hover:underline ${
+            estourou ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+          }`}
+        >
+          {formatarMoeda(gasto)}
+        </a>
+      ) : (
+        <span
+          className={`block font-semibold ${
+            estourou ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+          }`}
+        >
+          {formatarMoeda(gasto)}
+        </span>
+      )}
       <span
         className={`block text-center text-[10px] leading-tight ${
           estourou ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"

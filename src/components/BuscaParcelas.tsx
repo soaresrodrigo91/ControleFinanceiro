@@ -45,12 +45,19 @@ export default function BuscaParcelas({
   uid,
   stickyTop = 0,
   grupoInicial,
+  aplicacaoInicial,
+  todosGruposInicial = false,
 }: {
   uid: string;
   stickyTop?: number;
   grupoInicial?: string;
+  aplicacaoInicial?: string;
+  // Marca todos os grupos assim que a configuração e o mês carregarem.
+  todosGruposInicial?: boolean;
 }) {
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
+  const [configCarregada, setConfigCarregada] = useState(false);
+  const [marcarTodosGruposPendente, setMarcarTodosGruposPendente] = useState(todosGruposInicial);
   const [vinculos, setVinculos] = useState<VinculoCompartilhamento[]>([]);
   const [enviados, setEnviados] = useState<LancamentoCompartilhado[]>([]);
   const [enviosExcluidos, setEnviosExcluidos] = useState<Set<string>>(new Set());
@@ -67,7 +74,9 @@ export default function BuscaParcelas({
   const [filtroGrupos, setFiltroGrupos] = useState<Record<string, boolean>>(() =>
     grupoInicial ? { [grupoInicial]: true } : {}
   );
-  const [filtroAplicacoes, setFiltroAplicacoes] = useState<Record<string, boolean>>({});
+  const [filtroAplicacoes, setFiltroAplicacoes] = useState<Record<string, boolean>>(() =>
+    aplicacaoInicial ? { [aplicacaoInicial]: true } : {}
+  );
   const [filtroComp, setFiltroComp] = useState<Record<string, boolean>>({});
   const [filtroProvisao, setFiltroProvisao] = useState(false);
   const [filtroValor, setFiltroValor] = useState("");
@@ -79,7 +88,10 @@ export default function BuscaParcelas({
   const [parcelaExcluindo, setParcelaExcluindo] = useState<Parcela | null>(null);
 
   useEffect(() => {
-    return assinarConfigListas(uid, setConfig);
+    return assinarConfigListas(uid, (dados) => {
+      setConfig(dados);
+      setConfigCarregada(true);
+    });
   }, [uid]);
 
   useEffect(() => {
@@ -171,6 +183,14 @@ export default function BuscaParcelas({
       return;
     }
     marcarPago(uid, p, pago);
+  }
+
+  // "Todos os grupos" (ex.: link do Plano Financeiro): marca os grupos ativos e também os
+  // grupos que aparecem nos lançamentos do mês (um grupo inativado ainda pode ter lançamentos).
+  if (marcarTodosGruposPendente && configCarregada && !carregando) {
+    setMarcarTodosGruposPendente(false);
+    const todos = new Set([...gruposAtivos(config), ...todasParcelas.map((p) => p.grupo)]);
+    setFiltroGrupos(Object.fromEntries([...todos].map((g) => [g, true])));
   }
 
   const algumFormaMarcada = Object.values(filtroGrupos).some(Boolean);
