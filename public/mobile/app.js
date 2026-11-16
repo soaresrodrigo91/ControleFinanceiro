@@ -144,7 +144,10 @@ let recebimentosDoMes = [];
 let recorrenciasPagar = [];
 let recorrenciasReceber = [];
 let aplicacaoAberta = null;
-const unsubs = { config: null, parcelas: null, recebimentos: null, recPagar: null, recReceber: null };
+let perfil = { nome: "", sobrenome: "", fotoUrl: null };
+// Filtro dos cards: "todos" (padrão ao abrir o app), "verdes" ou "vermelhos".
+let filtroStatus = "todos";
+const unsubs = { perfil: null, config: null, parcelas: null, recebimentos: null, recPagar: null, recReceber: null };
 
 function cancelarAssinaturas(chaves = Object.keys(unsubs)) {
   for (const k of chaves) {
@@ -184,7 +187,13 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 function assinarDadosFixos() {
-  cancelarAssinaturas(["config", "recPagar", "recReceber"]);
+  cancelarAssinaturas(["perfil", "config", "recPagar", "recReceber"]);
+  // Mesmo perfil do site (nome, sobrenome e foto) para o avatar do canto superior direito.
+  unsubs.perfil = onSnapshot(doc(bd, "usuarios", usuario.uid), (snap) => {
+    const d = snap.data();
+    perfil = { nome: d?.nome ?? "", sobrenome: d?.sobrenome ?? "", fotoUrl: d?.fotoUrl ?? null };
+    renderAvatar();
+  });
   unsubs.config = onSnapshot(doc(bd, "usuarios", usuario.uid, "config", "listas"), (snap) => {
     const d = snap.exists() ? snap.data() : {};
     config = {
@@ -243,8 +252,28 @@ function ligarEventos() {
   $("#btn-entrar").addEventListener("click", entrar);
   $("#login-senha").addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
   $("#btn-esqueci").addEventListener("click", esqueciSenha);
-  $("#btn-sair").addEventListener("click", () => signOut(auth));
+  $("#btn-sair").addEventListener("click", () => {
+    fecharMenuUsuario();
+    signOut(auth);
+  });
   $("#btn-tema").addEventListener("click", alternarTema);
+  $("#btn-avatar").addEventListener("click", () => {
+    if ($("#menu-usuario").classList.contains("hidden")) abrirMenuUsuario();
+    else fecharMenuUsuario();
+  });
+  $("#menu-usuario-fundo").addEventListener("click", fecharMenuUsuario);
+  $("#btn-inicio").addEventListener("click", irParaInicio);
+  $("#filtro-status").addEventListener("click", (e) => {
+    const botao = e.target.closest("[data-filtro]");
+    if (!botao) return;
+    filtroStatus = botao.dataset.filtro;
+    document.querySelectorAll("#filtro-status [data-filtro]").forEach((b) => {
+      const ativo = b.dataset.filtro === filtroStatus;
+      b.classList.toggle("ativo", ativo);
+      b.setAttribute("aria-checked", String(ativo));
+    });
+    render();
+  });
 
   $("#mes-anterior").addEventListener("click", () => mudarMes(-1));
   $("#mes-proximo").addEventListener("click", () => mudarMes(1));
@@ -306,6 +335,46 @@ function alternarTema() {
   if (escuro) document.documentElement.setAttribute("data-tema", "escuro");
   else document.documentElement.removeAttribute("data-tema");
   try { localStorage.setItem("temaEscuro", String(escuro)); } catch {}
+  atualizarTextoTema();
+}
+function atualizarTextoTema() {
+  const escuro = document.documentElement.getAttribute("data-tema") === "escuro";
+  $("#texto-tema").textContent = escuro ? "Tema claro" : "Tema escuro";
+}
+
+// Casinha: de qualquer tela volta para o início (aba Aplicações, lista no topo).
+function irParaInicio() {
+  fecharMenuUsuario();
+  if (aplicacaoAberta) history.back();
+  trocarAba("aplicacoes");
+}
+
+/* ---------- usuário (avatar + menu) ---------- */
+function iniciaisPerfil() {
+  const iniciais = (perfil.nome.trim().charAt(0) + perfil.sobrenome.trim().charAt(0)).toUpperCase();
+  if (iniciais) return iniciais;
+  return usuario?.email ? usuario.email[0].toUpperCase() : "U";
+}
+function conteudoAvatar() {
+  return perfil.fotoUrl ? `<img src="${esc(perfil.fotoUrl)}" alt="">` : esc(iniciaisPerfil());
+}
+function renderAvatar() {
+  $("#btn-avatar").innerHTML = conteudoAvatar();
+  $("#menu-avatar").innerHTML = conteudoAvatar();
+  const nomeCompleto = `${perfil.nome} ${perfil.sobrenome}`.trim();
+  $("#menu-nome").textContent = nomeCompleto || "Usuário";
+  $("#menu-email").textContent = usuario?.email ?? "";
+}
+function abrirMenuUsuario() {
+  atualizarTextoTema();
+  $("#menu-usuario").classList.remove("hidden");
+  $("#menu-usuario-fundo").classList.remove("hidden");
+  $("#btn-avatar").setAttribute("aria-expanded", "true");
+}
+function fecharMenuUsuario() {
+  $("#menu-usuario").classList.add("hidden");
+  $("#menu-usuario-fundo").classList.add("hidden");
+  $("#btn-avatar").setAttribute("aria-expanded", "false");
 }
 
 /* ---------- login ---------- */
@@ -458,7 +527,18 @@ function renderAplicacoes({ aReceber, cards }) {
     return;
   }
 
-  $("#grade-cards").innerHTML = cards.map((c) => {
+  // Filtro: Todos / No limite (cards verdes) / Fora do limite (cards vermelhos).
+  const visiveis = cards.filter((c) =>
+    filtroStatus === "verdes" ? !c.ruim : filtroStatus === "vermelhos" ? c.ruim : true
+  );
+  if (!visiveis.length) {
+    $("#grade-cards").innerHTML = `<div class="vazio">Nenhuma Aplicação ${
+      filtroStatus === "verdes" ? "no limite" : "fora do limite"
+    } em ${esc(formatarMesAno(ym))}.</div>`;
+    return;
+  }
+
+  $("#grade-cards").innerHTML = visiveis.map((c) => {
     const base = c.limite > 0 ? c.limite : c.gasto;
     const pct = base > 0 ? Math.min(100, (c.gasto / base) * 100) : 0;
     const status = c.ruim ? "vermelho" : "verde";

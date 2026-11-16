@@ -203,25 +203,138 @@ button {
   flex-direction: column;
 }
 
+/* Abaixo do topo; a folha de lançamentos abre por cima só desta área. */
+#corpo {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px 6px;
+  gap: 8px;
+  padding: 8px 12px 6px;
 }
 
 .topbar-marca {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  flex: 1;
+  min-width: 0;
   font-family: "Sora", sans-serif;
   font-weight: 600;
   font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.topbar-acoes {
+.icone-btn.casinha {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar.grande {
+  width: 46px;
+  height: 46px;
+  font-size: 16px;
+}
+
+.menu-usuario-fundo {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+}
+
+.menu-usuario {
+  position: absolute;
+  top: calc(56px + env(safe-area-inset-top));
+  right: 12px;
+  z-index: 41;
+  width: min(280px, calc(100% - 24px));
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.18);
+  padding: 8px;
+  animation: abrir-menu 0.12s ease-out;
+}
+
+@keyframes abrir-menu {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.menu-usuario-cabecalho {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 6px;
+}
+
+.menu-usuario-dados {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.menu-usuario-dados strong {
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-usuario-dados span {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-usuario-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 8px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.menu-usuario-item:active {
+  background: var(--trilho);
+}
+
+.menu-usuario-item.sair {
+  color: var(--vermelho);
 }
 
 .icone-btn {
@@ -357,6 +470,47 @@ main::-webkit-scrollbar {
 .card-nome.laranja {
   color: var(--laranja);
 }
+
+/* ---------- filtro Todos / No limite / Fora do limite ---------- */
+.filtro-status {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: var(--trilho);
+}
+
+.filtro-status button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.filtro-status button.ativo {
+  background: var(--card);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--sombra);
+}
+
+.ponto {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.verde-bg { background: var(--verde); }
+.vermelho-bg { background: var(--vermelho); }
 
 /* ---------- cards das Aplicações ---------- */
 .grade-cards {
@@ -608,7 +762,6 @@ main::-webkit-scrollbar {
   background: var(--bg);
   display: flex;
   flex-direction: column;
-  padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   animation: entrar 0.18s ease-out;
 }
