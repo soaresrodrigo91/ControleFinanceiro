@@ -519,8 +519,9 @@ function renderAplicacoes({ aReceber, cards }) {
       <span class="rotulo">Saldo</span>
       <span class="valor ${saldo < 0 ? "vermelho" : saldo > 0 ? "verde" : ""}">${formatarMoeda(saldo)}</span>
     </div>
-    ${situacoes.length ? `<div class="resumo-status">${situacoes.join("")}</div>` : ""}
   `;
+  // Contagem por situação fica no fim da tela, depois dos cards, para não tomar espaço no topo.
+  $("#status-cards").innerHTML = situacoes.join("");
 
   if (!cards.length) {
     $("#grade-cards").innerHTML = `<div class="vazio">Nenhum lançamento em Contas a Pagar em ${esc(formatarMesAno(ym))}.</div>`;
