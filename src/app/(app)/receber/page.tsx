@@ -645,11 +645,6 @@ function ReceberConteudo() {
                             Pendente
                           </span>
                         )}
-                        {r.provisao && (
-                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-                            Provisão
-                          </span>
-                        )}
                         {r.renegociacaoId && (
                           <span className="ml-2 rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:bg-violet-950 dark:text-violet-400">
                             Renegociação

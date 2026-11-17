@@ -81,7 +81,6 @@ function LancarConteudo() {
         grupo: dados.grupo,
         aplicacao: dados.aplicacao,
         inicio: dados.inicioCobranca,
-        provisao: dados.provisao,
       });
     } else {
       await criarLancamento(usuario.uid, dados);

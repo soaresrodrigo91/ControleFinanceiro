@@ -139,17 +139,15 @@ export type EdicaoParcela = {
   vencimento: string;
 };
 
-export async function atualizarParcela(uid: string, parcelaId: string, dados: EdicaoParcela) {
-  await updateDoc(doc(db, "usuarios", uid, "parcelas", parcelaId), { ...dados });
-}
-
-export async function atualizarParcelaProvisao(uid: string, parcela: Parcela, dados: EdicaoParcela) {
+// Edição de parcela avulsa: além da própria parcela, mantém o reembolso (Contas a Receber) com o
+// valor atualizado (só quando o valor muda, para não sobrescrever um reembolso ajustado à mão
+// ao editar apenas credor/observação/etc.).
+export async function atualizarParcelaComReembolso(uid: string, parcela: Parcela, dados: EdicaoParcela) {
   await updateDoc(doc(db, "usuarios", uid, "parcelas", parcela.id), { ...dados });
-  if (!parcela.comp) return;
+  if (!parcela.comp || dados.valorParcela === parcela.valorParcela) return;
   await sincronizarValorReembolso(uid, parcela.lancamentoId, parcela.vencimento, parcela.comp, dados.valorParcela, {
     observacao: dados.observacao,
     grupoOrigem: dados.grupo,
-    provisao: parcela.provisao,
   });
 }
 

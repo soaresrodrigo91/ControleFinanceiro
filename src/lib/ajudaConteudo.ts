@@ -139,7 +139,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Ao marcar \"Conta fixa (recorrente)\", a chave é travada em \"Valor da parcela\", já que uma conta fixa não tem \"total\" a dividir — o valor digitado é sempre o lançado em cada mês.",
       "O campo de valor tem máscara de R$ no estilo caixa registradora: os dígitos entram pela direita, sempre com 2 casas de centavos (ex.: digitar 3350 mostra 33,50; digitar 100000 mostra 1.000,00). Não é preciso digitar a vírgula. A mesma máscara vale para todos os campos de valor do sistema (filtros, Contas a Receber, Plano Financeiro e janelas de edição).",
       "Se um reembolso (pessoa) for selecionado e ela tiver um modo configurado (100% ou 50%), o sistema já cria automaticamente o(s) recebimento(s) correspondente(s) em Contas a Receber.",
-      "Em telas maiores, o formulário se organiza em duas colunas, separadas por uma linha divisória discreta (credor, datas, valor/parcelas, conta fixa/provisão e observação à esquerda; grupo, aplicação e reembolso à direita) para aproveitar melhor o espaço horizontal e exigir menos rolagem — em celular, os campos continuam empilhados em uma coluna só.",
+      "Em telas maiores, o formulário se organiza em duas colunas, separadas por uma linha divisória discreta (credor, datas, valor/parcelas, conta fixa e observação à esquerda; grupo, aplicação e reembolso à direita) para aproveitar melhor o espaço horizontal e exigir menos rolagem — em celular, os campos continuam empilhados em uma coluna só.",
       "O botão \"Cancelar\" ao lado de \"Salvar\" limpa todos os campos do formulário (voltando credor, datas, valor, parcelas, observação e demais campos ao estado inicial), sem sair da tela — útil para recomeçar o preenchimento do zero.",
       "A Observação é obrigatória nesta tela (diferente de outras telas que reaproveitam o mesmo formulário, como a Renegociação, onde ela continua opcional).",
       "Ao salvar com sucesso, aparece uma mensagem verde \"Lançamento salvo com sucesso!\" (igual à do app mobile), que some sozinha após 3 segundos — o formulário já é limpo na hora, pronto para um novo lançamento.",
@@ -168,14 +168,14 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     resumo:
       "Lista, busca, filtra, edita e exclui os lançamentos já feitos, mês a mês.",
     regras: [
-      "É preciso marcar ao menos uma opção em Grupo para a lista aparecer — evita mostrar tudo de uma vez sem querer. Os filtros Aplicação, Reembolso, Provisão, Credor e Valor ficam sempre visíveis, mas só ficam ativos depois de marcar algum grupo (Aplicação e Reembolso desativam de novo se \"Provisão\" for marcado, já que provisão não usa esses filtros). Se todos os grupos forem desmarcados, \"Provisão\" também é desmarcado automaticamente, para não ficar um filtro marcado sem nenhum grupo selecionado.",
+      "É preciso marcar ao menos uma opção em Grupo para a lista aparecer — evita mostrar tudo de uma vez sem querer. Os filtros Aplicação, Reembolso, Credor e Valor ficam sempre visíveis, mas só ficam ativos depois de marcar algum grupo.",
       "Os filtros de múltipla escolha (Grupo, Aplicação, Reembolso) mostram um rodapé fixo com o total de opções da lista, mesmo quando é preciso rolar para ver todas — assim fica claro que não falta nada, só está rolável.",
       "Contas fixas ainda não pagas no mês aparecem na lista mesmo sem ter um registro \"real\" no banco de dados ainda; editar ou excluir cria esse registro quando necessário.",
       "Excluir uma conta fixa oferece três alcances: apenas este mês, deste mês em diante, ou a recorrência inteira (com aviso extra, porque é irreversível).",
       "Excluir uma conta com reembolso vinculado também remove o(s) recebimento(s) gerado(s) por ela.",
       "Editar credor, grupo, aplicação ou observação de um lançamento parcelado pergunta se a alteração vale só para esta parcela ou para todas as parcelas do lançamento; para conta fixa, a mesma edição pergunta o alcance (apenas este mês, deste mês em diante, ou tudo, desde o início). Valor e vencimento continuam sempre específicos de cada parcela/mês, sem propagar.",
       "O filtro Valor aceita o valor exato do lançamento, já com máscara de R$ (separador de milhar e centavos automáticos).",
-      "O filtro Credor busca por parte do nome do credor, sem diferenciar maiúsculas/minúsculas nem acentos (ex.: \"mercado\" encontra \"Supermercado São João\"). Vale também quando \"Provisão\" está marcado.",
+      "O filtro Credor busca por parte do nome do credor, sem diferenciar maiúsculas/minúsculas nem acentos (ex.: \"mercado\" encontra \"Supermercado São João\").",
       "A coluna Aplicação aparece logo depois de Observação, mostrando a aplicação de cada lançamento sem precisar abrir para editar. A descrição abaixo do nome do credor mostra só o grupo (a aplicação já está na sua própria coluna, então não se repete ali).",
       "Lançamentos criados pelo app mobile mostram um ícone discreto de celular com a palavra \"Mobile\" ao lado do grupo, abaixo do nome do credor.",
       "Ao lado da quantidade de resultados e do total filtrado, aparece um total à parte, em vermelho, com a soma do que ainda não foi pago — só quando a lista tem pelo menos um lançamento pago e pelo menos um não pago; se todos estiverem pagos ou nenhum estiver pago, esse total extra não aparece (já que, nesses casos, ele seria igual a zero ou igual ao total geral).",
@@ -184,7 +184,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Lançamentos com o selo \"Renegociação\" vieram de uma renegociação e não podem ser editados ou excluídos por aqui — veja a aba Renegociação.",
       "Lançamentos com reembolso configurado têm um botão extra (avião de papel) depois do de excluir — só aparece com \"Compartilhar Lançamentos\" ativo em Configurações. Ele NÃO envia nada diretamente: só restaura a pendência de envio em Lançamentos Compartilhados caso ela tenha sido removida de lá (veja \"Excluir pendência\" nessa outra tela); por isso fica inativo sempre que já existe uma pendência ativa, o lançamento já foi enviado, ou o reembolso não tem e-mail vinculado — nesses casos não há nada para restaurar. Quando ativo, ao clicar pergunta o alcance: apenas este mês, este mês e os futuros, ou todos desde o início.",
       "Os botões de editar, excluir e reenviar mostram uma descrição ao passar o mouse por cima, explicando o que cada um faz.",
-      "Editar o valor de uma Provisão com reembolso configurado atualiza automaticamente o valor já compartilhado em Lançamentos Compartilhados, desde que quem recebeu ainda não tenha lançado o item (status \"pendente\"); se já tiver lançado, a cópia dela é independente e não muda mais.",
+      "Editar o valor de um lançamento avulso com reembolso configurado atualiza automaticamente o reembolso em Contas a Receber e o valor já compartilhado em Lançamentos Compartilhados, desde que quem recebeu ainda não tenha lançado o item (status \"pendente\"); se já tiver lançado, a cópia dela é independente e não muda mais.",
     ],
     validacoes: [
       "Ter meses ou parcelas já marcados como pagos não bloqueia a exclusão: a conta segue a pergunta normal de alcance (para conta fixa: apenas este mês, deste mês em diante ou todos). Atenção: \"Todos\" e \"Excluir lançamento inteiro\" também apagam os meses/parcelas já pagos.",
@@ -192,7 +192,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     imagem: "/ajuda/lancar-lista.png",
     imagemAlt: "Lista de lançamentos de Contas a Pagar com filtros",
     marcadores: [
-      { numero: 1, xPct: 10, yPct: 22.8, texto: "Filtros por grupo, aplicação, reembolso, provisão, credor e valor." },
+      { numero: 1, xPct: 10, yPct: 22.8, texto: "Filtros por grupo, aplicação, reembolso, credor e valor." },
       { numero: 2, xPct: 84.4, yPct: 22.8, texto: "Navega entre os meses." },
       { numero: 3, xPct: 12, yPct: 30.3, texto: "Quantidade de resultados e soma dos valores filtrados." },
       {
@@ -227,7 +227,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Em Recebidos só aparecem os lançamentos ainda \"Não Lançado\" (o sistema não guarda histórico do que já foi lançado) — a lista também traz as colunas Credor, Observação, Grupo, Aplicação, Parcela (ex.: \"1/1\", \"1/3\" ou \"Fixa\") e Reembolso, com as mesmas informações do lançamento original do outro usuário. O cabeçalho tem o mesmo checkbox com setinha (\"Todas as páginas\") usado em Envios, e o mesmo botão \"Excluir\" para excluir vários recebidos de uma vez. Para conta fixa, a coluna Data mostra o vencimento daquela ocorrência do mês, já que conta fixa não tem \"data da compra\".",
       "Em Recebidos, passar o mouse sobre a coluna Reembolso mostra o credor real e o valor real do lançamento original na conta de quem enviou — útil porque o Credor exibido na lista é o nome de quem enviou (não o credor real da compra) e o Valor já vem rateado pelo modo do reembolso.",
       "Ao Lançar, o sistema respeita a estrutura original: se era uma conta fixa, cria uma conta fixa na sua conta (cobrindo os meses seguintes automaticamente, sem precisar lançar mês a mês); se era parcelado, cria um lançamento com o mesmo número de parcelas de uma vez. Nos dois casos, todas as ocorrências daquele lançamento saem da lista de Recebidos de uma vez, já que passam a existir como um lançamento comum em Contas a Pagar.",
-      "Ao lançar um recebido: o Credor vem travado com o nome de quem enviou (abreviado se for muito longo), a observação é copiada do lançamento original, e o lançamento nunca é do tipo Provisão nem tem reembolso associado — por isso a Provisão não aparece nas opções de grupo desse fluxo.",
+      "Ao lançar um recebido: o Credor vem travado com o nome de quem enviou (abreviado se for muito longo), a observação é copiada do lançamento original, e o lançamento nunca tem reembolso associado — por isso o grupo Provisões não aparece nas opções de grupo desse fluxo.",
       "Grupo e Aplicação são escolhidos direto nas colunas da tabela (um seletor em cada célula), sem precisar abrir nada: a célula fica com fundo vermelho enquanto vazia e vira verde assim que um valor é escolhido. Grupo sempre começa vazio (não existe sugestão de grupo de quem enviou); Aplicação já vem pré-preenchida (e verde) quando a sugestão de quem enviou já existe na sua lista, ou vazia (vermelha) quando não existe.",
       "Um lançamento de origem que virou várias parcelas (várias linhas na tabela, ex. \"1/3\", \"2/3\", \"3/3\") tem uma única escolha de Grupo/Aplicação compartilhada entre todas elas — mudar numa linha atualiza as demais linhas do mesmo lançamento automaticamente.",
       "O botão Lançar fica desativado enquanto qualquer um dos lançamentos marcados ainda tiver Grupo ou Aplicação vazio (vermelho); passar o mouse sobre o botão desativado explica o motivo. Assim que todos os marcados estiverem com as duas colunas verdes, o botão libera e um único clique lança todos de uma vez, cada um no Grupo e na Aplicação escolhidos na própria linha.",
@@ -268,7 +268,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Escolha um único grupo por vez — o sistema mostra o total já lançado dele no mês.",
       "Duas opções de alcance: \"apenas o mês atual\" (só os lançamentos/parcelas deste mês) ou \"valores atuais e futuros\" (inclui os meses seguintes e contas fixas, que passam a valer a partir do novo lançamento, mesmo as que só começam depois do mês escolhido).",
       "Em seguida, o sistema pergunta se os recebimentos de reembolso vinculados aos lançamentos substituídos também devem ser excluídos: \"Sim\" apaga esses recebimentos junto (comportamento tradicional); \"Não\" mantém esses recebimentos intactos em Contas a Receber, mesmo com o lançamento de origem tendo sido substituído.",
-      "Depois de responder sobre os recebimentos, abre o formulário de novo lançamento com o grupo travado e os campos \"Conta fixa\"/\"Provisão\"/\"Data da compra\" desabilitados — o valor mostrado no topo é o total que está sendo renegociado, junto com a escolha feita sobre os recebimentos.",
+      "Depois de responder sobre os recebimentos, abre o formulário de novo lançamento com o grupo travado e os campos \"Conta fixa\"/\"Data da compra\" desabilitados — o valor mostrado no topo é o total que está sendo renegociado, junto com a escolha feita sobre os recebimentos.",
       "Só ao clicar em \"Salvar Renegociação\" é que os lançamentos antigos são apagados (e os recebimentos, se essa opção foi escolhida) e o novo é criado; cancelar não grava nada.",
       "Cada renegociação recebe um número sequencial (001, 002...) e fica registrada no histórico, junto com o grupo, o alcance, o mês de referência e se os recebimentos foram excluídos ou mantidos.",
       "Lançamentos e recebimentos gerados por uma renegociação ganham o selo \"Renegociação\" e não podem ser editados ou excluídos diretamente em Contas a Pagar/Receber.",
@@ -470,6 +470,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "O menu do sistema pode ser Horizontal (padrão, barra no topo) ou Vertical (menu lateral recolhível, com Perfil e Sair no rodapé) — a mudança vale para todas as telas. No modo Vertical, o sino de notificações também fica no rodapé do menu lateral (em vez do canto superior direito) e abre para cima.",
       "O card \"Mini-dashboard na tela de Início\" controla o mini-dashboard de grupos que aparece no final da tela Início: a chave liga/desliga a exibição dele lá, e os botões escolhem entre pizza ou barras nos três gráficos. Cada quadro fica do tamanho do gráfico (a lista de nomes rola com o mouse dentro do próprio quadro, sem cortar linha). Em monitores com pouca altura de tela, ele se adapta automaticamente: primeiro troca os gráficos por uma lista simples com os mesmos valores e, se ainda faltar espaço, a Janela de 10 meses deixa de ficar fixa e passa a rolar junto — só os totalizadores e os filtros de grupo continuam fixos no topo — garantindo que o mini-dashboard sempre possa ser alcançado rolando a tela.",
       "O card \"Subtotal e Provisão na tela de Início\" liga/desliga as linhas \"Subtotal\" e \"Provisão Líquido\" ao final da Janela de 10 meses, na tela Início — desativado por padrão para novas contas.",
+      "O card \"Mês ao acessar o sistema\" (opção \"Manter o mês selecionado ao acessar o sistema\") controla em qual mês o sistema abre ao entrar: desligado (padrão), abre sempre no mês atual; ligado, abre no último mês que você selecionou — ex.: mudou para Janeiro de 2027 e saiu, ao entrar de novo estará em Janeiro de 2027. O mês fica salvo na sua conta, então vale também ao entrar por outro computador ou navegador.",
     ],
     validacoes: [
       "Item duplicado ao adicionar: \"Este item já existe na lista.\"",
@@ -540,10 +541,10 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
   },
   {
     id: "plano",
-    categoria: "Plano",
-    titulo: "Plano",
+    categoria: "Configurações",
+    titulo: "Configurações · Plano",
     resumo:
-      "Mostra o plano atual (Free ou Premium), desde quando está ativo, a forma de pagamento e a periodicidade, com opção de alterar.",
+      "Aba Plano das Configurações (após a aba Segurança): mostra o plano atual (Free ou Premium), desde quando está ativo, a forma de pagamento e a periodicidade, com opção de alterar.",
     regras: [
       "Recursos Premium (Relatórios, Dashboard, tema escuro) ficam bloqueados no plano Free — ao tentar acessá-los, o sistema redireciona de volta para Início.",
     ],

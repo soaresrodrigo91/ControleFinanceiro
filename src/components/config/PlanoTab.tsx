@@ -22,7 +22,7 @@ const ROTULO_PERIODICIDADE: Record<string, string> = {
 
 type Modo = "ver" | "forma-pagamento" | "plano";
 
-export default function PlanoPage() {
+export default function PlanoTab() {
   const { usuario } = useAuth();
   const { plano } = usePlano();
   const [modo, setModo] = useState<Modo>("ver");
@@ -31,7 +31,7 @@ export default function PlanoPage() {
 
   if (modo === "plano") {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6 md:px-8">
+      <div className="max-w-xl">
         <h1 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Alterar plano</h1>
         <PlanoSeletor uid={usuario.uid} planoAtual={plano} onConcluido={() => setModo("ver")} />
         <button
@@ -46,7 +46,7 @@ export default function PlanoPage() {
 
   if (modo === "forma-pagamento") {
     return (
-      <div className="mx-auto max-w-xl px-4 py-6 md:px-8">
+      <div className="max-w-xl">
         <h1 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">
           Alterar forma de pagamento
         </h1>
@@ -67,7 +67,7 @@ export default function PlanoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-6 md:px-8">
+    <div className="max-w-xl">
       <div className={CLASSE_CARD}>
         <div className="mb-4 flex items-center justify-between">
           <h1 className="flex items-center gap-1.5 text-lg font-semibold text-slate-900 dark:text-slate-100">

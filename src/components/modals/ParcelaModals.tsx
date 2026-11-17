@@ -3,8 +3,7 @@
 import { useState } from "react";
 import {
   atualizarCamposTodasParcelas,
-  atualizarParcela,
-  atualizarParcelaProvisao,
+  atualizarParcelaComReembolso,
   excluirLancamento,
   excluirParcela,
   type EdicaoParcela,
@@ -121,7 +120,7 @@ function FormularioEdicaoParcela({
             parcela.vencimento,
             parcela.comp,
             dados.valorParcela,
-            { observacao: dados.observacao, grupoOrigem: dados.grupo, provisao: parcela.provisao }
+            { observacao: dados.observacao, grupoOrigem: dados.grupo }
           );
           await sincronizarValorCompartilhadoRecorrenciaMes(
             uid,
@@ -189,13 +188,9 @@ function FormularioEdicaoParcela({
   async function salvarDireto() {
     setSalvando(true);
     try {
-      if (parcela.provisao) {
-        await atualizarParcelaProvisao(uid, parcela, dados);
-        if (parcela.comp) {
-          await sincronizarValorCompartilhadoParcela(uid, parcela.id, parcela.comp, dados.valorParcela, config);
-        }
-      } else {
-        await atualizarParcela(uid, parcela.id, dados);
+      await atualizarParcelaComReembolso(uid, parcela, dados);
+      if (parcela.comp && dados.valorParcela !== parcela.valorParcela) {
+        await sincronizarValorCompartilhadoParcela(uid, parcela.id, parcela.comp, dados.valorParcela, config);
       }
       onFechar();
     } finally {
@@ -206,13 +201,9 @@ function FormularioEdicaoParcela({
   async function salvarComParcelaTodas(todasParcelas: boolean) {
     setSalvando(true);
     try {
-      if (parcela.provisao) {
-        await atualizarParcelaProvisao(uid, parcela, dados);
-        if (parcela.comp) {
-          await sincronizarValorCompartilhadoParcela(uid, parcela.id, parcela.comp, dados.valorParcela, config);
-        }
-      } else {
-        await atualizarParcela(uid, parcela.id, dados);
+      await atualizarParcelaComReembolso(uid, parcela, dados);
+      if (parcela.comp && dados.valorParcela !== parcela.valorParcela) {
+        await sincronizarValorCompartilhadoParcela(uid, parcela.id, parcela.comp, dados.valorParcela, config);
       }
       if (todasParcelas) {
         await atualizarCamposTodasParcelas(uid, parcela.lancamentoId, {

@@ -127,6 +127,17 @@ export async function atualizarMostrarSubtotalProvisaoInicio(uid: string, mostra
   });
 }
 
+export async function atualizarManterMesSelecionado(uid: string, manter: boolean, ymAtual: string) {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), {
+    manterMesSelecionado: manter,
+    mesSelecionadoSalvo: manter ? ymAtual : null,
+  });
+}
+
+export async function salvarMesSelecionado(uid: string, ym: string) {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { mesSelecionadoSalvo: ym });
+}
+
 export async function atualizarResumoRelatorio(
   uid: string,
   campo: keyof ConfigListas["resumosRelatorio"],

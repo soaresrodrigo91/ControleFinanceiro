@@ -55,6 +55,8 @@ export type ConfigListas = {
   tipoGraficoDashboard?: "pizza" | "barra";
   mostrarDashboardInicio?: boolean;
   mostrarSubtotalProvisaoInicio?: boolean;
+  manterMesSelecionado?: boolean;
+  mesSelecionadoSalvo?: string | null;
   planoFinanceiro?: PlanoFinanceiro;
 };
 

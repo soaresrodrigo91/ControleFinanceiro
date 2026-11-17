@@ -183,7 +183,7 @@ export default function RenegociacaoParcelas({
           config={config}
           parcelasExistentes={parcelasExistentes}
           grupoFixo={modoRenegociacao.grupo}
-          desabilitarContaFixaEProvisao
+          desabilitarContaFixa
           ocultarDataCompra
           pularVerificacaoDuplicata
           textoBotaoSalvar="Salvar Renegociação"

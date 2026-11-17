@@ -78,7 +78,6 @@ export default function BuscaParcelas({
     aplicacaoInicial ? { [aplicacaoInicial]: true } : {}
   );
   const [filtroComp, setFiltroComp] = useState<Record<string, boolean>>({});
-  const [filtroProvisao, setFiltroProvisao] = useState(false);
   const [filtroValor, setFiltroValor] = useState("");
   const [filtroCredor, setFiltroCredor] = useState("");
 
@@ -195,26 +194,11 @@ export default function BuscaParcelas({
 
   const algumFormaMarcada = Object.values(filtroGrupos).some(Boolean);
 
-  const [formaMarcadaAnterior, setFormaMarcadaAnterior] = useState(algumFormaMarcada);
-  if (algumFormaMarcada !== formaMarcadaAnterior) {
-    setFormaMarcadaAnterior(algumFormaMarcada);
-    if (!algumFormaMarcada && filtroProvisao) setFiltroProvisao(false);
-  }
-
   const valorFiltroNum = filtroValor ? paraNumero(filtroValor) : null;
   const valorFiltroAtivo = valorFiltroNum !== null && !Number.isNaN(valorFiltroNum);
   const credorBusca = normalizarBusca(filtroCredor);
 
   const parcelasFiltradas = useMemo(() => {
-    if (filtroProvisao) {
-      return todasParcelas.filter((p) => {
-        if (!p.provisao) return false;
-        if (!passaFiltroInclusivo(filtroGrupos, p.grupo)) return false;
-        if (valorFiltroAtivo && Math.abs(p.valorParcela - (valorFiltroNum as number)) >= 0.005) return false;
-        if (credorBusca && !normalizarBusca(p.credor).includes(credorBusca)) return false;
-        return true;
-      });
-    }
     if (!algumFormaMarcada) return [];
     return todasParcelas.filter((p) => {
       if (!passaFiltroInclusivo(filtroGrupos, p.grupo)) return false;
@@ -230,7 +214,6 @@ export default function BuscaParcelas({
     filtroAplicacoes,
     filtroComp,
     algumFormaMarcada,
-    filtroProvisao,
     valorFiltroNum,
     valorFiltroAtivo,
     credorBusca,
@@ -251,7 +234,7 @@ export default function BuscaParcelas({
   }
 
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const chavePaginacao = `${ym}|${JSON.stringify(filtroGrupos)}|${JSON.stringify(filtroAplicacoes)}|${JSON.stringify(filtroComp)}|${filtroProvisao}|${filtroValor}|${credorBusca}`;
+  const chavePaginacao = `${ym}|${JSON.stringify(filtroGrupos)}|${JSON.stringify(filtroAplicacoes)}|${JSON.stringify(filtroComp)}|${filtroValor}|${credorBusca}`;
   const [chavePaginacaoAnterior, setChavePaginacaoAnterior] = useState(chavePaginacao);
   if (chavePaginacao !== chavePaginacaoAnterior) {
     setChavePaginacaoAnterior(chavePaginacao);
@@ -309,7 +292,7 @@ export default function BuscaParcelas({
                 filtro={filtroAplicacoes}
                 onAlternar={(item, visivel) => setFiltroAplicacoes((atual) => ({ ...atual, [item]: visivel }))}
                 modoInclusao
-                desativado={!algumFormaMarcada || filtroProvisao}
+                desativado={!algumFormaMarcada}
               />
             )}
             <FiltroMultiSelect
@@ -318,22 +301,8 @@ export default function BuscaParcelas({
               filtro={filtroComp}
               onAlternar={(item, visivel) => setFiltroComp((atual) => ({ ...atual, [item]: visivel }))}
               modoInclusao
-              desativado={!algumFormaMarcada || filtroProvisao}
+              desativado={!algumFormaMarcada}
             />
-            <label
-              className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600 ${
-                algumFormaMarcada ? "cursor-pointer" : "cursor-not-allowed opacity-50"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={filtroProvisao}
-                onChange={(e) => setFiltroProvisao(e.target.checked)}
-                disabled={!algumFormaMarcada}
-                className="h-4 w-4 accent-amber-500 disabled:cursor-not-allowed"
-              />
-              Provisão
-            </label>
             <div
               className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm dark:border-slate-600 ${
                 algumFormaMarcada ? "" : "opacity-50"
@@ -371,7 +340,7 @@ export default function BuscaParcelas({
 
       {carregando ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
-      ) : !filtroProvisao && !algumFormaMarcada ? (
+      ) : !algumFormaMarcada ? (
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Selecione ao menos um grupo para ver os lançamentos.
         </p>
@@ -450,11 +419,6 @@ export default function BuscaParcelas({
                         ) : (
                           <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700 dark:bg-red-950 dark:text-red-400">
                             Pendente
-                          </span>
-                        )}
-                        {p.provisao && (
-                          <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-                            Provisão
                           </span>
                         )}
                         {p.renegociacaoId && (

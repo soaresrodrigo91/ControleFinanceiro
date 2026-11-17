@@ -17,7 +17,7 @@ export default function FormularioLancamento({
   grupoFixo,
   grupoLembrado,
   onGrupoEscolhido,
-  desabilitarContaFixaEProvisao,
+  desabilitarContaFixa,
   ocultarDataCompra,
   pularVerificacaoDuplicata,
   observacaoObrigatoria,
@@ -31,7 +31,7 @@ export default function FormularioLancamento({
   grupoFixo?: string;
   grupoLembrado?: string;
   onGrupoEscolhido?: (grupo: string) => void;
-  desabilitarContaFixaEProvisao?: boolean;
+  desabilitarContaFixa?: boolean;
   ocultarDataCompra?: boolean;
   pularVerificacaoDuplicata?: boolean;
   observacaoObrigatoria?: boolean;
@@ -55,7 +55,6 @@ export default function FormularioLancamento({
   const [grupoEscolhido, setGrupoEscolhido] = useState(grupoLembrado ?? "");
   const [aplicacao, setAplicacao] = useState("");
   const [contaFixa, setContaFixa] = useState(false);
-  const [provisao, setProvisao] = useState(false);
 
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState(false);
@@ -165,7 +164,6 @@ export default function FormularioLancamento({
           comp,
           grupo,
           aplicacao,
-          provisao,
         },
       });
       setSucesso(true);
@@ -178,7 +176,6 @@ export default function FormularioLancamento({
       if (!grupoFixo) setGrupo(grupoEscolhido);
       setAplicacao("");
       setContaFixa(false);
-      setProvisao(false);
       setInicioEditadoManualmente(false);
     } catch (err) {
       setErro(
@@ -202,7 +199,6 @@ export default function FormularioLancamento({
     if (!grupoFixo) setGrupo(grupoEscolhido);
     setAplicacao("");
     setContaFixa(false);
-    setProvisao(false);
     setErro("");
     setSucesso(false);
   }
@@ -331,13 +327,13 @@ export default function FormularioLancamento({
             <div className="flex flex-wrap gap-4">
               <label
                 className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 ${
-                  desabilitarContaFixaEProvisao ? "opacity-50" : ""
+                  desabilitarContaFixa ? "opacity-50" : ""
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={contaFixa}
-                  disabled={desabilitarContaFixaEProvisao}
+                  disabled={desabilitarContaFixa}
                   onChange={(e) => {
                     const marcado = e.target.checked;
                     setContaFixa(marcado);
@@ -347,31 +343,11 @@ export default function FormularioLancamento({
                 />
                 Conta fixa (recorrente)
               </label>
-              <label
-                className={`flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 ${
-                  desabilitarContaFixaEProvisao ? "opacity-50" : ""
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={provisao}
-                  disabled={desabilitarContaFixaEProvisao}
-                  onChange={(e) => setProvisao(e.target.checked)}
-                  className="h-4 w-4 accent-amber-500"
-                />
-                Provisão
-              </label>
             </div>
             {contaFixa && (
               <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
                 O valor será lançado todo mês a partir da data de início da cobrança, até você encerrar a
                 recorrência.
-              </p>
-            )}
-            {provisao && (
-              <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
-                Os lançamentos classificados como &quot;Provisão&quot; permitem a exclusão e a edição do valor
-                lançado.
               </p>
             )}
 
