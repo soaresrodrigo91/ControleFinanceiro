@@ -4,7 +4,7 @@
 //
 // Atualize a constante abaixo (data/hora + código) a cada alteração ou correção feita no
 // sistema.
-export const VERSAO_SISTEMA = "17.11.2026.15.41.56 - 02.95";
+export const VERSAO_SISTEMA = "17.11.2026.15.56.29 - 02.97";
 
 // Formato de exibição no rodapé do site: "{data} {hora} - V{código}" (ex.: "28.07.2026
 // 22:04 - V02.03"). O app mobile (PWA) mostra só o código de 4 dígitos (ver
