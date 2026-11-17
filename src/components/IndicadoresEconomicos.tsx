@@ -231,6 +231,14 @@ function QuadroDolar({ dados}: { dados: Dados["dolar"] }) {
   );
 }
 
+// Dica (ao passar o mouse) da última linha do quadro da Selic.
+const EXPLICACAO_SELIC =
+  "A Selic é a taxa básica de juros do país e serve de referência para os bancos.\n\n" +
+  "Quando ela cai, os bancos tendem a cobrar juros menores em empréstimos, financiamentos, " +
+  "cartão de crédito e cheque especial (a redução chega aos poucos, ao longo de semanas ou meses), " +
+  "e as aplicações ligadas a ela (poupança, CDB, Tesouro Selic) passam a render um pouco menos.\n\n" +
+  "Quando ela sobe, acontece o contrário: pegar dinheiro emprestado fica mais caro e as aplicações rendem mais.";
+
 function QuadroSelic({ dados}: { dados: Dados["selic"] }) {
   if (!dados)
     return (
@@ -258,15 +266,15 @@ function QuadroSelic({ dados}: { dados: Dados["selic"] }) {
       </p>
       <Sparkline serie={dados.mudancas} rotulo="Últimas mudanças da Selic" formatarData={rotuloMes} />
       <p>
-        R$ 1.000 rendem <Destaque>~{formatarMoeda(rendimentoMes)}/mês</Destaque> (bruto)
+        R$ 1.000 aplicados rendem <Destaque>~{formatarMoeda(rendimentoMes)}/mês</Destaque> (bruto)
       </p>
-              <p>
-          {diff < 0
-            ? "Em queda: crédito mais barato, renda fixa rende menos"
-            : diff > 0
-              ? "Em alta: crédito mais caro, renda fixa rende mais"
-              : "Afeta crédito, financiamentos e renda fixa"}
-        </p>
+      <p className="cursor-help" title={EXPLICACAO_SELIC}>
+        {diff < 0
+          ? "Em queda: juros de empréstimos tendem a cair e aplicações rendem menos"
+          : diff > 0
+            ? "Em alta: juros de empréstimos tendem a subir e aplicações rendem mais"
+            : "Referência para os juros de empréstimos e o rendimento das aplicações"}
+      </p>
     </Quadro>
   );
 }
@@ -278,8 +286,11 @@ function QuadroIpca({ dados}: { dados: Dados["ipca"] }) {
         <Indisponivel />
       </Quadro>
     );
-  const maiorAlta = dados.grupos[0];
-  const maiorQueda = dados.grupos.length > 1 ? dados.grupos[dados.grupos.length - 1] : undefined;
+  // grupos vem ordenado da maior alta para a maior queda.
+  const subiram = dados.grupos.filter((g) => g.variacao > 0);
+  const cairam = dados.grupos.filter((g) => g.variacao < 0).reverse();
+  const listaGrupos = (titulo: string, grupos: typeof dados.grupos) =>
+    [titulo + ":", ...grupos.map((g) => `${g.nome}: ${sinal(g.variacao, (v) => pct(v))}`)].join("\n");
   return (
     <Quadro parte="ipca" titulo="Inflação (IPCA)" subtitulo={`${formatarMesAno(dados.mes)} · IBGE`}>
       <ValorPrincipal valor={pct(dados.mensal)}>
@@ -299,13 +310,20 @@ function QuadroIpca({ dados}: { dados: Dados["ipca"] }) {
           R$ 100 de 1 ano atrás = <Destaque>{formatarMoeda(100 * (1 + dados.acumulado12m / 100))}</Destaque>
         </p>
       )}
-      {maiorAlta && (
-        <p className="truncate" title={dados.grupos.map((g) => `${g.nome} ${sinal(g.variacao, (v) => pct(v))}`).join("\n")}>
-          ▲ {maiorAlta.nome} {sinal(maiorAlta.variacao, (v) => pct(v))}
-          {maiorQueda && maiorQueda.variacao < 0 && (
-            <>
-              {" "}· ▼ {maiorQueda.nome} {sinal(maiorQueda.variacao, (v) => pct(v))}
-            </>
+      {(subiram.length > 0 || cairam.length > 0) && (
+        // Cada parte tem a própria dica ao passar o mouse: ▲ lista só os grupos que subiram no
+        // mês e ▼ só os que caíram (do maior para o menor movimento).
+        <p className="truncate">
+          {subiram.length > 0 && (
+            <span className="cursor-help" title={listaGrupos("Subiram no mês", subiram)}>
+              ▲ {subiram[0].nome} {sinal(subiram[0].variacao, (v) => pct(v))}
+            </span>
+          )}
+          {subiram.length > 0 && cairam.length > 0 && " · "}
+          {cairam.length > 0 && (
+            <span className="cursor-help" title={listaGrupos("Caíram no mês", cairam)}>
+              ▼ {cairam[0].nome} {sinal(cairam[0].variacao, (v) => pct(v))}
+            </span>
           )}
         </p>
       )}
