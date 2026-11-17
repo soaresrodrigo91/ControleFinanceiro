@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { assinarParcelasDoIntervalo, valorEfetivo } from "@/lib/parcelas";
 import { gruposAtivos } from "@/lib/config";
 import { assinarRecebimentosDoIntervalo } from "@/lib/recebimentos";
@@ -159,13 +158,12 @@ export default function VisaoGeral13Meses({
               <tr key={grupo} className="border-b border-slate-100 last:border-0 dark:border-slate-700">
                 <td className="sticky left-0 z-10 w-40 bg-white px-2 py-2 md:static md:w-auto dark:bg-slate-800">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <Link
-                      href={`/lancar?aba=buscar&grupo=${encodeURIComponent(grupo)}`}
+                    <span
                       title={grupo}
-                      className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 hover:underline dark:text-slate-100"
+                      className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900 dark:text-slate-100"
                     >
                       {grupo}
-                    </Link>
+                    </span>
                     {status === "pago" && (
                       <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
                         Pago
@@ -199,7 +197,20 @@ export default function VisaoGeral13Meses({
                         mes === ym ? "bg-indigo-50/60 font-medium text-slate-900 dark:bg-indigo-950/40 dark:text-slate-100" : ""
                       }`}
                     >
-                      {valor > 0 ? formatarMoeda(valor) : "—"}
+                      {valor > 0 ? (
+                        // Abre, numa nova aba, os Lançamentos daquele mês filtrados pelo grupo.
+                        <a
+                          href={`/lancar?aba=buscar&mes=${mes}&grupo=${encodeURIComponent(grupo)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Ver os lançamentos deste grupo neste mês (abre em nova aba)"
+                          className="underline-offset-2 hover:text-indigo-600 hover:underline dark:hover:text-indigo-400"
+                        >
+                          {formatarMoeda(valor)}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                   );
                 })}
