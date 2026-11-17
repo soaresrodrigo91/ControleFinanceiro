@@ -11,13 +11,13 @@ import {
   atualizarCorGrupo,
   atualizarGrupoFavorito,
   atualizarItensPorPagina,
+  atualizarQuadroInicio,
   atualizarLayoutMenu,
   atualizarManterMesSelecionado,
   atualizarModoComp,
   atualizarObservacaoItem,
   atualizarResumoRelatorio,
   atualizarSugestaoCredor,
-  atualizarMostrarDashboardInicio,
   atualizarMostrarSubtotalProvisaoInicio,
   atualizarTipoGraficoDashboard,
   CONFIG_PADRAO,
@@ -26,7 +26,9 @@ import {
   itemEstaEmUso,
   removerComp,
   removerItemLista,
+  quadroInicioDaConfig,
   type CampoLista,
+  type QuadroInicio,
 } from "@/lib/config";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CARD, CLASSE_INPUT } from "@/lib/estilos";
 import { formatarMesAno, mesAtualYM } from "@/lib/date";
@@ -34,6 +36,7 @@ import SeletorMesAno from "@/components/SeletorMesAno";
 import { Tab, Tabs } from "@/components/Tabs";
 import CompartilharLancamentosCard from "@/components/config/CompartilharLancamentosCard";
 import PlanoTab from "@/components/config/PlanoTab";
+import PalavrasDestaqueNoticias from "@/components/config/PalavrasDestaqueNoticias";
 import { mensagemErroAuth } from "@/lib/authErrors";
 import { IconBalao, IconCadeado, IconEstrela, IconOlho, IconOlhoFechado } from "@/components/action-icons";
 import Modal from "@/components/Modal";
@@ -54,6 +57,12 @@ const ROTULOS_MODO: Record<ModoComp, string> = {
   metade: "Recebo 50% do valor",
 };
 
+const OPCOES_QUADRO_INICIO: { valor: QuadroInicio; rotulo: string }[] = [
+  { valor: "nenhum", rotulo: "Não exibir" },
+  { valor: "dashboard", rotulo: "Mini-dashboard" },
+  { valor: "indicadores", rotulo: "Indicadores econômicos" },
+];
+
 type Aba = "geral" | "geralII" | "seguranca" | "plano";
 
 export default function ConfiguracoesPage() {
@@ -71,6 +80,8 @@ export default function ConfiguracoesPage() {
   }, [usuario]);
 
   if (!usuario) return null;
+
+  const quadroInicio = quadroInicioDaConfig(config);
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-4 md:px-8">
@@ -109,6 +120,58 @@ export default function ConfiguracoesPage() {
       ) : (
         <>
           <div className="mb-6 grid gap-3 sm:grid-cols-2 md:grid-cols-5">
+            <div
+              className={`${CLASSE_CARD} flex min-w-0 flex-col p-3 ${
+                // Com os destaques de notícias o card fica mais alto: ocupa duas linhas da grade para
+                // não esticar os outros cards da mesma linha.
+                quadroInicio === "indicadores" ? "sm:row-span-2" : ""
+              }`}
+            >
+              <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
+                Painel inicial
+              </h2>
+              <div role="radiogroup" aria-label="Painel inicial" className="flex flex-col gap-1">
+                {OPCOES_QUADRO_INICIO.map((opcao) => {
+                  const selecionada = quadroInicio === opcao.valor;
+                  return (
+                    <div key={opcao.valor} className="flex min-h-6 items-center justify-between gap-2">
+                      <label className="flex cursor-pointer items-center gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                        <input
+                          type="radio"
+                          name="quadroInicio"
+                          checked={selecionada}
+                          onChange={() => atualizarQuadroInicio(usuario.uid, opcao.valor)}
+                          className="h-3.5 w-3.5 accent-indigo-600"
+                        />
+                        {opcao.rotulo}
+                      </label>
+                      {opcao.valor === "dashboard" && selecionada && (
+                        <div className="flex overflow-hidden rounded-md border border-slate-300 dark:border-slate-600">
+                          {(["pizza", "barra"] as const).map((tipo) => (
+                            <button
+                              key={tipo}
+                              type="button"
+                              onClick={() => atualizarTipoGraficoDashboard(usuario.uid, tipo)}
+                              className={`px-1.5 py-0.5 text-[11px] font-medium ${
+                                (config.tipoGraficoDashboard ?? "pizza") === tipo
+                                  ? "bg-indigo-600 text-white"
+                                  : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                              }`}
+                            >
+                              {tipo === "pizza" ? "Pizza" : "Barras"}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {quadroInicio === "indicadores" && (
+                <PalavrasDestaqueNoticias uid={usuario.uid} palavras={config.palavrasDestaqueNoticias ?? []} />
+              )}
+            </div>
+
             <div className={`${CLASSE_CARD} p-3`}>
               <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">Resumos do relatório</h2>
               <div className="flex flex-col gap-1">
@@ -227,58 +290,10 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
-            <div className={`${CLASSE_CARD} flex flex-col justify-between p-3`}>
-              <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
-                Mini-dashboard na tela de Início
-              </h2>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-slate-500 dark:text-slate-400">Exibir na tela de Início</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={config.mostrarDashboardInicio ?? true}
-                  onClick={() =>
-                    atualizarMostrarDashboardInicio(usuario.uid, !(config.mostrarDashboardInicio ?? true))
-                  }
-                  className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                    (config.mostrarDashboardInicio ?? true) ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
-                  }`}
-                >
-                  <span
-                    className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform"
-                    style={{
-                      transform: (config.mostrarDashboardInicio ?? true) ? "translateX(16px)" : "translateX(0)",
-                    }}
-                  />
-                </button>
-              </div>
-              <div className="mt-1.5 flex overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600">
-                <button
-                  type="button"
-                  onClick={() => atualizarTipoGraficoDashboard(usuario.uid, "pizza")}
-                  className={`flex-1 px-2.5 py-1.5 text-xs font-medium ${
-                    (config.tipoGraficoDashboard ?? "pizza") === "pizza"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  Pizza
-                </button>
-                <button
-                  type="button"
-                  onClick={() => atualizarTipoGraficoDashboard(usuario.uid, "barra")}
-                  className={`flex-1 px-2.5 py-1.5 text-xs font-medium ${
-                    config.tipoGraficoDashboard === "barra"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  Barras
-                </button>
-              </div>
-            </div>
-
-            <div className={`${CLASSE_CARD} flex flex-col justify-between p-3`}>
+            <div className={`${CLASSE_CARD} flex flex-col justify-between p-3 ${
+                // Sem o Painel em duas linhas, ocupa duas colunas para fechar a linha da grade.
+                quadroInicio === "indicadores" ? "" : "md:col-span-2"
+              }`}>
               <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
                 Subtotal e Provisão na tela de Início
               </h2>
@@ -310,7 +325,7 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
 
-            <div className={`${CLASSE_CARD} flex flex-col justify-between p-3`}>
+            <div className={`${CLASSE_CARD} flex flex-col justify-between p-3 md:col-span-2`}>
               <h2 className="mb-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100">
                 Mês ao acessar o sistema
               </h2>
@@ -675,9 +690,20 @@ function ListaEditavel({
   aoAlternarFavorito?: (item: string) => void;
   cores?: Record<string, CorGrupo>;
 }) {
+  const [cadastrando, setCadastrando] = useState(false);
   const [novoItem, setNovoItem] = useState("");
   const [novaObservacao, setNovaObservacao] = useState("");
+  const [erroCadastro, setErroCadastro] = useState("");
+  const [salvandoNovo, setSalvandoNovo] = useState(false);
   const [erro, setErro] = useState("");
+  const rotuloNovo = campo === "grupos" ? "Novo grupo" : "Nova aplicação";
+
+  function fecharCadastro() {
+    setCadastrando(false);
+    setNovoItem("");
+    setNovaObservacao("");
+    setErroCadastro("");
+  }
   const [removendo, setRemovendo] = useState<string | null>(null);
   const [editandoObservacaoDe, setEditandoObservacaoDe] = useState<string | null>(null);
   const [textoObservacao, setTextoObservacao] = useState("");
@@ -714,19 +740,28 @@ function ListaEditavel({
 
   async function handleAdicionar(e: FormEvent) {
     e.preventDefault();
-    setErro("");
-    const item = novoItem.trim();
-    if (!item) return;
-    if (itens.includes(item)) {
-      setErro("Este item já existe na lista.");
+    setErroCadastro("");
+    const item = novoItem.trim().replace(/\s+/g, " ");
+    if (!item) {
+      setErroCadastro("Informe o nome.");
       return;
     }
-    await adicionarItemLista(uid, campo, item);
-    if (novaObservacao.trim()) {
-      await atualizarObservacaoItem(uid, campo, item, novaObservacao.trim());
+    if (itens.some((i) => i.toLowerCase() === item.toLowerCase())) {
+      setErroCadastro("Este item já existe na lista.");
+      return;
     }
-    setNovoItem("");
-    setNovaObservacao("");
+    setSalvandoNovo(true);
+    try {
+      await adicionarItemLista(uid, campo, item);
+      if (novaObservacao.trim()) {
+        await atualizarObservacaoItem(uid, campo, item, novaObservacao.trim());
+      }
+      fecharCadastro();
+    } catch {
+      setErroCadastro("Não foi possível salvar. Tente novamente.");
+    } finally {
+      setSalvandoNovo(false);
+    }
   }
 
   async function handleRemover(item: string) {
@@ -909,30 +944,62 @@ function ListaEditavel({
       {erro && <p className="mb-3 text-sm text-red-600 dark:text-red-400">{erro}</p>}
       {avisoFavorito && <p className="mb-3 text-sm text-emerald-600 dark:text-emerald-400">{avisoFavorito}</p>}
 
-      <form onSubmit={handleAdicionar} className="flex flex-col gap-2">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={novoItem}
-            onChange={(e) => setNovoItem(e.target.value)}
-            placeholder="Novo item"
-            className={`${CLASSE_INPUT} h-10`}
-          />
-          <button
-            type="submit"
-            className="h-10 shrink-0 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
-          >
-            Adicionar
-          </button>
-        </div>
-        <input
-          type="text"
-          value={novaObservacao}
-          onChange={(e) => setNovaObservacao(e.target.value)}
-          placeholder="Observação (opcional)"
-          className={CLASSE_INPUT}
-        />
-      </form>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setCadastrando(true)}
+          className="flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+        >
+          <span className="text-base leading-none">+</span> Novo
+        </button>
+      </div>
+
+      <Modal aberto={cadastrando} onFechar={fecharCadastro} titulo={rotuloNovo}>
+        <form onSubmit={handleAdicionar} className="flex flex-col gap-3">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nome *</label>
+            <input
+              type="text"
+              value={novoItem}
+              onChange={(e) => {
+                setNovoItem(e.target.value);
+                setErroCadastro("");
+              }}
+              placeholder={campo === "grupos" ? "Ex.: Cartão de Crédito" : "Ex.: Alimentação"}
+              maxLength={40}
+              autoFocus
+              className={CLASSE_INPUT}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Observação</label>
+            <textarea
+              value={novaObservacao}
+              onChange={(e) => setNovaObservacao(e.target.value)}
+              rows={3}
+              placeholder="Opcional"
+              className={CLASSE_INPUT}
+            />
+          </div>
+          {erroCadastro && <p className="text-sm text-red-600 dark:text-red-400">{erroCadastro}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={fecharCadastro}
+              className="flex-1 rounded-lg border border-slate-300 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={salvandoNovo}
+              className="flex-1 rounded-lg bg-indigo-600 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {salvandoNovo ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal
         aberto={!!editandoObservacaoDe}

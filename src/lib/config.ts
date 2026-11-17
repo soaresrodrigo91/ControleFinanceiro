@@ -63,6 +63,7 @@ export const CONFIG_PADRAO: ConfigListas = {
   compartilharLancamentos: false,
   tipoGraficoDashboard: "pizza",
   mostrarDashboardInicio: true,
+  conteudoQuadroInicio: "dashboard",
   mostrarSubtotalProvisaoInicio: false,
 };
 
@@ -117,8 +118,23 @@ export async function atualizarTipoGraficoDashboard(uid: string, tipo: "pizza" |
   await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { tipoGraficoDashboard: tipo });
 }
 
-export async function atualizarMostrarDashboardInicio(uid: string, mostrar: boolean) {
-  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { mostrarDashboardInicio: mostrar });
+// O que aparece no quadro do fim da tela Início (Configurações > Geral I).
+export type QuadroInicio = "nenhum" | "dashboard" | "indicadores";
+
+export function quadroInicioDaConfig(config: ConfigListas): QuadroInicio {
+  if (!(config.mostrarDashboardInicio ?? true)) return "nenhum";
+  return config.conteudoQuadroInicio === "indicadores" ? "indicadores" : "dashboard";
+}
+
+export async function atualizarQuadroInicio(uid: string, quadro: QuadroInicio) {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), {
+    mostrarDashboardInicio: quadro !== "nenhum",
+    ...(quadro !== "nenhum" && { conteudoQuadroInicio: quadro }),
+  });
+}
+
+export async function atualizarPalavrasDestaqueNoticias(uid: string, palavras: string[]) {
+  await updateDoc(doc(db, "usuarios", uid, "config", "listas"), { palavrasDestaqueNoticias: palavras });
 }
 
 export async function atualizarMostrarSubtotalProvisaoInicio(uid: string, mostrar: boolean) {

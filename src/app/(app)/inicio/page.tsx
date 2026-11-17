@@ -6,13 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMesAtual } from "@/contexts/MesAtualContext";
 import { assinarParcelasDoMes, valorEfetivo } from "@/lib/parcelas";
-import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos } from "@/lib/config";
+import { assinarConfigListas, CONFIG_PADRAO, gruposAtivos, quadroInicioDaConfig } from "@/lib/config";
 import { alternarFiltroGrupo, assinarFiltrosDashboard } from "@/lib/perfil";
 import { assinarRecorrencias, mesclarComRecorrencias } from "@/lib/recorrencias";
 import { assinarRecebimentosDoMes, sincronizarReembolsosRecorrentes } from "@/lib/recebimentos";
 import { formatarMoeda, mesAtualYM } from "@/lib/date";
 import VisaoGeral13Meses from "@/components/VisaoGeral13Meses";
 import DashboardFormaPagamento from "@/components/DashboardFormaPagamento";
+import IndicadoresEconomicos from "@/components/IndicadoresEconomicos";
 import SeletorMesAno from "@/components/SeletorMesAno";
 import { IconOlho, IconOlhoFechado } from "@/components/action-icons";
 import type { ConfigListas, Parcela, Recebimento, Recorrencia, StatusGrupo } from "@/lib/types";
@@ -158,6 +159,7 @@ function DashboardConteudo() {
   );
 
   const listaGruposAtivos = useMemo(() => gruposAtivos(config), [config]);
+  const mostrarIndicadores = quadroInicioDaConfig(config) === "indicadores";
 
   const filtrosEfetivos = useMemo(
     () =>
@@ -367,7 +369,14 @@ function DashboardConteudo() {
       {/* A partir daqui a área rola (inclusive a Janela de 10 meses) quando não há
           espaço vertical suficiente — só o bloco acima (totais + grupos)
           fica fixo. Assim o mini-dashboard sempre pode ser alcançado rolando a tela. */}
-      <div ref={refAreaDashboard} className="scroll-sem-barra lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+      <div
+        ref={refAreaDashboard}
+        className={`scroll-sem-barra lg:min-h-0 lg:flex-1 lg:overflow-y-auto ${
+          // Com os indicadores (e a Janela de 10 meses visível), a área vira coluna flexível para
+          // eles esticarem até o fim da tela; com a janela oculta, ficam na altura padrão.
+          mostrarIndicadores && mostrar12Meses ? "lg:flex lg:flex-col" : ""
+        }`}
+      >
         <div className="mt-1 mb-2">
           <div className="mb-1 flex justify-end">
             <button
@@ -397,7 +406,13 @@ function DashboardConteudo() {
           )}
         </div>
 
-        {carregando ? (
+        {mostrarIndicadores ? (
+          // Indicadores não dependem dos lançamentos do mês: aparecem mesmo sem nenhum.
+          <IndicadoresEconomicos
+            esticar={mostrar12Meses}
+            palavrasDestaque={config.palavrasDestaqueNoticias ?? []}
+          />
+        ) : carregando ? (
           <p className="text-sm text-slate-500 dark:text-slate-400">Carregando...</p>
         ) : parcelas.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center dark:border-slate-600 dark:bg-slate-800">

@@ -54,6 +54,10 @@ export type ConfigListas = {
   compartilharLancamentos: boolean;
   tipoGraficoDashboard?: "pizza" | "barra";
   mostrarDashboardInicio?: boolean;
+  // O que o quadro da Início mostra: o mini-dashboard (padrão) ou os indicadores econômicos.
+  conteudoQuadroInicio?: "dashboard" | "indicadores";
+  // Palavras/assuntos que deixam em laranja as notícias do quadro de indicadores da Início.
+  palavrasDestaqueNoticias?: string[];
   mostrarSubtotalProvisaoInicio?: boolean;
   manterMesSelecionado?: boolean;
   mesSelecionadoSalvo?: string | null;
