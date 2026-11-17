@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   atualizarCamposTodasParcelas,
   atualizarParcela,
   atualizarParcelaProvisao,
-  buscarVencimentosPagos,
   excluirLancamento,
   excluirParcela,
   type EdicaoParcela,
@@ -30,6 +29,7 @@ import { GRUPO_FIXAS } from "@/lib/config";
 import { formatarMesAno } from "@/lib/date";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_INPUT } from "@/lib/estilos";
 import Modal from "@/components/Modal";
+import CampoValorMonetario, { paraNumero, paraTextoMonetario } from "@/components/CampoValorMonetario";
 import type { ConfigListas, Parcela } from "@/lib/types";
 
 export function EditarParcelaModal({
@@ -88,11 +88,7 @@ function FormularioEdicaoParcela({
   const [confirmarParcelaTodas, setConfirmarParcelaTodas] = useState(false);
   const [confirmarEncerrar, setConfirmarEncerrar] = useState(false);
   const [encerrando, setEncerrando] = useState(false);
-  const campoValorRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (camposLimitados && !parcela.pago) campoValorRef.current?.focus();
-  }, [camposLimitados, parcela.pago]);
+  const [valorTexto, setValorTexto] = useState(paraTextoMonetario(parcela.valorParcela));
 
   const gruposEditaveis = config.grupos.filter(
     (g) => (g !== GRUPO_FIXAS || g === dados.grupo) && (!config.gruposInativosDesde?.[g] || g === dados.grupo)
@@ -366,13 +362,14 @@ function FormularioEdicaoParcela({
       <div className={!camposLimitados ? "grid grid-cols-2 gap-3" : undefined}>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Valor (R$)</label>
-          <input
-            ref={campoValorRef}
-            type="number"
-            step="0.01"
-            value={dados.valorParcela}
+          <CampoValorMonetario
+            autoFocus={camposLimitados && !parcela.pago}
+            value={valorTexto}
             disabled={parcela.pago}
-            onChange={(e) => setDados({ ...dados, valorParcela: Number(e.target.value) })}
+            onChange={(texto) => {
+              setValorTexto(texto);
+              setDados({ ...dados, valorParcela: paraNumero(texto) });
+            }}
             className={`${CLASSE_INPUT} disabled:cursor-not-allowed disabled:opacity-60`}
           />
           {parcela.pago && (
@@ -458,23 +455,6 @@ export function ExcluirParcelaModal({
 }) {
   const [excluindo, setExcluindo] = useState(false);
   const ym = parcela?.vencimento.slice(0, 7);
-  const [estadoVerificacao, setEstadoVerificacao] = useState<{ id: string; vencimentosPagos: string[] }>({
-    id: "",
-    vencimentosPagos: [],
-  });
-
-  useEffect(() => {
-    if (!restrito || !parcela) return;
-    buscarVencimentosPagos(uid, {
-      lancamentoId: parcela.lancamentoId,
-      recorrenciaId: parcela.recorrenciaId ?? undefined,
-    }).then((vencimentos) => {
-      setEstadoVerificacao({ id: parcela.id, vencimentosPagos: vencimentos });
-    });
-  }, [restrito, uid, parcela]);
-
-  const verificando = !!restrito && !!parcela && estadoVerificacao.id !== parcela.id;
-  const vencimentosPagos = parcela && estadoVerificacao.id === parcela.id ? estadoVerificacao.vencimentosPagos : [];
 
   async function handleExcluirParcela() {
     if (!parcela) return;
@@ -531,8 +511,6 @@ export function ExcluirParcelaModal({
     }
   }
 
-  const mesesPagos = [...new Set(vencimentosPagos.map((v) => v.slice(0, 7)))].sort();
-  const bloqueadoPago = restrito && !parcela?.provisao && mesesPagos.length > 0;
   const bloqueadoRenegociacao = restrito && !!parcela?.renegociacaoId;
 
   return (
@@ -543,19 +521,6 @@ export function ExcluirParcelaModal({
             <p className="text-sm text-slate-600 dark:text-slate-300">
               Este lançamento é proveniente da renegociação nº{" "}
               {formatarNumeroRenegociacao(parcela.renegociacaoNumero)}. Para excluí-lo, acesse a aba Renegociação.
-            </p>
-            <button onClick={onFechar} className={CLASSE_BOTAO_PRIMARIO}>
-              Entendi
-            </button>
-          </div>
-        ) : restrito && verificando ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">Verificando...</p>
-        ) : bloqueadoPago ? (
-          <div className="flex flex-col gap-3">
-            <p className="text-sm text-slate-600 dark:text-slate-300">
-              {mesesPagos.length > 1
-                ? `Este lançamento possui parcelas já marcadas como pagas em ${mesesPagos.map((m) => formatarMesAno(m)).join(", ")}. Para excluí-lo, acesse o(s) mês(es) correspondente(s) e desmarque o pagamento antes de tentar novamente.`
-                : `Este lançamento já está marcado como pago. Para excluí-lo, vá até ${formatarMesAno(mesesPagos[0])} e desmarque o pagamento antes de tentar novamente.`}
             </p>
             <button onClick={onFechar} className={CLASSE_BOTAO_PRIMARIO}>
               Entendi

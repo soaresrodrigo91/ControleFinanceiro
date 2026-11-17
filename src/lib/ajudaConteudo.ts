@@ -137,7 +137,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Se não for fixa, o valor total é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira parcela.",
       "Uma chave discreta ao lado do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\": com a chave desligada (padrão), o valor digitado é o total e o sistema divide pelas parcelas; com a chave ligada, o valor digitado é o de cada parcela e o sistema multiplica pelo número de parcelas para obter o total. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
       "Ao marcar \"Conta fixa (recorrente)\", a chave é travada em \"Valor da parcela\", já que uma conta fixa não tem \"total\" a dividir — o valor digitado é sempre o lançado em cada mês.",
-      "O campo de valor tem máscara de R$: os dígitos digitados formam a parte inteira (ex.: 1, 10, 100... vira 1.000,00), e a vírgula abre a edição dos centavos.",
+      "O campo de valor tem máscara de R$ no estilo caixa registradora: os dígitos entram pela direita, sempre com 2 casas de centavos (ex.: digitar 3350 mostra 33,50; digitar 100000 mostra 1.000,00). Não é preciso digitar a vírgula. A mesma máscara vale para todos os campos de valor do sistema (filtros, Contas a Receber, Plano Financeiro e janelas de edição).",
       "Se um reembolso (pessoa) for selecionado e ela tiver um modo configurado (100% ou 50%), o sistema já cria automaticamente o(s) recebimento(s) correspondente(s) em Contas a Receber.",
       "Em telas maiores, o formulário se organiza em duas colunas, separadas por uma linha divisória discreta (credor, datas, valor/parcelas, conta fixa/provisão e observação à esquerda; grupo, aplicação e reembolso à direita) para aproveitar melhor o espaço horizontal e exigir menos rolagem — em celular, os campos continuam empilhados em uma coluna só.",
       "O botão \"Cancelar\" ao lado de \"Salvar\" limpa todos os campos do formulário (voltando credor, datas, valor, parcelas, observação e demais campos ao estado inicial), sem sair da tela — útil para recomeçar o preenchimento do zero.",
@@ -187,7 +187,7 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
       "Editar o valor de uma Provisão com reembolso configurado atualiza automaticamente o valor já compartilhado em Lançamentos Compartilhados, desde que quem recebeu ainda não tenha lançado o item (status \"pendente\"); se já tiver lançado, a cópia dela é independente e não muda mais.",
     ],
     validacoes: [
-      "Tentar excluir uma conta já marcada como paga é bloqueado, com mensagem explicando que é preciso desmarcar o pagamento antes.",
+      "Ter meses ou parcelas já marcados como pagos não bloqueia a exclusão: a conta segue a pergunta normal de alcance (para conta fixa: apenas este mês, deste mês em diante ou todos). Atenção: \"Todos\" e \"Excluir lançamento inteiro\" também apagam os meses/parcelas já pagos.",
     ],
     imagem: "/ajuda/lancar-lista.png",
     imagemAlt: "Lista de lançamentos de Contas a Pagar com filtros",

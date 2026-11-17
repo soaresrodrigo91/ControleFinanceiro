@@ -15,6 +15,7 @@ import {
 import { formatarNumeroRenegociacao } from "@/lib/renegociacao";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_INPUT } from "@/lib/estilos";
 import Modal from "@/components/Modal";
+import CampoValorMonetario, { paraNumero, paraTextoMonetario } from "@/components/CampoValorMonetario";
 import type { Recebimento } from "@/lib/types";
 
 export function EditarRecebimentoModal({
@@ -55,7 +56,7 @@ function FormularioEdicaoRecebimento({
   camposLimitados?: boolean;
 }) {
   const [origem, setOrigem] = useState(recebimento.origem);
-  const [valorTexto, setValorTexto] = useState(recebimento.valor.toFixed(2).replace(".", ","));
+  const [valorTexto, setValorTexto] = useState(paraTextoMonetario(recebimento.valor));
   const [data, setData] = useState(recebimento.recebimento);
   const [observacao, setObservacao] = useState(recebimento.observacao);
   const [salvando, setSalvando] = useState(false);
@@ -64,7 +65,7 @@ function FormularioEdicaoRecebimento({
   const ym = recebimento.recebimento.slice(0, 7);
 
   async function salvarDireto() {
-    const valor = Number(valorTexto.replace(",", "."));
+    const valor = paraNumero(valorTexto);
     setSalvando(true);
     try {
       await atualizarRecebimento(uid, recebimento.id, { origem, valor, recebimento: data, observacao });
@@ -75,7 +76,7 @@ function FormularioEdicaoRecebimento({
   }
 
   async function salvarComEscopo(escopo: "mes" | "futuros" | "tudo") {
-    const valor = Number(valorTexto.replace(",", "."));
+    const valor = paraNumero(valorTexto);
     setSalvando(true);
     try {
       const dadosRecorrencia = { origem, observacao, valor };
@@ -176,27 +177,13 @@ function FormularioEdicaoRecebimento({
       {camposLimitados ? (
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Valor (R$)</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            placeholder="0,00"
-            value={valorTexto}
-            onChange={(e) => setValorTexto(e.target.value)}
-            className={CLASSE_INPUT}
-          />
+          <CampoValorMonetario value={valorTexto} onChange={setValorTexto} className={CLASSE_INPUT} />
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Valor (R$)</label>
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={valorTexto}
-              onChange={(e) => setValorTexto(e.target.value)}
-              className={CLASSE_INPUT}
-            />
+            <CampoValorMonetario value={valorTexto} onChange={setValorTexto} className={CLASSE_INPUT} />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Data</label>

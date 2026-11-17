@@ -122,22 +122,6 @@ export function assinarParcelasDoIntervalo(
   });
 }
 
-export async function buscarVencimentosPagos(
-  uid: string,
-  chave: { lancamentoId?: string; recorrenciaId?: string }
-): Promise<string[]> {
-  const campo = chave.recorrenciaId ? "recorrenciaId" : "lancamentoId";
-  const valor = chave.recorrenciaId ?? chave.lancamentoId;
-  if (!valor) return [];
-  const q = query(
-    collection(db, "usuarios", uid, "parcelas"),
-    where(campo, "==", valor),
-    where("pago", "==", true)
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => (d.data() as Parcela).vencimento);
-}
-
 export async function marcarPago(uid: string, parcela: Parcela, pago: boolean) {
   await updateDoc(doc(db, "usuarios", uid, "parcelas", parcela.id), {
     pago,
