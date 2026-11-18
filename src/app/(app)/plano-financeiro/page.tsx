@@ -187,9 +187,15 @@ export default function PlanoFinanceiroPage() {
   const limiteDistribuicao = modo === "percentual" ? 100 : arredondar2(aReceberMesAtual);
   const excedeu = totalDistribuido > limiteDistribuicao;
   const restante = arredondar2(limiteDistribuicao - totalDistribuido);
-  // Verde: ainda há saldo a distribuir; vermelho: excedeu; cor normal: distribuído por completo.
+  // Em percentual não dá para passar de 100% (bloqueia o salvar). Em valor, passar do valor a
+  // receber do mês selecionado só gera aviso: o saldo pode faltar neste mês e existir nos próximos.
+  const bloqueiaSalvar = excedeu && modo === "percentual";
+  // Verde: ainda há saldo a distribuir; vermelho/âmbar: excedeu (bloqueado/só aviso); cor
+  // normal: distribuído por completo.
   const corSaldo = excedeu
-    ? "text-red-600 dark:text-red-400"
+    ? bloqueiaSalvar
+      ? "text-red-600 dark:text-red-400"
+      : "text-amber-600 dark:text-amber-400"
     : restante > 0
       ? "text-emerald-600 dark:text-emerald-400"
       : "text-slate-900 dark:text-slate-100";
@@ -255,7 +261,7 @@ export default function PlanoFinanceiroPage() {
   }
 
   async function salvar() {
-    if (!usuario || excedeu) return;
+    if (!usuario || bloqueiaSalvar) return;
     setSalvando(true);
     setErroSalvar("");
     try {
@@ -449,11 +455,15 @@ export default function PlanoFinanceiroPage() {
                     </span>
                   )}
                 </p>
-                {excedeu && (
+                {bloqueiaSalvar && (
                   <p className="mt-1 font-medium text-red-600 dark:text-red-400" role="alert">
-                    Não é permitido distribuir mais que {modo === "percentual" ? "100%" : "o valor a receber"}. Você passou{" "}
-                    {formatarNoModo(-restante)} do limite
-                    {modo === "valor" && aReceberMesAtual <= 0 ? ` — não há valor a receber em ${formatarMesAno(ym)}` : ""}.
+                    Não é permitido distribuir mais que 100%. Você passou {formatarNoModo(-restante)} do limite.
+                  </p>
+                )}
+                {modo === "valor" && excedeu && (
+                  <p className="mt-1 font-medium text-amber-600 dark:text-amber-400" role="status">
+                    A distribuição passa {formatarNoModo(-restante)} do valor a receber em {formatarMesAno(ym)}. Você
+                    pode salvar o plano mesmo assim — os meses com saldo suficiente seguem normalmente.
                   </p>
                 )}
                 {modo === "valor" && !excedeu && (
@@ -483,8 +493,8 @@ export default function PlanoFinanceiroPage() {
                 <button
                   type="button"
                   onClick={salvar}
-                  disabled={!alterado || excedeu || salvando}
-                  title={excedeu ? "A distribuição passou do limite permitido" : undefined}
+                  disabled={!alterado || bloqueiaSalvar || salvando}
+                  title={bloqueiaSalvar ? "A distribuição passou de 100%" : undefined}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {salvando ? "Salvando..." : "Salvar plano"}
