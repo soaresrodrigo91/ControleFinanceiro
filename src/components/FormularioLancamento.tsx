@@ -68,6 +68,11 @@ export default function FormularioLancamento({
     );
   }, [parcelasExistentes]);
 
+  const aplicacoesEmOrdemAlfabetica = useMemo(
+    () => [...config.aplicacoes].sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" })),
+    [config.aplicacoes]
+  );
+
   function handleDataCompraChange(novaData: string) {
     setDataCompra(novaData);
     if (!inicioEditadoManualmente) {
@@ -410,7 +415,7 @@ export default function FormularioLancamento({
                 <option value="" disabled>
                   Selecione...
                 </option>
-                {config.aplicacoes.map((a) => (
+                {aplicacoesEmOrdemAlfabetica.map((a) => (
                   <option key={a} value={a}>
                     {a}
                   </option>

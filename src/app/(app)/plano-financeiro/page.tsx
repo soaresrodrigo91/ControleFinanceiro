@@ -29,7 +29,10 @@ const CLASSE_CAMPO_COMPACTO =
 
 // Rascunho da distribuição enquanto o usuário edita: os valores ficam como texto (do jeito
 // que estão nos campos) e só viram número ao calcular/salvar.
-type Rascunho = { modo: ModoPlanoFinanceiro; valores: Record<string, string> };
+// `anterior` guarda os campos como estavam no outro modo antes da última troca, para que voltar
+// a ele restaure exatamente o que o usuário tinha (sem o erro de arredondamento da ida e volta).
+type ValoresNoModo = { modo: ModoPlanoFinanceiro; valores: Record<string, string> };
+type Rascunho = ValoresNoModo & { anterior?: ValoresNoModo };
 
 function numeroParaTexto(valor: number, modo: ModoPlanoFinanceiro): string {
   if (!valor) return "";
@@ -156,7 +159,8 @@ export default function PlanoFinanceiroPage() {
   }
 
   // O que está nos campos: o rascunho, se o usuário começou a editar, ou o plano salvo.
-  const emEdicao = rascunho ?? rascunhoDoPlano(planoSalvo, aplicacoes);
+  const rascunhoSalvo = rascunhoDoPlano(planoSalvo, aplicacoes);
+  const emEdicao = rascunho ?? rascunhoSalvo;
   const modo = emEdicao.modo;
 
   // Plano efetivo (numérico) usado para pintar a tabela — reflete o rascunho na hora, para o
@@ -215,15 +219,29 @@ export default function PlanoFinanceiroPage() {
   function editarValor(aplicacao: string, texto: string) {
     setSalvoComSucesso(false);
     setErroSalvar("");
-    setRascunho({ ...emEdicao, valores: { ...emEdicao.valores, [aplicacao]: texto } });
+    // Editou neste modo: os valores guardados do outro modo deixam de valer.
+    setRascunho({ modo: emEdicao.modo, valores: { ...emEdicao.valores, [aplicacao]: texto } });
   }
 
   // Ao trocar entre percentual e valor, converte o que já foi distribuído usando o valor a
-  // receber do mês selecionado, para o usuário não perder a divisão que já fez.
+  // receber do mês selecionado, para o usuário não perder a divisão que já fez. Se ele só foi e
+  // voltou (sem editar nada no meio), restaura exatamente os valores que estavam antes.
   function trocarModo(novoModo: ModoPlanoFinanceiro) {
     if (novoModo === modo) return;
     setSalvoComSucesso(false);
     setErroSalvar("");
+    const atualNoModo: ValoresNoModo = { modo, valores: { ...emEdicao.valores } };
+    if (emEdicao.anterior?.modo === novoModo) {
+      const restaurado = emEdicao.anterior;
+      const igualAoSalvo =
+        rascunhoSalvo.modo === restaurado.modo &&
+        aplicacoes.every((a) => (rascunhoSalvo.valores[a] ?? "") === (restaurado.valores[a] ?? ""));
+      // Voltou ao que está salvo: sai do modo de edição (nada a salvar).
+      setRascunho(
+        igualAoSalvo ? null : { modo: restaurado.modo, valores: { ...restaurado.valores }, anterior: atualNoModo }
+      );
+      return;
+    }
     const valores = Object.fromEntries(
       aplicacoes.map((a) => {
         const atual = distribuicaoEfetiva[a] ?? 0;
@@ -233,7 +251,7 @@ export default function PlanoFinanceiroPage() {
         return [a, numeroParaTexto(arredondar2(convertido), novoModo)];
       })
     );
-    setRascunho({ modo: novoModo, valores });
+    setRascunho({ modo: novoModo, valores, anterior: atualNoModo });
   }
 
   async function salvar() {

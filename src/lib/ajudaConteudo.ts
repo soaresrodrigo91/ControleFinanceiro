@@ -298,9 +298,9 @@ export const ARTIGOS_AJUDA: ArtigoAjuda[] = [
     titulo: "Contas a Receber · Novo recebimento",
     resumo: "Formulário para lançar uma entrada manual — salário, venda, reembolso avulso, etc.",
     regras: [
-      "Assim como em Contas a Pagar, marcar \"Conta fixa (recorrente)\" transforma o lançamento em uma recorrência mensal.",
+      "Assim como a \"Conta fixa (recorrente)\" de Contas a Pagar, marcar \"Recebimento fixo (Recorrente)\" transforma o lançamento em uma recorrência mensal.",
       "Uma chave discreta acima do campo de valor alterna entre \"Valor total\" e \"Valor da parcela\" (o rótulo do campo muda junto): com a chave desligada (padrão), o valor digitado é dividido igualmente entre as parcelas — eventuais centavos de arredondamento vão para a primeira; com a chave ligada, o valor digitado é lançado integralmente em cada parcela/mês. Ex.: R$ 1.000,00 com 2 parcelas e a chave desligada lança 2x de R$ 500,00; com a chave ligada, lança 2x de R$ 1.000,00.",
-      "Ao marcar \"Conta fixa (recorrente)\", a chave é travada em \"Valor da parcela\", pelo mesmo motivo de Contas a Pagar.",
+      "Ao marcar \"Recebimento fixo (Recorrente)\", a chave é travada em \"Valor da parcela\", pelo mesmo motivo de Contas a Pagar.",
       "O campo de valor também tem máscara de R$, igual ao de Contas a Pagar.",
       "O botão \"Cancelar\" ao lado de \"Salvar\" limpa todos os campos do formulário, sem sair da tela — útil para recomeçar o preenchimento do zero.",
     ],

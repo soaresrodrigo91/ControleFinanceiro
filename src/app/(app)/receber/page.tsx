@@ -388,7 +388,7 @@ function ReceberConteudo() {
                     disabled={contaFixa}
                     title={
                       contaFixa
-                        ? "Conta fixa sempre usa o valor da parcela"
+                        ? "Recebimento fixo sempre usa o valor da parcela"
                         : "Alternar entre valor total e valor da parcela"
                     }
                     onClick={() => setValorPorParcela((v) => !v)}
@@ -450,7 +450,7 @@ function ReceberConteudo() {
                 }}
                 className="h-4 w-4 accent-indigo-600"
               />
-              Conta fixa (recorrente)
+              Recebimento fixo (Recorrente)
             </label>
             {contaFixa && (
               <p className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
