@@ -80,6 +80,9 @@ export default function BuscaParcelas({
   const [filtroComp, setFiltroComp] = useState<Record<string, boolean>>({});
   const [filtroValor, setFiltroValor] = useState("");
   const [filtroCredor, setFiltroCredor] = useState("");
+  // Apenas visualização: mostra o valor que efetivamente sai do bolso (desconta o reembolso).
+  // Estado local — volta desmarcado ao sair da tela e não afeta nenhuma outra rotina.
+  const [mostrarValorReal, setMostrarValorReal] = useState(false);
 
   const [ordenacao, setOrdenacao] = useState<OrdenacaoParcelas>(null);
 
@@ -219,9 +222,19 @@ export default function BuscaParcelas({
     credorBusca,
   ]);
 
-  const total = parcelasFiltradas.reduce((s, p) => s + p.valorParcela, 0);
+  const modoPorComp = useMemo(() => new Map(config.comp.map((c) => [c.nome, c.modo])), [config.comp]);
+
+  function valorExibido(p: Parcela): number {
+    if (!mostrarValorReal || !p.comp) return p.valorParcela;
+    const modo = modoPorComp.get(p.comp);
+    if (modo === "metade") return p.valorParcela / 2;
+    if (modo === "total") return 0;
+    return p.valorParcela;
+  }
+
+  const total = parcelasFiltradas.reduce((s, p) => s + valorExibido(p), 0);
   const quantidadePagas = parcelasFiltradas.filter((p) => p.pago).length;
-  const totalNaoPago = parcelasFiltradas.reduce((s, p) => (p.pago ? s : s + p.valorParcela), 0);
+  const totalNaoPago = parcelasFiltradas.reduce((s, p) => (p.pago ? s : s + valorExibido(p)), 0);
   const mostrarTotalNaoPago = quantidadePagas > 0 && quantidadePagas < parcelasFiltradas.length;
 
   const parcelasOrdenadas = useMemo(
@@ -332,6 +345,21 @@ export default function BuscaParcelas({
                 className="w-20 border-none bg-transparent p-0 text-slate-900 placeholder:text-slate-400 focus:outline-none disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
               />
             </div>
+            <label
+              className={`flex h-[42px] items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-sm text-slate-600 dark:border-slate-600 dark:text-slate-300 ${
+                algumFormaMarcada ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+              }`}
+              title="Apenas visualização: mostra na coluna Valor e no total o valor que você paga de fato, descontando o reembolso (ex.: 50% de 100,00 = 50,00)"
+            >
+              <input
+                type="checkbox"
+                checked={mostrarValorReal}
+                onChange={(e) => setMostrarValorReal(e.target.checked)}
+                disabled={!algumFormaMarcada}
+                className="h-4 w-4 accent-indigo-600"
+              />
+              Valor real
+            </label>
           </div>
 
           <SeletorMesAno ym={ym} onMudar={setYm} />
@@ -458,7 +486,16 @@ export default function BuscaParcelas({
                         )}
                       </td>
                       <td className="py-2.5 pr-2 text-right font-medium text-slate-900 dark:text-slate-100">
-                        {formatarMoeda(p.valorParcela)}
+                        {valorExibido(p) !== p.valorParcela ? (
+                          <span
+                            className="cursor-help underline decoration-dotted"
+                            title={`Valor do lançamento: ${formatarMoeda(p.valorParcela)}`}
+                          >
+                            {formatarMoeda(valorExibido(p))}
+                          </span>
+                        ) : (
+                          formatarMoeda(p.valorParcela)
+                        )}
                       </td>
                       <td className="py-2.5 pr-4">
                         <div className="flex shrink-0 items-center gap-1">
