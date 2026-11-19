@@ -37,6 +37,19 @@ function LancarConteudo() {
   const grupoInicial = searchParams.get("grupo") ?? undefined;
   const aplicacaoInicial = searchParams.get("aplicacao") ?? undefined;
   const todosGruposInicial = searchParams.get("todosGrupos") === "1";
+  // Link do Plano Financeiro: abre a busca já com o checkbox "Valor real" marcado — só na chegada.
+  const valorRealInicial = searchParams.get("valorReal") === "1";
+
+  // Consome o parâmetro: tira "valorReal" da URL assim que a tela abre, para que trocar de aba,
+  // voltar pelo histórico ou retornar à tela mostre o checkbox desmarcado (o BuscaParcelas já
+  // montado guarda o valor inicial no próprio estado, então não é afetado).
+  // Só depois que o usuário carregou: é aí que o BuscaParcelas monta e lê o valor inicial.
+  useEffect(() => {
+    if (!valorRealInicial || !usuario) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("valorReal");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [valorRealInicial, usuario]);
   const mesUrl = searchParams.get("mes");
   const { definirYm } = useMesAtual();
   const modoCompartilhadosInicial = searchParams.get("modo") === "enviados" ? "enviados" : "recebidos";
@@ -116,6 +129,7 @@ function LancarConteudo() {
             grupoInicial={grupoInicial}
             aplicacaoInicial={aplicacaoInicial}
             todosGruposInicial={todosGruposInicial}
+            valorRealInicial={valorRealInicial}
           />
         )
       ) : aba === "compartilhados" && config.compartilharLancamentos ? (

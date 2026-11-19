@@ -572,7 +572,7 @@ export default function PlanoFinanceiroPage() {
                         gasto={gastosPorAplicacao.get(aplicacao)?.get(mes) ?? 0}
                         limite={limiteDe(aplicacao, mes)}
                         reserva={ehReserva(aplicacao)}
-                        href={`/lancar?aba=buscar&mes=${mes}&todosGrupos=1&aplicacao=${encodeURIComponent(aplicacao)}`}
+                        href={`/lancar?aba=buscar&mes=${mes}&todosGrupos=1&valorReal=1&aplicacao=${encodeURIComponent(aplicacao)}`}
                       />
                     ))}
                   </tr>

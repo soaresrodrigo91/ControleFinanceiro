@@ -47,6 +47,7 @@ export default function BuscaParcelas({
   grupoInicial,
   aplicacaoInicial,
   todosGruposInicial = false,
+  valorRealInicial = false,
 }: {
   uid: string;
   stickyTop?: number;
@@ -54,6 +55,8 @@ export default function BuscaParcelas({
   aplicacaoInicial?: string;
   // Marca todos os grupos assim que a configuração e o mês carregarem.
   todosGruposInicial?: boolean;
+  // Abre com o checkbox "Valor real" já marcado (ex.: link do Plano Financeiro).
+  valorRealInicial?: boolean;
 }) {
   const [config, setConfig] = useState<ConfigListas>(CONFIG_PADRAO);
   const [configCarregada, setConfigCarregada] = useState(false);
@@ -82,7 +85,7 @@ export default function BuscaParcelas({
   const [filtroCredor, setFiltroCredor] = useState("");
   // Apenas visualização: mostra o valor que efetivamente sai do bolso (desconta o reembolso).
   // Estado local — volta desmarcado ao sair da tela e não afeta nenhuma outra rotina.
-  const [mostrarValorReal, setMostrarValorReal] = useState(false);
+  const [mostrarValorReal, setMostrarValorReal] = useState(valorRealInicial);
 
   const [ordenacao, setOrdenacao] = useState<OrdenacaoParcelas>(null);
 
