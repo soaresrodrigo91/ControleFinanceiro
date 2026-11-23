@@ -283,11 +283,28 @@ async function montarIndicadores(): Promise<IndicadoresEconomicos> {
 
 let emCache: { dados: IndicadoresEconomicos; expira: number } | null = null;
 
+// Hora em Brasília (UTC−3, sem horário de verão) para saber se a PTAX do dia já deveria ter
+// saído: o BC publica a cotação de fechamento por volta das 13h dos dias úteis.
+function agoraBrasilia(): Date {
+  return new Date(Date.now() - 3 * 60 * 60 * 1000);
+}
+
+function ptaxDoDiaPendente(dolar: IndicadorDolar | null): boolean {
+  const agora = agoraBrasilia();
+  const diaSemana = agora.getUTCDay();
+  if (diaSemana === 0 || diaSemana === 6 || agora.getUTCHours() < 13) return false;
+  const hoje = agora.toISOString().slice(0, 10);
+  return !dolar || dolar.data < hoje;
+}
+
 async function obterIndicadores(): Promise<IndicadoresEconomicos> {
-  if (!emCache || emCache.expira < Date.now()) {
+  // Em dia útil depois das 13h, se a cotação guardada ainda não é a de hoje, busca de novo
+  // (no máximo a cada 5 minutos) para a PTAX nova aparecer assim que o BC publicar.
+  const pendente = emCache && ptaxDoDiaPendente(emCache.dados.dolar) && emCache.expira - CACHE_MS + CACHE_FALHA_MS < Date.now();
+  if (!emCache || emCache.expira < Date.now() || pendente) {
     const dados = await montarIndicadores();
     // Se alguma fonte falhou, tenta de novo mais cedo.
-    const completo = dados.dolar && dados.selic && dados.ipca;
+    const completo = dados.dolar && dados.selic && dados.ipca && !ptaxDoDiaPendente(dados.dolar);
     emCache = { dados, expira: Date.now() + (completo ? CACHE_MS : CACHE_FALHA_MS) };
   }
   return emCache.dados;
@@ -331,6 +348,8 @@ export async function GET(request: Request) {
     return Response.json(await atualizarParte(parte as Parte), { headers: { "Cache-Control": "no-store" } });
   }
   return Response.json(await obterIndicadores(), {
-    headers: { "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=3600" },
+    // Sem cache no CDN/navegador: o cache em memória acima já poupa as fontes, e assim cada
+    // entrada no sistema recebe a cotação mais recente que o servidor tiver.
+    headers: { "Cache-Control": "no-store" },
   });
 }

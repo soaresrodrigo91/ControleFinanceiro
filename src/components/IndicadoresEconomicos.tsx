@@ -423,7 +423,7 @@ export default function IndicadoresEconomicos({
     let ativo = true;
     async function carregar() {
       try {
-        const resp = await fetch("/api/indicadores");
+        const resp = await fetch("/api/indicadores", { cache: "no-store" });
         if (!resp.ok) throw new Error(String(resp.status));
         const json = (await resp.json()) as Dados;
         if (ativo) {
